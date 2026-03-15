@@ -26,19 +26,17 @@ widgets:
     col: 5
     row: 1
     col_span: 8
-    row_span: 4
+    row_span: 7
     config:
       show_hourly: true
       show_daily: true
-      hourly_count: 6
-      daily_count: 5
 
   - id: rain
     type: rain
     col: 1
     row: 4
     col_span: 4
-    row_span: 3
+    row_span: 4
     config: {}
 
   - id: news
