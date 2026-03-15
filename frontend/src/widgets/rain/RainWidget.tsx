@@ -50,7 +50,7 @@ function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLe
   const labelStyle = (color: string): React.CSSProperties => ({
     position: 'absolute',
     left: '0.3rem',
-    fontSize: 'clamp(0.45rem, 0.85vw, 0.65rem)',
+    fontSize: 'clamp(0.675rem, 1.275vw, 0.975rem)',
     color,
     pointerEvents: 'none',
     lineHeight: 1,
@@ -129,7 +129,7 @@ function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLe
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 'clamp(0.7rem, 1.3vw, 1rem)',
+          fontSize: 'clamp(1.05rem, 1.95vw, 1.5rem)',
           color: 'rgba(255,255,255,0.15)',
           pointerEvents: 'none',
           userSelect: 'none',
@@ -194,14 +194,14 @@ export function RainWidget({ config: _config }: Props) {
       }}>
         <span style={{
           color: 'var(--color-muted)',
-          fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)',
+          fontSize: 'clamp(0.975rem, 1.65vw, 1.275rem)',
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
         }}>
           Rain — next 2 hours
         </span>
         <span style={{
-          fontSize: 'clamp(0.8rem, 1.5vw, 1.1rem)',
+          fontSize: 'clamp(1.2rem, 2.25vw, 1.65rem)',
           color: hasRain ? 'var(--color-accent)' : 'var(--color-muted)',
           fontWeight: hasRain ? 600 : 400,
         }}>
@@ -222,7 +222,7 @@ export function RainWidget({ config: _config }: Props) {
         {labels.map(({ label, i }) => (
           <span key={i} style={{
             color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
-            fontSize: 'clamp(0.6rem, 1vw, 0.8rem)',
+            fontSize: 'clamp(0.9rem, 1.5vw, 1.2rem)',
             fontWeight: i === 0 ? 700 : 400,
           }}>
             {label}
@@ -235,7 +235,7 @@ export function RainWidget({ config: _config }: Props) {
         display: 'flex', flexDirection: 'row',
         gap: '0.7rem', flexShrink: 0,
         color: 'var(--color-muted)',
-        fontSize: 'clamp(0.55rem, 0.95vw, 0.75rem)',
+        fontSize: 'clamp(0.825rem, 1.425vw, 1.125rem)',
         opacity: 0.65,
       }}>
         <span><span style={{ color: 'rgba(0,212,255,0.7)' }}>—</span> {levels.light}</span>

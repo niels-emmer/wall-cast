@@ -75,7 +75,7 @@ export function NewsTickerWidget({ config }: Props) {
           }}>
             <span style={{
               color: 'var(--color-accent)',
-              fontSize: 'clamp(0.8rem, 1.5vw, 1.1rem)',
+              fontSize: 'clamp(1.2rem, 2.25vw, 1.65rem)',
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
@@ -85,7 +85,7 @@ export function NewsTickerWidget({ config }: Props) {
             </span>
             <span style={{
               color: 'var(--color-text)',
-              fontSize: 'clamp(1rem, 2vw, 1.5rem)',
+              fontSize: 'clamp(1.5rem, 3vw, 2.25rem)',
               fontWeight: 400,
             }}>
               {item.title}

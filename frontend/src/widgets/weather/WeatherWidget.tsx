@@ -52,15 +52,15 @@ function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
       minWidth: 0,
     }}>
       <span style={{
-        fontSize: 'clamp(0.75rem, 1.4vw, 1.1rem)',
+        fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
         color: accent ? 'var(--color-accent)' : 'var(--color-muted)',
         fontWeight: accent ? 700 : 400,
       }}>
         {hour}
       </span>
-      <span style={{ fontSize: 'clamp(1.2rem, 2.3vw, 1.9rem)', lineHeight: 1 }}>{symbol}</span>
+      <span style={{ fontSize: 'clamp(1.8rem, 3.45vw, 2.85rem)', lineHeight: 1 }}>{symbol}</span>
       <span style={{
-        fontSize: 'clamp(1rem, 1.9vw, 1.5rem)',
+        fontSize: 'clamp(1.5rem, 2.85vw, 2.25rem)',
         fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1,
@@ -68,7 +68,7 @@ function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
         {temp}°
       </span>
       <span style={{
-        fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
+        fontSize: 'clamp(1.1rem, 1.95vw, 1.5rem)',
         color: precip > 40 ? 'var(--color-accent)' : 'var(--color-muted)',
       }}>
         {precip}%
@@ -95,16 +95,16 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
       minHeight: 0,
     }}>
       <span style={{
-        fontSize: 'clamp(0.85rem, 1.5vw, 1.2rem)',
+        fontSize: 'clamp(1.275rem, 2.25vw, 1.8rem)',
         color: accent ? 'var(--color-accent)' : 'var(--color-muted)',
         fontWeight: accent ? 700 : 400,
         whiteSpace: 'nowrap',
       }}>
         {label}
       </span>
-      <span style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', lineHeight: 1 }}>{symbol}</span>
+      <span style={{ fontSize: 'clamp(2.7rem, 5.25vw, 4.2rem)', lineHeight: 1 }}>{symbol}</span>
       <span style={{
-        fontSize: 'clamp(1.3rem, 2.5vw, 2rem)',
+        fontSize: 'clamp(1.95rem, 3.75vw, 3rem)',
         fontWeight: 800,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1,
@@ -112,7 +112,7 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
         {hi}°
       </span>
       <span style={{
-        fontSize: 'clamp(0.85rem, 1.5vw, 1.2rem)',
+        fontSize: 'clamp(1.275rem, 2.25vw, 1.8rem)',
         color: 'var(--color-muted)',
         whiteSpace: 'nowrap',
       }}>
@@ -155,19 +155,19 @@ export function WeatherWidget({ config }: Props) {
         gap: '0.45em',
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', lineHeight: 1 }}>{curSymbol}</span>
+        <span style={{ fontSize: 'clamp(3.75rem, 7.5vw, 6.75rem)', lineHeight: 1 }}>{curSymbol}</span>
         <span style={{
-          fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+          fontSize: 'clamp(3.75rem, 7.5vw, 6.75rem)',
           fontWeight: 900, lineHeight: 1,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {Math.round(cur.temperature)}°
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1em', marginLeft: '0.2em' }}>
-          <span style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)', color: 'var(--color-text)', lineHeight: 1 }}>
+          <span style={{ fontSize: 'clamp(1.5rem, 3vw, 2.4rem)', color: 'var(--color-text)', lineHeight: 1 }}>
             {curLabel}
           </span>
-          <span style={{ fontSize: 'clamp(0.85rem, 1.7vw, 1.35rem)', color: 'var(--color-muted)', lineHeight: 1 }}>
+          <span style={{ fontSize: 'clamp(1.275rem, 2.55vw, 2rem)', color: 'var(--color-muted)', lineHeight: 1 }}>
             Wind: {Math.round(cur.windspeed)} km/h
           </span>
         </div>
