@@ -34,7 +34,9 @@ export function ClockWidget({ config }: Props) {
       alignItems: 'center',
       justifyContent: 'center',
       height: '100%',
-      gap: '0.4em',
+      gap: '0.5em',
+      padding: '0.5rem',
+      boxSizing: 'border-box',
     }}>
       {/* Time */}
       <div style={{
@@ -44,39 +46,46 @@ export function ClockWidget({ config }: Props) {
         fontVariantNumeric: 'tabular-nums',
         fontWeight: 900,
         lineHeight: 1,
-        fontSize: 'clamp(3rem, 6.5vw, 5.5rem)',
+        fontSize: 'clamp(3.5rem, 7.5vw, 6.5rem)',
+        letterSpacing: '-0.02em',
       }}>
         <span>{hours}</span>
-        <span style={{ opacity: 0.3, margin: '0 0.05em' }}>:</span>
+        <span style={{ opacity: 0.25, margin: '0 0.06em' }}>:</span>
         <span>{minutes}</span>
         {showSeconds && (
-          <span style={{ fontSize: '0.38em', opacity: 0.4, marginLeft: '0.3em', fontWeight: 300 }}>
+          <span style={{
+            fontSize: '0.35em',
+            opacity: 0.35,
+            marginLeft: '0.35em',
+            fontWeight: 300,
+            letterSpacing: 0,
+          }}>
             {seconds}
           </span>
         )}
       </div>
 
-      {/* Date — two lines, stacked */}
+      {/* Date */}
       {showDate && (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '0.15em',
+          gap: '0.2em',
         }}>
           <span style={{
-            fontSize: 'clamp(0.7rem, 1.5vw, 1.2rem)',
+            fontSize: 'clamp(0.85rem, 1.8vw, 1.4rem)',
             fontWeight: 300,
             textTransform: 'uppercase',
-            letterSpacing: '0.2em',
+            letterSpacing: '0.25em',
             color: 'var(--color-muted)',
           }}>
             {dayName}
           </span>
           <span style={{
-            fontSize: 'clamp(0.85rem, 1.8vw, 1.4rem)',
+            fontSize: 'clamp(1rem, 2.1vw, 1.7rem)',
             fontWeight: 700,
-            letterSpacing: '0.04em',
+            letterSpacing: '0.03em',
             color: 'var(--color-text)',
           }}>
             {dateNum}

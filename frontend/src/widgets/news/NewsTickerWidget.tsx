@@ -10,7 +10,7 @@ export function NewsTickerWidget({ config }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const animRef  = useRef<Animation | null>(null)
 
-  const speedPx = (config.scroll_speed_px_per_sec as number) ?? 80
+  const speedPx = (config.scroll_speed_px_per_sec as number) ?? 90
 
   useEffect(() => {
     const track = trackRef.current
@@ -37,7 +37,7 @@ export function NewsTickerWidget({ config }: Props) {
       <div style={{
         display: 'flex', alignItems: 'center', height: '100%', padding: '0 1.5rem',
         borderTop: '1px solid var(--color-border)',
-        color: 'var(--color-muted)', fontSize: '1rem',
+        color: 'var(--color-muted)', fontSize: '1.1rem',
       }}>
         {isError ? 'News unavailable' : 'Loading news...'}
       </div>
@@ -51,7 +51,7 @@ export function NewsTickerWidget({ config }: Props) {
       display: 'flex',
       alignItems: 'center',
       height: '100%',
-      overflow: 'hidden',           // clip scrolling content — inline, not Tailwind
+      overflow: 'hidden',
       borderTop: '1px solid var(--color-border)',
     }}>
       <div
@@ -60,7 +60,7 @@ export function NewsTickerWidget({ config }: Props) {
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          whiteSpace: 'nowrap',     // prevent line-wrap — inline, not Tailwind
+          whiteSpace: 'nowrap',
           willChange: 'transform',
           flexShrink: 0,
         }}
@@ -70,12 +70,12 @@ export function NewsTickerWidget({ config }: Props) {
             display: 'inline-flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: '0.7rem',
+            gap: '0.6rem',
             padding: '0 2.5rem',
           }}>
             <span style={{
               color: 'var(--color-accent)',
-              fontSize: 'clamp(0.7rem, 1.3vw, 0.95rem)',
+              fontSize: 'clamp(0.8rem, 1.5vw, 1.1rem)',
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
@@ -85,13 +85,12 @@ export function NewsTickerWidget({ config }: Props) {
             </span>
             <span style={{
               color: 'var(--color-text)',
-              fontSize: 'clamp(0.85rem, 1.7vw, 1.2rem)',
+              fontSize: 'clamp(1rem, 2vw, 1.5rem)',
+              fontWeight: 400,
             }}>
               {item.title}
             </span>
-            <span style={{ color: 'var(--color-border)', fontSize: '1.1em', flexShrink: 0 }}>
-              ·
-            </span>
+            <span style={{ color: 'var(--color-border)', fontSize: '1.2em', flexShrink: 0 }}>·</span>
           </span>
         ))}
       </div>
