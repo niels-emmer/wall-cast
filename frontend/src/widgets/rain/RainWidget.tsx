@@ -164,7 +164,7 @@ export function RainWidget({ config: _config }: Props) {
         flexShrink: 0,
         position: 'relative',
       }}>
-        {labels.map(({ label, pct }, i) => (
+        {labels.map(({ label }, i) => (
           <span key={i} style={{
             color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
             fontSize: 'clamp(0.6rem, 1vw, 0.8rem)',
