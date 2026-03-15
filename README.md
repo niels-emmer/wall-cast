@@ -43,8 +43,7 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 ## Requirements
 
 - Docker + Docker Compose on the machine that will host the display
-- A Chromecast (or Chromecast-enabled TV) on the same local network
-- A web browser on any device to do the initial cast (one-time)
+- A Chromecast or Google TV on the same local network
 
 ## Quick Start
 
@@ -68,19 +67,40 @@ location:
 
 See [docs/config-reference.md](docs/config-reference.md) for all options.
 
-### 3. Run
+### 3. Enable auto-cast
+
+The caster service casts the display to your Chromecast/Google TV automatically on startup and keeps it alive — no browser needed.
+
+**Find your device IPs:**
+
+```bash
+# Chromecast/Google TV IP:
+docker run --rm --network=host python:3.12-slim \
+  sh -c 'pip install -q catt && catt scan'
+
+# This machine's LAN IP (macOS/Linux):
+ipconfig getifaddr en0   # macOS
+hostname -I | awk '{print $1}'  # Linux
+```
+
+**Edit `docker-compose.yml`** and fill in the `caster` environment block:
+
+```yaml
+CHROMECAST_IP: "192.168.1.42"    # your Chromecast/Google TV
+DISPLAY_URL: "http://192.168.1.10/"  # this machine's LAN IP — must be reachable from the TV
+```
+
+> ⚠ Use the **LAN IP** for `DISPLAY_URL`, not `http://localhost/`. The TV resolves `localhost` as itself, which results in a blank page and the cast session immediately closing.
+
+**Tip:** Set DHCP reservations for both IPs in your router so they never change across reboots.
+
+### 4. Run
 
 ```bash
 docker compose up -d --build
 ```
 
-The display is now available at `http://<your-host-ip>/`.
-
-### 4. Cast (one-time)
-
-1. Open `http://<host-ip>/` in **Chrome** on any device on your network
-2. Click ⋮ → **Cast** → **Cast tab** → select your Chromecast
-3. Done — the tab stays open on the TV indefinitely. The SSE connection keeps it alive.
+The display is cast to the TV within ~15 seconds of startup and will re-cast automatically if the session drops (e.g. if someone accidentally presses a button on the remote).
 
 To stop: `docker compose down`
 
@@ -193,23 +213,28 @@ The widget registry is in `frontend/src/widgets/index.ts`. Any component registe
 ## Architecture
 
 ```
-VPS (Docker)
-├── frontend  nginx:alpine, port 80 (public)
-│             Serves Vite-built React app
-│             Proxies /api/* → backend:8000
-│             proxy_buffering off for SSE
+Host (Docker)
+├── frontend   nginx:alpine, port 80 (public)
+│              Serves Vite-built React app
+│              Proxies /api/* → backend:8000
+│              proxy_buffering off for SSE
 │
-└── backend   python:3.12-slim (internal only)
-              FastAPI
-              ├── GET /api/config          parsed YAML as JSON
-              ├── GET /api/config/stream   SSE — pushes on YAML save
-              ├── GET /api/weather         open-meteo proxy, 15 min cache
-              ├── GET /api/rain            buienalarm proxy, 5 min cache
-              ├── GET /api/news            RSS aggregator, 10 min cache
-              └── GET /api/sun            sunrise-sunset.org proxy, 6 h cache
+├── backend    python:3.12-slim (internal only)
+│              FastAPI
+│              ├── GET /api/config          parsed YAML as JSON
+│              ├── GET /api/config/stream   SSE — pushes on YAML save
+│              ├── GET /api/weather         open-meteo proxy, 15 min cache
+│              ├── GET /api/rain            buienalarm proxy, 5 min cache
+│              ├── GET /api/news            RSS aggregator, 10 min cache
+│              └── GET /api/sun             sunrise-sunset.org proxy, 6 h cache
+│
+└── caster     python:3.12-slim (network_mode: host)
+               catt cast_site → Chromecast via DashCast receiver
+               Polls every 60 s, re-casts if session drops
 
-Chromecast (same LAN)
-└── Fetches http://<vps-ip>/ once, stays live via SSE keepalive
+Chromecast / Google TV (same LAN)
+└── Loads http://<host-lan-ip>/ via DashCast receiver
+    Stays live via SSE keepalive
     Breaking news: browser connects directly to ntfy SSE endpoint
 ```
 
@@ -249,6 +274,9 @@ wall-cast/
 │       ├── widgets/            one directory per widget type
 │       │   └── index.ts        ← widget registry
 │       └── hooks/              one hook per data source
+├── caster/
+│   ├── Dockerfile              python:3.12-slim + catt
+│   └── cast.sh                 cast + keepalive loop
 ├── docs/
 │   ├── config-reference.md
 │   ├── adding-a-widget.md

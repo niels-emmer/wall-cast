@@ -30,19 +30,28 @@ services:
       backend:
         condition: service_healthy
 
-  # Optional: auto-cast on startup.
-  # Requires CHROMECAST_DEVICE_NAME env var and network_mode: host for mDNS discovery.
-  # Uncomment and configure to enable zero-touch casting.
+  # Auto-caster: casts the display to a Chromecast on startup and keeps it alive.
+  # Uses `catt` (Cast All The Things) which loads the URL via the DashCast receiver.
   #
-  # caster:
-  #   image: ghcr.io/vishen/go-chromecast:latest
-  #   network_mode: host
-  #   environment:
-  #     CHROMECAST_DEVICE_NAME: "Living Room TV"
-  #   command: >
-  #     cast url http://<vps-ip>/
-  #     --device-name "${CHROMECAST_DEVICE_NAME}"
-  #   restart: "no"
-  #   depends_on:
-  #     frontend:
-  #       condition: service_started
+  # Setup (one-time):
+  #   1. Find your Chromecast's IP: docker run --rm --network=host python:3.12-slim \
+  #        sh -c 'pip install -q catt && catt scan'
+  #   2. Set CHROMECAST_IP to the Chromecast/Google TV IP address
+  #   3. Set DISPLAY_URL to the LAN IP of this machine (e.g. http://192.168.1.x/)
+  #      ⚠ Do NOT use http://localhost/ — the TV resolves localhost as itself, not this host
+  #   4. Set DHCP reservations for both IPs in your router so they never change
+  #
+  # network_mode: host is required to reach the Chromecast via mDNS on the LAN.
+  #
+  caster:
+    build:
+      context: ./caster
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      CHROMECAST_IP: "192.168.101.77"  # Office TV
+      DISPLAY_URL: "http://192.168.101.184/"  # URL to cast — must be reachable from the TV
+      CHECK_INTERVAL: "60"              # seconds between liveness checks
+    depends_on:
+      frontend:
+        condition: service_started

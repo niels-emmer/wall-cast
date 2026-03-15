@@ -9,7 +9,7 @@
 
 - Repo: `/Users/nemmer/repositories/wall-cast`
 - Stack: FastAPI 0.115 backend + React 18 / Vite / Tailwind frontend, Docker Compose
-- Casting: Chromecast on local LAN fetches `http://<vps-ip>/` — no Cast SDK needed
+- Casting: `caster` Docker service uses `catt cast_site` → DashCast receiver on Google TV (192.168.101.77). `DISPLAY_URL` must be the host's LAN IP (192.168.101.184), NOT `localhost` — the TV resolves localhost as itself
 - Config: `config/wall-cast.yaml` hot-reloads via SSE without container restart
 - Layout: 12 × 8 CSS grid, all widget layout uses **inline `style` only** (Tailwind classes unreliable in prod build)
 
@@ -38,6 +38,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | News RSS ticker | ✅ | Infinite scroll, Web Animations API |
 | Sunrise/sunset block | ✅ | Embedded top-right of weather widget |
 | Breaking news (ntfy) | ✅ | SSE direct to browser, interspersed every ~3 items |
+| Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
 
@@ -61,6 +62,12 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Breaking news: `useNtfy` hook connects directly to `<ntfy_url>/<topic>/sse` from the browser
 - Breaking item is interspersed every `Math.floor(n/3)` news items (not just prepended once)
 
+### Caster (auto-cast)
+- Uses `catt cast_site <url>` via the DashCast receiver app (app ID `CC1AD845`) — the only open-source tool that casts arbitrary web URLs to Chromecast
+- `network_mode: host` required for mDNS LAN discovery
+- `DISPLAY_URL` **must** be the host machine's LAN IP — `http://localhost/` fails because the Google TV resolves localhost as itself, causing DashCast to get a blank page and immediately close
+- `catt status` returns only volume info (no app name) when no session is active; the keepalive loop detects this and re-casts
+
 ### API sources
 - Weather: `api.open-meteo.com/v1/forecast` — no key, 15 min TTL
 - Rain: `cdn-secure.buienalarm.nl/api/3.4/forecast.php` — replaced dead gpsgadget endpoint, 5 min TTL
@@ -71,6 +78,5 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 ## Open Items
 
 - [ ] Push repo to GitHub
-- [ ] Add VPS IP to notes once known
 - [ ] Consider ENTSO-E energy price widget (free API, no key)
 - [ ] Consider NS train departures widget (requires NS API key)
