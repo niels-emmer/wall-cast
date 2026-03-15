@@ -30,7 +30,7 @@ docker compose -f docker-compose.dev.yml up --build
 docker compose up --build -d
 ```
 
-- Display URL: http://<vps-ip>/
+- Display URL: http://localhost/ (or VPS IP)
 - Logs: `docker compose logs -f`
 
 ### Frontend (without Docker, for fast iteration)
@@ -54,10 +54,12 @@ VPS Docker
     ├── GET /api/config          → parsed YAML as JSON
     ├── GET /api/config/stream   → SSE hot-reload events
     ├── GET /api/weather         → proxy → open-meteo.com (15m cache)
-    ├── GET /api/rain            → proxy → buienradar.nl (5m cache)
-    └── GET /api/news            → proxy → RSS feeds (10m cache)
+    ├── GET /api/rain            → proxy → buienalarm.nl (5m cache)
+    ├── GET /api/news            → proxy → RSS feeds (10m cache)
+    └── GET /api/sun             → proxy → sunrise-sunset.org (6h cache)
 
 Chromecast (same LAN) → renders http://<vps-ip>/
+Breaking news: browser connects directly to ntfy SSE (no backend proxy)
 ```
 
 ## Widget System
@@ -69,6 +71,22 @@ Widgets are registered in `frontend/src/widgets/index.ts`. To add a widget:
 3. Register the component in `frontend/src/widgets/index.ts`
 4. Add the widget type to `docs/config-reference.md`
 5. Use it in `/config/wall-cast.yaml`
+
+## CRITICAL: Layout CSS Rules
+
+**Tailwind utility classes are unreliable in the production build.** All layout-critical CSS must use inline `style={{ }}` objects. This is a known and confirmed issue — do not attempt to use Tailwind for layout.
+
+```tsx
+// ✅ correct — always works
+<div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+// ❌ silently breaks in production build
+<div className="flex flex-col h-full">
+```
+
+This applies to: `display`, `flexDirection`, `height`, `overflow`, `whiteSpace`, `gap`, `alignItems`, `justifyContent`, `minHeight`, `flex`, `padding`, `margin`, and all other layout properties.
+
+CSS variables and `clamp()` for font sizing work fine. Only layout utilities are unreliable.
 
 ## Security Notes
 
@@ -82,9 +100,25 @@ Widgets are registered in `frontend/src/widgets/index.ts`. To add a widget:
 
 | File | Purpose |
 |------|---------|
-| `config/wall-cast.yaml` | User widget configuration |
+| `config/wall-cast.yaml` | User widget configuration — hot-reloads on save |
 | `backend/app/wall_config.py` | YAML loader + file watcher + SSE broadcaster |
-| `backend/app/routers/` | API proxy routes |
+| `backend/app/routers/weather.py` | open-meteo proxy, 15 min cache |
+| `backend/app/routers/rain.py` | buienalarm.nl proxy, 5 min cache |
+| `backend/app/routers/news.py` | RSS aggregator, 10 min cache |
+| `backend/app/routers/sun.py` | sunrise-sunset.org proxy, 6 h cache |
 | `frontend/src/widgets/index.ts` | Widget registry |
-| `frontend/src/App.tsx` | Root: reads config, renders grid |
+| `frontend/src/App.tsx` | Root: reads config, renders CSS grid |
 | `frontend/src/hooks/use-config.ts` | Fetches config, subscribes to SSE |
+| `frontend/src/hooks/use-ntfy.ts` | Browser-side ntfy SSE subscriber (breaking news) |
+| `frontend/src/widgets/weather/WeatherWidget.tsx` | Weather + sunrise/sunset (SunBlock subcomponent) |
+| `frontend/src/widgets/news/NewsTickerWidget.tsx` | News ticker + breaking news integration |
+
+## Data Sources
+
+| Endpoint | External API | Cache TTL | API key |
+|----------|-------------|-----------|---------|
+| /api/weather | open-meteo.com | 15 min | None |
+| /api/rain | cdn-secure.buienalarm.nl | 5 min | None |
+| /api/news | RSS feeds (configurable) | 10 min | None |
+| /api/sun | sunrise-sunset.org | 6 h | None |
+| ntfy (browser direct) | ntfy instance (self-hosted) | real-time | None |

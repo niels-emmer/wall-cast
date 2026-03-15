@@ -1,64 +1,102 @@
 # wall-cast
 
-A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget-based, hot-reloading — runs entirely in Docker on your local network.
+A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget-based, live-updating — runs entirely in Docker on your local network. No cloud, no subscriptions, no API keys.
 
-![Dark, large-text dashboard showing clock, weather, rain forecast, and news ticker](.github/preview.png)
+## What it looks like
+
+```
+┌──────────────────┬──────────────────────────────────────────────────────┐
+│  15:42  37       │  ☀ 11°  Clear          🌅 SUNRISE  🌇 SUNSET         │
+│  ────────        │  Wind: 12 km/h          05:46       17:39            │
+│  SUNDAY          │  ✦ 05:46–06:46 · 16:39–17:39 ✦  ☀ 11h 53m          │
+│  15 March 2026   ├──────────┬──────────┬──────────┬───────────────────  │
+│                  │  16:00   │  17:00   │  18:00   │  …                  │
+├──────────────────│  ☀ 11°   │  ☀ 10°   │  ☀ 9°    │                    │
+│  RAIN — NEXT 2H  │  0%      │  0%      │  0%      │                    │
+│  ___________     ├──────────┼──────────┼──────────┼───────────────────  │
+│  no rain exp.    │  Today   │  Mon     │  Tue     │  …                  │
+│                  │  ☁ 11°   │  🌧 9°   │  🌦 10°  │                    │
+└──────────────────┴──────────┴──────────┴──────────┴────────────────────┘
+  NOS  Auto met gezin beschoten op Westelijke Jordaanoever ·  NU.NL  …
+```
 
 ## Features
 
-- **Polestar-style dark UI** — pure black background, bold white typography, accent highlights
-- **Widget layout** — configure widget positions via a YAML file
-- **Hot reload** — edit the config on your VPS, the display updates within 1 second (no restarts)
-- **Widgets**: clock/date, weather (open-meteo.com), rain forecast (buienradar.nl), news ticker (RSS)
+- **Polestar-style dark UI** — pure black background, bold white type, cyan accent
+- **Widget layout via YAML** — positions, spans, and widget options all in one file
+- **Hot reload** — save the config, the screen updates within ~1 second (no container restart)
+- **Breaking news via ntfy** — push any message to a self-hosted ntfy topic and it appears instantly as a `BREAKING` ticker item
+- **Fully auto-refreshing** — weather every 15 min, rain every 5 min, news every 10 min, sun data every 6 h
+- **No API keys** — all data sources are free and unauthenticated
 - **Modular** — add new widgets without touching core code
-- **No API keys** — open-meteo and buienradar are free and unauthenticated
+
+### Widgets
+
+| Widget | Data source | Refresh |
+|--------|-------------|---------|
+| **Clock** | Client-side JS | Every second |
+| **Weather** | [open-meteo.com](https://open-meteo.com) — current, hourly, 7-day | 15 min |
+| **Rain forecast** | [buienalarm.nl](https://buienalarm.nl) — SVG rain chart for next 2 h | 5 min |
+| **News ticker** | RSS feeds (configurable) | 10 min |
+| **Sunrise/sunset** | [sunrise-sunset.org](https://sunrise-sunset.org/api) — golden hour windows | 6 h |
 
 ## Requirements
 
-- Docker + Docker Compose on your VPS (local network)
-- A Chromecast connected to a screen on the same network
+- Docker + Docker Compose on the machine that will host the display
+- A Chromecast (or Chromecast-enabled TV) on the same local network
 - A web browser on any device to do the initial cast (one-time)
 
 ## Quick Start
 
-### 1. Clone and configure
+### 1. Clone
 
 ```bash
 git clone https://github.com/yourname/wall-cast
 cd wall-cast
 ```
 
-Edit `config/wall-cast.yaml` to set your location and preferred layout.
+### 2. Configure
 
-### 2. Start
+Edit `config/wall-cast.yaml` — at minimum, set your location:
+
+```yaml
+location:
+  lat: 52.5257
+  lon: 6.4510
+  name: Smilde
+```
+
+See [docs/config-reference.md](docs/config-reference.md) for all options.
+
+### 3. Run
 
 ```bash
 docker compose up -d --build
 ```
 
-The display will be available at `http://<vps-ip>/`.
+The display is now available at `http://<your-host-ip>/`.
 
-### 3. Cast to your screen
+### 4. Cast (one-time)
 
-1. Open `http://<vps-ip>/` in Chrome on any device on your network
-2. Click ⋮ → Cast → Cast to... → select your Chromecast
-3. Done — the display stays running on the TV
+1. Open `http://<host-ip>/` in **Chrome** on any device on your network
+2. Click ⋮ → **Cast** → **Cast tab** → select your Chromecast
+3. Done — the tab stays open on the TV indefinitely. The SSE connection keeps it alive.
 
 To stop: `docker compose down`
 
 ## Configuration
 
-Edit `config/wall-cast.yaml`. The display auto-updates within ~1 second of saving. See [docs/config-reference.md](docs/config-reference.md) for all options.
+All display settings live in **`config/wall-cast.yaml`**. Edit and save the file — the display reacts within ~1 second with no restart required.
 
 ```yaml
 location:
-  lat: 52.3676
-  lon: 4.9041
-  name: Amsterdam
+  lat: 52.5257       # latitude for weather and rain
+  lon: 6.4510        # longitude
+  name: Smilde       # display name (cosmetic only)
 
 layout:
-  columns: 12
-  rows: 8
+  columns: 12        # CSS grid columns
+  rows: 8            # CSS grid rows
 
 widgets:
   - id: clock
@@ -70,17 +108,81 @@ widgets:
     config:
       show_seconds: true
       show_date: true
+
+  - id: weather
+    type: weather
+    col: 5
+    row: 1
+    col_span: 8
+    row_span: 7
+
+  - id: rain
+    type: rain
+    col: 1
+    row: 4
+    col_span: 4
+    row_span: 4
+
+  - id: news
+    type: news
+    col: 1
+    row: 8
+    col_span: 12
+    row_span: 1
+    config:
+      feeds:
+        - url: https://feeds.nos.nl/nosnieuwsalgemeen
+          label: NOS
+      scroll_speed_px_per_sec: 80
+      ntfy_url: https://ntfy.example.com   # optional — see Breaking News below
+      ntfy_topic: wall-cast
 ```
 
+Full reference: [docs/config-reference.md](docs/config-reference.md)
+
+## Breaking News (ntfy)
+
+If you run a [ntfy](https://ntfy.sh) instance, you can push messages directly onto the screen from anywhere — phone, script, or automation.
+
+```bash
+# Basic message
+curl -d "Server is back online" https://ntfy.example.com/wall-cast
+
+# With a headline title
+curl -H "Title: Power outage" \
+     -d "Grid restored at 14:32 after 47-minute outage" \
+     https://ntfy.example.com/wall-cast
+```
+
+The message appears as a **`BREAKING`** item (red badge, amber title, blinking dot) interspersed throughout the news ticker every ~3 items. It stays visible until a new message arrives.
+
+Configure in the news widget:
+```yaml
+ntfy_url: https://ntfy.example.com
+ntfy_topic: wall-cast
+```
+
+The browser subscribes directly to the ntfy SSE endpoint — no backend proxy needed.
+
 ## Development
+
+For fast iteration without rebuilding Docker images:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-- Frontend: http://localhost:5173 (Vite HMR)
-- Backend API: http://localhost:8000
-- API docs: http://localhost:8000/docs
+- **Frontend** (Vite HMR): http://localhost:5173
+- **Backend** (FastAPI + live reload): http://localhost:8000
+- **API docs** (Swagger): http://localhost:8000/docs
+
+Or run the frontend standalone (fastest):
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+(Requires the backend to be running on port 8000.)
 
 ## Adding Widgets
 
@@ -92,42 +194,68 @@ The widget registry is in `frontend/src/widgets/index.ts`. Any component registe
 
 ```
 VPS (Docker)
-├── frontend  nginx:alpine, port 80
-│             Vite-built React app, served as static files
-│             Proxies /api/* → backend
+├── frontend  nginx:alpine, port 80 (public)
+│             Serves Vite-built React app
+│             Proxies /api/* → backend:8000
+│             proxy_buffering off for SSE
 │
-└── backend   python:3.12-slim, internal only
-              FastAPI, proxies external APIs, serves config
-              Watches wall-cast.yaml, pushes SSE on change
+└── backend   python:3.12-slim (internal only)
+              FastAPI
+              ├── GET /api/config          parsed YAML as JSON
+              ├── GET /api/config/stream   SSE — pushes on YAML save
+              ├── GET /api/weather         open-meteo proxy, 15 min cache
+              ├── GET /api/rain            buienalarm proxy, 5 min cache
+              ├── GET /api/news            RSS aggregator, 10 min cache
+              └── GET /api/sun            sunrise-sunset.org proxy, 6 h cache
 
 Chromecast (same LAN)
-└── Fetches http://<vps-ip>/ — stays live via SSE keepalive
+└── Fetches http://<vps-ip>/ once, stays live via SSE keepalive
+    Breaking news: browser connects directly to ntfy SSE endpoint
 ```
 
 ## Security
 
-- The backend is not exposed on the host — only nginx is accessible
-- The config file is mounted read-only into the backend container
-- All external API calls are proxied server-side (CORS, caching)
-- No authentication by design — local network only
-- If your VPS is internet-facing, restrict access in nginx:
+- The **backend is never exposed** on the host — only nginx is reachable from the network
+- The config file is mounted **read-only** into the backend container
+- All external API calls are **proxied server-side** — no CORS leakage, cached responses
+- **No authentication by design** — intended for local networks only
+- `server_tokens off` and standard security headers set in nginx
+
+If your host is internet-facing, restrict access in nginx:
 
 ```nginx
 location / {
     allow 192.168.0.0/16;
     allow 10.0.0.0/8;
     deny all;
-    try_files $uri $uri/ /index.html;
 }
 ```
 
-## Data Sources
+## Project layout
 
-| Widget | Source | API key |
-|--------|--------|---------|
-| Weather | [open-meteo.com](https://open-meteo.com) | None |
-| Rain | [buienradar.nl](https://gpsgadget.buienradar.nl) | None |
-| News | RSS feeds (configurable) | None |
+```
+wall-cast/
+├── config/
+│   └── wall-cast.yaml          ← edit this to configure the display
+├── backend/
+│   ├── app/
+│   │   ├── main.py             FastAPI app + lifespan
+│   │   ├── wall_config.py      YAML loader + SSE broadcaster
+│   │   └── routers/            one file per API endpoint
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── App.tsx             CSS grid layout
+│       ├── widgets/            one directory per widget type
+│       │   └── index.ts        ← widget registry
+│       └── hooks/              one hook per data source
+├── docs/
+│   ├── config-reference.md
+│   ├── adding-a-widget.md
+│   └── memory/                 project decisions and state
+├── docker-compose.yml          production
+└── docker-compose.dev.yml      development
+```
 
 ## License
 
