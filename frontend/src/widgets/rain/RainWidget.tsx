@@ -5,101 +5,118 @@ interface Props {
   config: Record<string, unknown>
 }
 
-// SVG viewBox dimensions (unitless — scales to container)
-const VW = 300
-const VH = 80
+const VW = 300   // SVG viewBox width (unitless)
+const VH = 100   // SVG viewBox height
+
+// Convert mm/h to SVG Y coordinate. Leave 6% padding at top and 4% at bottom.
+const toY = (mm: number, maxMm: number) =>
+  VH * 0.96 - (mm / maxMm) * VH * 0.90
 
 function buildPath(pts: { x: number; y: number }[]): string {
-  if (pts.length === 0) return ''
-  // Smooth bezier curve through points
+  if (pts.length < 2) return ''
   return pts.map((p, i) => {
     if (i === 0) return `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`
     const prev = pts[i - 1]
-    const cpx = ((prev.x + p.x) / 2).toFixed(1)
+    const cpx  = ((prev.x + p.x) / 2).toFixed(1)
     return `C ${cpx} ${prev.y.toFixed(1)}, ${cpx} ${p.y.toFixed(1)}, ${p.x.toFixed(1)} ${p.y.toFixed(1)}`
   }).join(' ')
 }
 
-interface ChartProps {
-  forecast: RainEntry[]
-  levels: RainLevels
-}
-
-function RainChart({ forecast, levels }: ChartProps) {
-  const maxMm = Math.max(...forecast.map(f => f.mm_per_hour), levels.heavy * 1.25, 0.01)
-
-  const toY = (mm: number) => VH - (mm / maxMm) * VH * 0.92  // 8% bottom margin
+function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLevels }) {
+  const hasRain = forecast.some(f => f.mm_per_hour > 0)
+  const maxMm   = Math.max(...forecast.map(f => f.mm_per_hour), levels.heavy * 1.2, 0.01)
 
   const pts = forecast.map((entry, i) => ({
     x: (i / (forecast.length - 1)) * VW,
-    y: toY(entry.mm_per_hour),
+    y: toY(entry.mm_per_hour, maxMm),
   }))
 
   const linePath = buildPath(pts)
-  const areaPath = `${linePath} L ${VW} ${VH} L 0 ${VH} Z`
+  const floor    = toY(0, maxMm)
+  const areaPath = hasRain ? `${linePath} L ${VW} ${floor} L 0 ${floor} Z` : ''
 
-  // Reference lines for rain intensity thresholds
-  const yLight    = toY(levels.light)
-  const yModerate = toY(levels.moderate)
-  const yHeavy    = toY(levels.heavy)
+  const yLight    = toY(levels.light,    maxMm)
+  const yModerate = toY(levels.moderate, maxMm)
+  const yHeavy    = toY(levels.heavy,    maxMm)
 
-  const hasRain = forecast.some(f => f.mm_per_hour > 0)
+  // "Now" vertical line at x=0
+  const nowX = pts[0]?.x ?? 0
 
   return (
     <svg
       viewBox={`0 0 ${VW} ${VH}`}
       preserveAspectRatio="none"
-      style={{ width: '100%', flex: 1, minHeight: 0, display: 'block', overflow: 'visible' }}
+      style={{ width: '100%', flex: 1, minHeight: 0, display: 'block' }}
     >
       <defs>
-        <linearGradient id="rainAreaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#00d4ff" stopOpacity={hasRain ? 0.55 : 0.08} />
-          <stop offset="100%" stopColor="#00d4ff" stopOpacity={hasRain ? 0.04 : 0.02} />
+        <linearGradient id="rg-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#00d4ff" stopOpacity="0.5" />
+          <stop offset="75%"  stopColor="#0066ff" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="#0066ff" stopOpacity="0" />
         </linearGradient>
-        <linearGradient id="rainLineGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stopColor="#00d4ff" stopOpacity="1" />
-          <stop offset="100%" stopColor="#0099ff" stopOpacity="1" />
+        <linearGradient id="rg-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stopColor="#00d4ff" />
+          <stop offset="100%" stopColor="#0088ff" />
         </linearGradient>
       </defs>
 
-      {/* Horizontal threshold lines */}
-      <line x1="0" y1={yLight}    x2={VW} y2={yLight}
-            stroke="rgba(255,255,255,0.12)" strokeWidth="0.8"
-            strokeDasharray="3,3" vectorEffect="non-scaling-stroke" />
+      {/* Floor baseline */}
+      <line x1="0" y1={floor} x2={VW} y2={floor}
+            stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"
+            vectorEffect="non-scaling-stroke" />
+
+      {/* Intensity threshold lines */}
+      <line x1="0" y1={yLight} x2={VW} y2={yLight}
+            stroke="rgba(0,212,255,0.2)" strokeWidth="0.7"
+            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
       <line x1="0" y1={yModerate} x2={VW} y2={yModerate}
-            stroke="rgba(255,255,255,0.12)" strokeWidth="0.8"
-            strokeDasharray="3,3" vectorEffect="non-scaling-stroke" />
-      <line x1="0" y1={yHeavy}    x2={VW} y2={yHeavy}
-            stroke="rgba(255,100,100,0.25)" strokeWidth="0.8"
-            strokeDasharray="3,3" vectorEffect="non-scaling-stroke" />
+            stroke="rgba(0,150,255,0.22)" strokeWidth="0.7"
+            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
+      <line x1="0" y1={yHeavy} x2={VW} y2={yHeavy}
+            stroke="rgba(255,80,80,0.2)" strokeWidth="0.7"
+            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
+
+      {/* Y-axis labels — tiny, left side */}
+      <text x="2" y={yLight    - 2} fontSize="5" fill="rgba(0,212,255,0.4)"
+            vectorEffect="non-scaling-stroke">light</text>
+      <text x="2" y={yModerate - 2} fontSize="5" fill="rgba(0,150,255,0.4)"
+            vectorEffect="non-scaling-stroke">mod.</text>
+      <text x="2" y={yHeavy   - 2} fontSize="5" fill="rgba(255,80,80,0.4)"
+            vectorEffect="non-scaling-stroke">heavy</text>
 
       {/* Filled area */}
-      <path d={areaPath} fill="url(#rainAreaGrad)" />
+      {hasRain && <path d={areaPath} fill="url(#rg-area)" />}
 
-      {/* Line on top */}
-      {hasRain && (
-        <path d={linePath} fill="none"
-              stroke="url(#rainLineGrad)" strokeWidth="2"
-              vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Smooth line */}
+      <path d={linePath} fill="none"
+            stroke={hasRain ? 'url(#rg-line)' : 'rgba(255,255,255,0.1)'}
+            strokeWidth="1.8"
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* "Now" tick */}
+      <line x1={nowX} y1={VH * 0.92} x2={nowX} y2={VH}
+            stroke="var(--color-accent)" strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+
+      {/* "No rain" centre label */}
+      {!hasRain && (
+        <text x={VW / 2} y={VH / 2 + 2}
+              fontSize="10" textAnchor="middle" dominantBaseline="middle"
+              fill="rgba(255,255,255,0.15)"
+              vectorEffect="non-scaling-stroke">
+          no rain expected
+        </text>
       )}
     </svg>
   )
 }
 
-// Time label positions: every 30 min = every 6th entry (5-min intervals)
-function timeLabels(forecast: RainEntry[]): { label: string; pct: number }[] {
+function timeLabels(forecast: RainEntry[]): { label: string; i: number }[] {
   return forecast
-    .map((f, i) => ({ label: f.time, pct: (i / (forecast.length - 1)) * 100, i }))
+    .map((f, i) => ({ label: f.time, i }))
     .filter(({ i }) => i % 6 === 0)
-    .map(({ label, pct, i }) => ({ label: i === 0 ? 'Now' : label, pct }))
-}
-
-const HEADER: React.CSSProperties = {
-  color: 'var(--color-muted)',
-  fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  flexShrink: 0,
+    .map(({ label, i }) => ({ label: i === 0 ? 'Now' : label, i }))
 }
 
 export function RainWidget({ config: _config }: Props) {
@@ -109,86 +126,92 @@ export function RainWidget({ config: _config }: Props) {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: '0.75rem 0.85rem 0.5rem',
+    padding: '0.75rem 0.85rem 0.55rem',
     gap: '0.4rem',
     boxSizing: 'border-box',
   }
 
   if (isError) return (
     <div style={shell}>
-      <span style={HEADER}>Rain — next 2 hours</span>
+      <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        Rain — next 2 hours
+      </span>
       <span style={{ color: 'var(--color-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Unavailable</span>
     </div>
   )
-
   if (!data) return (
     <div style={shell}>
-      <span style={HEADER}>Rain — next 2 hours</span>
+      <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        Rain — next 2 hours
+      </span>
       <span style={{ color: 'var(--color-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Loading...</span>
     </div>
   )
 
   const { forecast, levels } = data
-  const hasRain = forecast.some(f => f.mm_per_hour > 0)
-  const labels  = timeLabels(forecast)
-
-  // Current and peak mm/h for the status line
+  const hasRain   = forecast.some(f => f.mm_per_hour > 0)
+  const labels    = timeLabels(forecast)
   const currentMm = forecast[0]?.mm_per_hour ?? 0
   const peakMm    = Math.max(...forecast.map(f => f.mm_per_hour))
 
   return (
     <div style={shell}>
 
-      {/* Header row */}
-      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
-        <span style={HEADER}>Rain — next 2 hours</span>
+      {/* Header */}
+      <div style={{
+        display: 'flex', flexDirection: 'row',
+        justifyContent: 'space-between', alignItems: 'baseline',
+        flexShrink: 0,
+      }}>
         <span style={{
-          fontSize: 'clamp(0.75rem, 1.4vw, 1rem)',
+          color: 'var(--color-muted)',
+          fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}>
+          Rain — next 2 hours
+        </span>
+        <span style={{
+          fontSize: 'clamp(0.8rem, 1.5vw, 1.1rem)',
           color: hasRain ? 'var(--color-accent)' : 'var(--color-muted)',
           fontWeight: hasRain ? 600 : 400,
         }}>
           {hasRain
-            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h now · ' : ''}peak ${peakMm.toFixed(1)} mm/h`
-            : 'None expected'}
+            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}peak ${peakMm.toFixed(1)} mm/h`
+            : 'Dry'}
         </span>
       </div>
 
-      {/* SVG chart — takes all remaining space */}
+      {/* Chart */}
       <RainChart forecast={forecast} levels={levels} />
 
       {/* Time axis */}
       <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        flexShrink: 0,
-        position: 'relative',
+        display: 'flex', flexDirection: 'row',
+        justifyContent: 'space-between', flexShrink: 0,
       }}>
-        {labels.map(({ label }, i) => (
+        {labels.map(({ label, i }) => (
           <span key={i} style={{
             color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
             fontSize: 'clamp(0.6rem, 1vw, 0.8rem)',
-            fontWeight: i === 0 ? 600 : 400,
+            fontWeight: i === 0 ? 700 : 400,
           }}>
             {label}
           </span>
         ))}
       </div>
 
-      {/* Intensity legend */}
+      {/* Threshold legend */}
       <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '1rem',
-        flexShrink: 0,
+        display: 'flex', flexDirection: 'row',
+        gap: '0.7rem', flexShrink: 0,
         color: 'var(--color-muted)',
         fontSize: 'clamp(0.55rem, 0.95vw, 0.75rem)',
-        alignItems: 'center',
-        opacity: 0.7,
+        opacity: 0.65,
       }}>
-        <span><span style={{ color: 'rgba(0,212,255,0.6)' }}>—</span> light ({levels.light} mm/h)</span>
-        <span><span style={{ color: 'rgba(0,150,255,0.85)' }}>—</span> moderate ({levels.moderate} mm/h)</span>
-        <span><span style={{ color: 'rgba(255,100,100,0.7)' }}>—</span> heavy ({levels.heavy} mm/h)</span>
+        <span><span style={{ color: 'rgba(0,212,255,0.7)' }}>—</span> {levels.light}</span>
+        <span><span style={{ color: 'rgba(0,150,255,0.8)' }}>—</span> {levels.moderate}</span>
+        <span><span style={{ color: 'rgba(255,80,80,0.7)' }}>—</span> {levels.heavy} mm/h</span>
       </div>
 
     </div>

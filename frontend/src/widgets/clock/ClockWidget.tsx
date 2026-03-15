@@ -34,8 +34,8 @@ export function ClockWidget({ config }: Props) {
       alignItems: 'center',
       justifyContent: 'center',
       height: '100%',
-      gap: '0.5em',
-      padding: '0.5rem',
+      gap: '0.6em',
+      padding: '0.75rem',
       boxSizing: 'border-box',
     }}>
       {/* Time */}
@@ -50,20 +50,34 @@ export function ClockWidget({ config }: Props) {
         letterSpacing: '-0.02em',
       }}>
         <span>{hours}</span>
-        <span style={{ opacity: 0.25, margin: '0 0.06em' }}>:</span>
+        <span style={{ opacity: 0.2, margin: '0 0.06em' }}>:</span>
         <span>{minutes}</span>
         {showSeconds && (
           <span style={{
-            fontSize: '0.35em',
-            opacity: 0.35,
-            marginLeft: '0.35em',
+            fontSize: '0.32em',
+            opacity: 0.3,
+            marginLeft: '0.4em',
             fontWeight: 300,
             letterSpacing: 0,
+            alignSelf: 'flex-end',
+            paddingBottom: '0.15em',
           }}>
             {seconds}
           </span>
         )}
       </div>
+
+      {/* Accent separator */}
+      {showDate && (
+        <div style={{
+          width: '2.5rem',
+          height: 2,
+          background: 'var(--color-accent)',
+          borderRadius: 2,
+          opacity: 0.6,
+          flexShrink: 0,
+        }} />
+      )}
 
       {/* Date */}
       {showDate && (
@@ -71,10 +85,10 @@ export function ClockWidget({ config }: Props) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '0.2em',
+          gap: '0.25em',
         }}>
           <span style={{
-            fontSize: 'clamp(0.85rem, 1.8vw, 1.4rem)',
+            fontSize: 'clamp(0.9rem, 1.9vw, 1.5rem)',
             fontWeight: 300,
             textTransform: 'uppercase',
             letterSpacing: '0.25em',
@@ -83,7 +97,7 @@ export function ClockWidget({ config }: Props) {
             {dayName}
           </span>
           <span style={{
-            fontSize: 'clamp(1rem, 2.1vw, 1.7rem)',
+            fontSize: 'clamp(1.05rem, 2.2vw, 1.75rem)',
             fontWeight: 700,
             letterSpacing: '0.03em',
             color: 'var(--color-text)',

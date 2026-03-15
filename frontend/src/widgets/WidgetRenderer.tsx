@@ -12,14 +12,15 @@ export function WidgetRenderer({ widget }: Props) {
     height: '100%',
     overflow: 'hidden',
     background: 'var(--color-panel)',
-    borderRadius: 8,
+    borderRadius: 10,
     boxSizing: 'border-box',
+    border: '1px solid rgba(255,255,255,0.05)',
   }
 
   if (!Component) {
     return (
       <div style={{ ...shell, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.75rem', color: 'var(--color-muted)',
+                    fontSize: '0.8rem', color: 'var(--color-muted)',
                     border: '1px dashed var(--color-border)' }}>
         Unknown widget: {widget.type}
       </div>
