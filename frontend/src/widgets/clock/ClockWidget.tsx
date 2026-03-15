@@ -54,7 +54,7 @@ export function ClockWidget({ config }: Props) {
         <span>{minutes}</span>
         {showSeconds && (
           <span style={{
-            fontSize: '0.32em',
+            fontSize: '0.64em',
             opacity: 0.3,
             marginLeft: '0.4em',
             fontWeight: 300,
@@ -88,7 +88,7 @@ export function ClockWidget({ config }: Props) {
           gap: '0.25em',
         }}>
           <span style={{
-            fontSize: 'clamp(0.9rem, 1.9vw, 1.5rem)',
+            fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
             fontWeight: 300,
             textTransform: 'uppercase',
             letterSpacing: '0.25em',
@@ -97,7 +97,7 @@ export function ClockWidget({ config }: Props) {
             {dayName}
           </span>
           <span style={{
-            fontSize: 'clamp(1.05rem, 2.2vw, 1.75rem)',
+            fontSize: 'clamp(1.575rem, 3.3vw, 2.625rem)',
             fontWeight: 700,
             letterSpacing: '0.03em',
             color: 'var(--color-text)',
