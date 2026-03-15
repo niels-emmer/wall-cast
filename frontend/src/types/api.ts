@@ -49,3 +49,15 @@ export interface NewsItem {
 export interface NewsData {
   items: NewsItem[]
 }
+
+export interface SunData {
+  sunrise: string
+  sunset: string
+  solar_noon: string
+  golden_dawn_start: string
+  golden_dawn_end: string
+  golden_dusk_start: string
+  golden_dusk_end: string
+  day_length_h: number
+  day_length_m: number
+}

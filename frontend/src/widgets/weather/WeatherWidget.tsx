@@ -1,4 +1,6 @@
 import { useWeather } from '../../hooks/use-weather'
+import { useSun } from '../../hooks/use-sun'
+import type { SunData } from '../../types/api'
 
 interface Props {
   config: Record<string, unknown>
@@ -121,8 +123,80 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
   )
 }
 
+// ── Sun block — top-right of current weather row ──────────────────────────────
+function SunBlock({ d }: { d: SunData }) {
+  const gold   = 'rgba(255, 190, 60, 0.9)'
+  const muted  = 'var(--color-muted)'
+  const mono: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
+
+  return (
+    <div style={{
+      marginLeft: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      gap: '0.3em',
+    }}>
+
+      {/* Rise + Set */}
+      <div style={{ display: 'flex', gap: '1.6em', alignItems: 'flex-end' }}>
+        {[
+          { emoji: '🌅', label: 'Sunrise', time: d.sunrise },
+          { emoji: '🌇', label: 'Sunset',  time: d.sunset  },
+        ].map(({ emoji, label, time }) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.05em' }}>
+            <span style={{
+              fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)',
+              color: muted,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}>
+              {emoji} {label}
+            </span>
+            <span style={{
+              fontSize: 'clamp(1.25rem, 2.3vw, 1.85rem)',
+              fontWeight: 700,
+              color: 'var(--color-text)',
+              ...mono,
+            }}>
+              {time}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Golden hour */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4em',
+        fontSize: 'clamp(0.8rem, 1.4vw, 1.1rem)',
+        color: muted,
+      }}>
+        <span style={{ color: gold, fontSize: '0.9em' }}>✦</span>
+        <span style={mono}>{d.golden_dawn_start}–{d.golden_dawn_end}</span>
+        <span style={{ opacity: 0.35 }}>·</span>
+        <span style={mono}>{d.golden_dusk_start}–{d.golden_dusk_end}</span>
+        <span style={{ color: gold, fontSize: '0.9em' }}>✦</span>
+      </div>
+
+      {/* Day length */}
+      <span style={{
+        fontSize: 'clamp(0.75rem, 1.2vw, 0.95rem)',
+        color: muted,
+        letterSpacing: '0.05em',
+      }}>
+        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m daylight
+      </span>
+
+    </div>
+  )
+}
+
 export function WeatherWidget({ config }: Props) {
   const { data, isError } = useWeather()
+  const { data: sunData } = useSun()
 
   const center: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -170,6 +244,7 @@ export function WeatherWidget({ config }: Props) {
             Wind: {Math.round(cur.windspeed)} km/h
           </span>
         </div>
+        {sunData && <SunBlock d={sunData} />}
       </div>
 
       {divider}
