@@ -158,9 +158,22 @@ export function NewsTickerWidget({ config }: Props) {
     )
   }
 
-  // Breaking news is prepended — appears once at the start of each scroll cycle
-  // (duplicated list = [breaking?, ...news, breaking?, ...news])
   const newsItems = data.items
+
+  // When breaking news is active, interleave it every ~3 news items so it
+  // stays visible throughout the ticker rather than only at the very start.
+  // freq = how many news items between each breaking insertion (min 1).
+  const freq = breaking ? Math.max(1, Math.floor(newsItems.length / 3)) : Infinity
+
+  const buildHalf = (prefix: string) =>
+    newsItems.flatMap((item, i) => {
+      const els = []
+      if (breaking && i % freq === 0) {
+        els.push(<BreakingItem key={`${prefix}-br-${i}`} msg={breaking} />)
+      }
+      els.push(<NewsItem key={`${prefix}-n-${i}`} source={item.source} title={item.title} />)
+      return els
+    })
 
   return (
     <>
@@ -185,17 +198,9 @@ export function NewsTickerWidget({ config }: Props) {
             flexShrink: 0,
           }}
         >
-          {/* First pass */}
-          {breaking && <BreakingItem msg={breaking} />}
-          {newsItems.map((item, i) => (
-            <NewsItem key={`a-${i}`} source={item.source} title={item.title} />
-          ))}
-
-          {/* Second pass (seamless loop) */}
-          {breaking && <BreakingItem msg={breaking} />}
-          {newsItems.map((item, i) => (
-            <NewsItem key={`b-${i}`} source={item.source} title={item.title} />
-          ))}
+          {/* Two identical passes for seamless infinite scroll */}
+          {buildHalf('a')}
+          {buildHalf('b')}
         </div>
       </div>
     </>
