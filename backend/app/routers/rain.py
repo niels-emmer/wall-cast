@@ -1,10 +1,20 @@
 """
-Proxy to buienradar.nl rain forecast API.
-Returns 2-hour rain intensity forecast in 5-minute intervals.
+Proxy to buienalarm.nl rain forecast API.
+Returns 2-hour rain intensity forecast in 5-minute intervals (25 readings).
+
+API: https://cdn-secure.buienalarm.nl/api/3.4/forecast.php
+Response: {
+  "start": <unix timestamp>,
+  "start_human": "HH:MM",
+  "delta": 300,           # seconds between readings
+  "precip": [float, ...]  # mm/hour for each 5-min slot (25 entries)
+  "levels": {"light": 0.25, "moderate": 1, "heavy": 2.5}
+}
 """
 
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -19,30 +29,27 @@ router = APIRouter(tags=["rain"])
 _cache: dict[str, Any] = {}
 _cache_ts: float = 0.0
 
-# Returns a plain-text response: "intensity|timestamp" per line
-BUIENRADAR_URL = "https://gpsgadget.buienradar.nl/data/raintext?lat={lat}&lon={lon}"
+BUIENALARM_URL = (
+    "https://cdn-secure.buienalarm.nl/api/3.4/forecast.php"
+    "?lat={lat}&lon={lon}&region=nl&unit=mm/u"
+)
 
 
-def _parse_buienradar(text: str) -> list[dict]:
-    """Parse buienradar rain text into a list of {time, intensity, mm_per_hour}."""
-    results = []
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or "|" not in line:
-            continue
-        raw_intensity, timestamp = line.split("|", 1)
-        intensity = int(raw_intensity)
-        # Convert buienradar scale (0-255) to mm/h: mm = 10^((intensity-109)/32)
-        if intensity == 0:
-            mm_per_hour = 0.0
-        else:
-            mm_per_hour = round(10 ** ((intensity - 109) / 32), 2)
-        results.append({
-            "time": timestamp.strip(),
-            "intensity": intensity,
-            "mm_per_hour": mm_per_hour,
+def _build_forecast(data: dict) -> list[dict]:
+    """Convert buienalarm response into a time-stamped list."""
+    start_ts = data["start"]
+    delta = data.get("delta", 300)
+    precip = data.get("precip", [])
+
+    result = []
+    for i, mm in enumerate(precip):
+        slot_ts = start_ts + i * delta
+        slot_time = datetime.fromtimestamp(slot_ts, tz=timezone.utc).strftime("%H:%M")
+        result.append({
+            "time": slot_time,
+            "mm_per_hour": round(float(mm), 2),
         })
-    return results
+    return result
 
 
 @router.get("/rain")
@@ -57,7 +64,7 @@ async def get_rain() -> dict:
     lat = location.get("lat", 52.3676)
     lon = location.get("lon", 4.9041)
 
-    url = BUIENRADAR_URL.format(lat=lat, lon=lon)
+    url = BUIENALARM_URL.format(lat=lat, lon=lon)
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url)
@@ -68,7 +75,12 @@ async def get_rain() -> dict:
             return _cache
         raise HTTPException(status_code=502, detail="Rain API unavailable")
 
-    data = _parse_buienradar(resp.text)
-    _cache = {"forecast": data}
+    raw = resp.json()
+    forecast = _build_forecast(raw)
+    _cache = {
+        "forecast": forecast,
+        "levels": raw.get("levels", {}),
+        "start_human": raw.get("start_human", ""),
+    }
     _cache_ts = time.monotonic()
     return _cache

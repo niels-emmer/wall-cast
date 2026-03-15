@@ -2,9 +2,9 @@
 # Edit this file and save — the display updates automatically within ~1 second.
 
 location:
-  lat: 52.3676
-  lon: 4.9041
-  name: Amsterdam
+  lat: 52.5257
+  lon: 6.4510
+  name: Smilde
 
 layout:
   columns: 12   # CSS grid columns
