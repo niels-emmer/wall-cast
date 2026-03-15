@@ -35,17 +35,22 @@ function wmo(code: number) {
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const SECTION = {
-  fontSize: '0.7rem' as const,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase' as const,
-  color: 'var(--color-muted)',
+// Shared column style — always exactly 1/7th width
+const COL: React.CSSProperties = {
+  width: 'calc(100% / 7)',
+  flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0.4em 0',
+  gap: '0.2em',
 }
+
+const DIVIDER = <div style={{ height: 1, background: 'var(--color-border)', flexShrink: 0 }} />
 
 export function WeatherWidget({ config }: Props) {
   const { data, isError } = useWeather()
-  const hourlyCount = (config.hourly_count as number) ?? 6
-  const dailyCount  = (config.daily_count  as number) ?? 5
 
   if (isError) return (
     <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
@@ -60,98 +65,121 @@ export function WeatherWidget({ config }: Props) {
 
   const now = new Date()
   const startIdx = Math.max(0, data.hourly.time.findIndex(t => new Date(t) >= now))
+  const cur = data.current_weather
+  const { symbol: curSymbol, label: curLabel } = wmo(cur.weathercode)
+
+  // Font sizes — temperature is the anchor; label and wind are ~half
+  const tempSize  = 'clamp(2.2rem, 5vw, 4rem)'
+  const infoSize  = 'clamp(1rem, 2.2vw, 1.8rem)'   // ~half of tempSize
+  const hourLabel = 'clamp(0.65rem, 1.1vw, 0.85rem)'
+  const hourSymbol = 'clamp(1.1rem, 2vw, 1.6rem)'
+  const hourTemp  = 'clamp(0.85rem, 1.6vw, 1.25rem)'
+  const hourRain  = 'clamp(0.65rem, 1.1vw, 0.85rem)'
 
   return (
-    <div className="flex flex-col h-full p-4 gap-3">
+    <div className="flex flex-col h-full p-3" style={{ gap: '0.5em' }}>
 
-      {/* ── Current condition ── */}
-      <div className="flex items-center gap-4 flex-shrink-0">
-        <span style={{ fontSize: 'clamp(2.8rem, 6vw, 5rem)', lineHeight: 1 }}>
-          {wmo(data.current_weather.weathercode).symbol}
+      {/* ── Line 1: current condition ── */}
+      <div className="flex items-center flex-shrink-0" style={{ gap: '0.5em' }}>
+        {/* Symbol */}
+        <span style={{ fontSize: tempSize, lineHeight: 1 }}>{curSymbol}</span>
+
+        {/* Temperature — large anchor */}
+        <span className="font-black tabular-nums" style={{ fontSize: tempSize, lineHeight: 1 }}>
+          {Math.round(cur.temperature)}°
         </span>
-        <div className="flex flex-col">
-          <span className="font-black tabular-nums leading-none"
-                style={{ fontSize: 'clamp(2.5rem, 5.5vw, 4.5rem)' }}>
-            {Math.round(data.current_weather.temperature)}°
+
+        {/* Label + wind — ~half size, vertically centred with the temp */}
+        <div className="flex flex-col justify-center" style={{ gap: '0.05em' }}>
+          <span style={{ fontSize: infoSize, color: 'var(--color-text)', lineHeight: 1.1 }}>
+            {curLabel}
           </span>
-          <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(0.8rem, 1.4vw, 1.1rem)', marginTop: '0.1em' }}>
-            {wmo(data.current_weather.weathercode).label}
-            <span style={{ marginLeft: '0.8em', opacity: 0.7 }}>
-              {Math.round(data.current_weather.windspeed)} km/h
-            </span>
+          <span style={{ fontSize: infoSize, color: 'var(--color-muted)', lineHeight: 1.1 }}>
+            Wind: {Math.round(cur.windspeed)} km/h
           </span>
         </div>
       </div>
 
-      <div style={{ height: 1, background: 'var(--color-border)', flexShrink: 0 }} />
+      {DIVIDER}
 
-      {/* ── Hourly ── */}
+      {/* ── Line 2: hourly — 7 equal columns ── */}
       {config.show_hourly !== false && (
-        <div className="flex-shrink-0">
-          <div style={SECTION} className="mb-2">Hour by hour</div>
-          <div className="flex gap-2">
-            {Array.from({ length: hourlyCount }, (_, i) => {
-              const idx = startIdx + i
-              const hour = new Date(data.hourly.time[idx]).getHours()
-              const { symbol } = wmo(data.hourly.weathercode[idx])
-              const temp = Math.round(data.hourly.temperature_2m[idx])
-              const precip = data.hourly.precipitation_probability[idx]
-              return (
-                <div key={idx}
-                  className="flex flex-col items-center gap-1 flex-1 min-w-0 rounded-md py-2"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}>
-                    {String(hour).padStart(2, '0')}:00
-                  </span>
-                  <span style={{ fontSize: 'clamp(1.2rem, 2.2vw, 1.8rem)', lineHeight: 1 }}>{symbol}</span>
-                  <span className="font-bold tabular-nums"
-                        style={{ fontSize: 'clamp(0.9rem, 1.8vw, 1.4rem)' }}>
+        <div className="flex flex-shrink-0" style={{ width: '100%' }}>
+          {Array.from({ length: 7 }, (_, i) => {
+            const idx = startIdx + i
+            const hour = new Date(data.hourly.time[idx]).getHours()
+            const { symbol } = wmo(data.hourly.weathercode[idx])
+            const temp   = Math.round(data.hourly.temperature_2m[idx])
+            const precip = data.hourly.precipitation_probability[idx]
+            const isNow  = i === 0
+            return (
+              <div key={idx} style={{
+                ...COL,
+                background: isNow ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.03)',
+                borderRadius: 6,
+              }}>
+                {/* time */}
+                <span style={{ fontSize: hourLabel, color: isNow ? 'var(--color-accent)' : 'var(--color-muted)',
+                               fontWeight: isNow ? 700 : 400 }}>
+                  {String(hour).padStart(2, '0')}:00
+                </span>
+                {/* symbol + temp on one line */}
+                <span style={{ fontSize: hourSymbol, lineHeight: 1 }}>
+                  {symbol}{' '}
+                  <span className="tabular-nums font-bold" style={{ fontSize: hourTemp }}>
                     {temp}°
                   </span>
-                  <span style={{ color: precip > 40 ? 'var(--color-accent)' : 'var(--color-muted)',
-                                 fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)' }}>
-                    {precip}%
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+                </span>
+                {/* rain chance */}
+                <span style={{
+                  fontSize: hourRain,
+                  color: precip > 40 ? 'var(--color-accent)' : 'var(--color-muted)',
+                }}>
+                  {precip}%
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      <div style={{ height: 1, background: 'var(--color-border)', flexShrink: 0 }} />
+      {DIVIDER}
 
-      {/* ── Daily ── */}
+      {/* ── Line 3: daily — 7 equal columns ── */}
       {config.show_daily !== false && (
-        <div className="flex-1 flex flex-col">
-          <div style={SECTION} className="mb-2">7-day forecast</div>
-          <div className="flex gap-2 flex-1">
-            {data.daily.time.slice(0, dailyCount).map((t, i) => {
-              const d = new Date(t)
-              const label = i === 0 ? 'Today' : SHORT_DAYS[d.getDay()]
-              const { symbol } = wmo(data.daily.weathercode[i])
-              const hi = Math.round(data.daily.temperature_2m_max[i])
-              const lo = Math.round(data.daily.temperature_2m_min[i])
-              return (
-                <div key={t}
-                  className="flex flex-col items-center justify-center gap-1 flex-1 rounded-md py-2"
-                  style={{ background: i === 0 ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.04)' }}>
-                  <span style={{ color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
-                                 fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)', fontWeight: i === 0 ? 700 : 400 }}>
-                    {label}
-                  </span>
-                  <span style={{ fontSize: 'clamp(1.1rem, 2vw, 1.6rem)', lineHeight: 1 }}>{symbol}</span>
-                  <span className="font-bold tabular-nums"
-                        style={{ fontSize: 'clamp(0.85rem, 1.6vw, 1.2rem)' }}>
+        <div className="flex flex-1 min-h-0" style={{ width: '100%' }}>
+          {data.daily.time.slice(0, 7).map((t, i) => {
+            const d = new Date(t)
+            const label = i === 0 ? 'Today' : SHORT_DAYS[d.getDay()]
+            const { symbol } = wmo(data.daily.weathercode[i])
+            const hi = Math.round(data.daily.temperature_2m_max[i])
+            const lo = Math.round(data.daily.temperature_2m_min[i])
+            return (
+              <div key={t} style={{
+                ...COL,
+                flex: 1,
+                background: i === 0 ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.03)',
+                borderRadius: 6,
+              }}>
+                {/* day label */}
+                <span style={{ fontSize: hourLabel, color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
+                               fontWeight: i === 0 ? 700 : 400 }}>
+                  {label}
+                </span>
+                {/* symbol + hi on one line */}
+                <span style={{ fontSize: hourSymbol, lineHeight: 1 }}>
+                  {symbol}{' '}
+                  <span className="tabular-nums font-bold" style={{ fontSize: hourTemp }}>
                     {hi}°
                   </span>
-                  <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}>
-                    {lo}°
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+                </span>
+                {/* lo temp */}
+                <span style={{ fontSize: hourRain, color: 'var(--color-muted)' }}>
+                  {lo}°
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
 
