@@ -39,76 +39,105 @@ function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLe
   const yModerate = toY(levels.moderate, maxMm)
   const yHeavy    = toY(levels.heavy,    maxMm)
 
+  // Convert SVG viewBox Y → CSS % from top (for HTML overlay positioning)
+  const pctLight    = (yLight    / VH) * 100
+  const pctModerate = (yModerate / VH) * 100
+  const pctHeavy    = (yHeavy    / VH) * 100
+
   // "Now" vertical line at x=0
   const nowX = pts[0]?.x ?? 0
 
+  const labelStyle = (color: string): React.CSSProperties => ({
+    position: 'absolute',
+    left: '0.3rem',
+    fontSize: 'clamp(0.45rem, 0.85vw, 0.65rem)',
+    color,
+    pointerEvents: 'none',
+    lineHeight: 1,
+    transform: 'translateY(-100%)',
+    userSelect: 'none',
+  })
+
   return (
-    <svg
-      viewBox={`0 0 ${VW} ${VH}`}
-      preserveAspectRatio="none"
-      style={{ width: '100%', flex: 1, minHeight: 0, display: 'block' }}
-    >
-      <defs>
-        <linearGradient id="rg-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#00d4ff" stopOpacity="0.5" />
-          <stop offset="75%"  stopColor="#0066ff" stopOpacity="0.12" />
-          <stop offset="100%" stopColor="#0066ff" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="rg-line" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stopColor="#00d4ff" />
-          <stop offset="100%" stopColor="#0088ff" />
-        </linearGradient>
-      </defs>
+    <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+      {/* SVG chart — stretched to fill, no text inside */}
+      <svg
+        viewBox={`0 0 ${VW} ${VH}`}
+        preserveAspectRatio="none"
+        style={{ width: '100%', height: '100%', display: 'block' }}
+      >
+        <defs>
+          <linearGradient id="rg-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#00d4ff" stopOpacity="0.5" />
+            <stop offset="75%"  stopColor="#0066ff" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#0066ff" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="rg-line" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#00d4ff" />
+            <stop offset="100%" stopColor="#0088ff" />
+          </linearGradient>
+        </defs>
 
-      {/* Floor baseline */}
-      <line x1="0" y1={floor} x2={VW} y2={floor}
-            stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"
-            vectorEffect="non-scaling-stroke" />
+        {/* Floor baseline */}
+        <line x1="0" y1={floor} x2={VW} y2={floor}
+              stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"
+              vectorEffect="non-scaling-stroke" />
 
-      {/* Intensity threshold lines */}
-      <line x1="0" y1={yLight} x2={VW} y2={yLight}
-            stroke="rgba(0,212,255,0.2)" strokeWidth="0.7"
-            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
-      <line x1="0" y1={yModerate} x2={VW} y2={yModerate}
-            stroke="rgba(0,150,255,0.22)" strokeWidth="0.7"
-            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
-      <line x1="0" y1={yHeavy} x2={VW} y2={yHeavy}
-            stroke="rgba(255,80,80,0.2)" strokeWidth="0.7"
-            strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
+        {/* Intensity threshold lines */}
+        <line x1="0" y1={yLight} x2={VW} y2={yLight}
+              stroke="rgba(0,212,255,0.2)" strokeWidth="0.7"
+              strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
+        <line x1="0" y1={yModerate} x2={VW} y2={yModerate}
+              stroke="rgba(0,150,255,0.22)" strokeWidth="0.7"
+              strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
+        <line x1="0" y1={yHeavy} x2={VW} y2={yHeavy}
+              stroke="rgba(255,80,80,0.2)" strokeWidth="0.7"
+              strokeDasharray="4,4" vectorEffect="non-scaling-stroke" />
 
-      {/* Y-axis labels — tiny, left side */}
-      <text x="2" y={yLight    - 2} fontSize="5" fill="rgba(0,212,255,0.4)"
-            vectorEffect="non-scaling-stroke">light</text>
-      <text x="2" y={yModerate - 2} fontSize="5" fill="rgba(0,150,255,0.4)"
-            vectorEffect="non-scaling-stroke">mod.</text>
-      <text x="2" y={yHeavy   - 2} fontSize="5" fill="rgba(255,80,80,0.4)"
-            vectorEffect="non-scaling-stroke">heavy</text>
+        {/* Filled area */}
+        {hasRain && <path d={areaPath} fill="url(#rg-area)" />}
 
-      {/* Filled area */}
-      {hasRain && <path d={areaPath} fill="url(#rg-area)" />}
+        {/* Smooth line */}
+        <path d={linePath} fill="none"
+              stroke={hasRain ? 'url(#rg-line)' : 'rgba(255,255,255,0.1)'}
+              strokeWidth="1.8"
+              vectorEffect="non-scaling-stroke"
+              strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* Smooth line */}
-      <path d={linePath} fill="none"
-            stroke={hasRain ? 'url(#rg-line)' : 'rgba(255,255,255,0.1)'}
-            strokeWidth="1.8"
-            vectorEffect="non-scaling-stroke"
-            strokeLinecap="round" strokeLinejoin="round" />
+        {/* "Now" tick */}
+        <line x1={nowX} y1={VH * 0.92} x2={nowX} y2={VH}
+              stroke="var(--color-accent)" strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+      </svg>
 
-      {/* "Now" tick */}
-      <line x1={nowX} y1={VH * 0.92} x2={nowX} y2={VH}
-            stroke="var(--color-accent)" strokeWidth="1.5"
-            vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+      {/* Y-axis labels as HTML — not subject to SVG stretch distortion */}
+      <span style={{ ...labelStyle('rgba(0,212,255,0.45)'), top: `${pctLight}%` }}>
+        light
+      </span>
+      <span style={{ ...labelStyle('rgba(0,150,255,0.45)'), top: `${pctModerate}%` }}>
+        mod.
+      </span>
+      <span style={{ ...labelStyle('rgba(255,80,80,0.45)'), top: `${pctHeavy}%` }}>
+        heavy
+      </span>
 
-      {/* "No rain" centre label */}
+      {/* "No rain" overlay */}
       {!hasRain && (
-        <text x={VW / 2} y={VH / 2 + 2}
-              fontSize="10" textAnchor="middle" dominantBaseline="middle"
-              fill="rgba(255,255,255,0.15)"
-              vectorEffect="non-scaling-stroke">
+        <span style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 'clamp(0.7rem, 1.3vw, 1rem)',
+          color: 'rgba(255,255,255,0.15)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
           no rain expected
-        </text>
+        </span>
       )}
-    </svg>
+    </div>
   )
 }
 
