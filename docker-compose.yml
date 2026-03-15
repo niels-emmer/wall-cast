@@ -1,0 +1,48 @@
+name: wall-cast
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./config:/config:ro
+    environment:
+      WALL_CONFIG_PATH: /config/wall-cast.yaml
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Optional: auto-cast on startup.
+  # Requires CHROMECAST_DEVICE_NAME env var and network_mode: host for mDNS discovery.
+  # Uncomment and configure to enable zero-touch casting.
+  #
+  # caster:
+  #   image: ghcr.io/vishen/go-chromecast:latest
+  #   network_mode: host
+  #   environment:
+  #     CHROMECAST_DEVICE_NAME: "Living Room TV"
+  #   command: >
+  #     cast url http://<vps-ip>/
+  #     --device-name "${CHROMECAST_DEVICE_NAME}"
+  #   restart: "no"
+  #   depends_on:
+  #     frontend:
+  #       condition: service_started
