@@ -4,7 +4,6 @@ interface Props {
   config: Record<string, unknown>
 }
 
-// WMO weather code → symbol + label
 const WMO: Record<number, { symbol: string; label: string }> = {
   0:  { symbol: '☀',  label: 'Clear' },
   1:  { symbol: '🌤', label: 'Mostly clear' },
@@ -28,37 +27,66 @@ const WMO: Record<number, { symbol: string; label: string }> = {
   96: { symbol: '⛈',  label: 'Thunderstorm+hail' },
   99: { symbol: '⛈',  label: 'Thunderstorm+hail' },
 }
-
-function wmo(code: number) {
-  return WMO[code] ?? { symbol: '?', label: 'Unknown' }
-}
+function wmo(code: number) { return WMO[code] ?? { symbol: '?', label: 'Unknown' } }
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-// Shared column style — always exactly 1/7th width
-const COL: React.CSSProperties = {
-  width: 'calc(100% / 7)',
-  flexShrink: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0.4em 0',
-  gap: '0.2em',
-}
+const divider = (
+  <div style={{ height: 1, background: 'var(--color-border)', flexShrink: 0 }} />
+)
 
-const DIVIDER = <div style={{ height: 1, background: 'var(--color-border)', flexShrink: 0 }} />
+interface ColProps {
+  top: string
+  mid: string
+  bot: string
+  midSize: string
+  accent?: boolean
+}
+function ForecastCol({ top, mid, bot, midSize, accent = false }: ColProps) {
+  return (
+    <div style={{
+      flex: '1 1 0',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      padding: '0.4em 0.2em',
+      gap: '0.25em',
+      background: accent ? 'rgba(0,212,255,0.07)' : 'rgba(255,255,255,0.03)',
+      borderRadius: 6,
+    }}>
+      <span style={{
+        fontSize: 'clamp(0.6rem, 1.1vw, 0.85rem)',
+        color: accent ? 'var(--color-accent)' : 'var(--color-muted)',
+        fontWeight: accent ? 700 : 400,
+        whiteSpace: 'nowrap',
+      }}>
+        {top}
+      </span>
+      <span style={{ fontSize: midSize, lineHeight: 1.1, textAlign: 'center' }}>
+        {mid}
+      </span>
+      <span style={{
+        fontSize: 'clamp(0.6rem, 1.1vw, 0.85rem)',
+        color: 'var(--color-muted)',
+        whiteSpace: 'nowrap',
+      }}>
+        {bot}
+      </span>
+    </div>
+  )
+}
 
 export function WeatherWidget({ config }: Props) {
   const { data, isError } = useWeather()
 
   if (isError) return (
-    <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted)' }}>
       Weather unavailable
     </div>
   )
   if (!data) return (
-    <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted)' }}>
       Loading...
     </div>
   )
@@ -68,86 +96,81 @@ export function WeatherWidget({ config }: Props) {
   const cur = data.current_weather
   const { symbol: curSymbol, label: curLabel } = wmo(cur.weathercode)
 
-  // Font sizes — temperature is the anchor; label and wind are ~half
-  const tempSize  = 'clamp(2.2rem, 5vw, 4rem)'
-  const infoSize  = 'clamp(1rem, 2.2vw, 1.8rem)'   // ~half of tempSize
-  const hourLabel = 'clamp(0.65rem, 1.1vw, 0.85rem)'
-  const hourSymbol = 'clamp(1.1rem, 2vw, 1.6rem)'
-  const hourTemp  = 'clamp(0.85rem, 1.6vw, 1.25rem)'
-  const hourRain  = 'clamp(0.65rem, 1.1vw, 0.85rem)'
+  const tempSize = 'clamp(2rem, 4.5vw, 3.5rem)'
+  const infoSize = 'clamp(0.9rem, 2vw, 1.5rem)'   // ~half of tempSize
+  const midSize  = 'clamp(0.85rem, 1.6vw, 1.2rem)'
 
   return (
-    <div className="flex flex-col h-full p-3" style={{ gap: '0.5em' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      padding: '0.75rem',
+      gap: '0.5rem',
+      boxSizing: 'border-box',
+    }}>
 
-      {/* ── Line 1: current condition ── */}
-      <div className="flex items-center flex-shrink-0" style={{ gap: '0.5em' }}>
-        {/* Symbol */}
+      {/* ── Line 1: all on one horizontal row ── */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '0.5em',
+        flexShrink: 0,
+      }}>
         <span style={{ fontSize: tempSize, lineHeight: 1 }}>{curSymbol}</span>
-
-        {/* Temperature — large anchor */}
-        <span className="font-black tabular-nums" style={{ fontSize: tempSize, lineHeight: 1 }}>
+        <span style={{ fontSize: tempSize, fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
           {Math.round(cur.temperature)}°
         </span>
-
-        {/* Label + wind — ~half size, vertically centred with the temp */}
-        <div className="flex flex-col justify-center" style={{ gap: '0.05em' }}>
-          <span style={{ fontSize: infoSize, color: 'var(--color-text)', lineHeight: 1.1 }}>
-            {curLabel}
-          </span>
-          <span style={{ fontSize: infoSize, color: 'var(--color-muted)', lineHeight: 1.1 }}>
-            Wind: {Math.round(cur.windspeed)} km/h
-          </span>
-        </div>
+        <span style={{ fontSize: infoSize, color: 'var(--color-text)', lineHeight: 1 }}>
+          {curLabel}
+        </span>
+        <span style={{ fontSize: infoSize, color: 'var(--color-muted)', lineHeight: 1 }}>
+          Wind: {Math.round(cur.windspeed)} km/h
+        </span>
       </div>
 
-      {DIVIDER}
+      {divider}
 
-      {/* ── Line 2: hourly — 7 equal columns ── */}
+      {/* ── Line 2: hourly ── */}
       {config.show_hourly !== false && (
-        <div className="flex flex-shrink-0" style={{ width: '100%' }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '0.3rem',
+          flexShrink: 0,
+        }}>
           {Array.from({ length: 7 }, (_, i) => {
             const idx = startIdx + i
             const hour = new Date(data.hourly.time[idx]).getHours()
             const { symbol } = wmo(data.hourly.weathercode[idx])
             const temp   = Math.round(data.hourly.temperature_2m[idx])
             const precip = data.hourly.precipitation_probability[idx]
-            const isNow  = i === 0
             return (
-              <div key={idx} style={{
-                ...COL,
-                background: isNow ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.03)',
-                borderRadius: 6,
-              }}>
-                {/* time */}
-                <span style={{ fontSize: hourLabel, color: isNow ? 'var(--color-accent)' : 'var(--color-muted)',
-                               fontWeight: isNow ? 700 : 400 }}>
-                  {String(hour).padStart(2, '0')}:00
-                </span>
-                {/* symbol + temp on one line */}
-                <span style={{ fontSize: hourSymbol, lineHeight: 1 }}>
-                  {symbol}{' '}
-                  <span className="tabular-nums font-bold" style={{ fontSize: hourTemp }}>
-                    {temp}°
-                  </span>
-                </span>
-                {/* rain chance */}
-                <span style={{
-                  fontSize: hourRain,
-                  color: precip > 40 ? 'var(--color-accent)' : 'var(--color-muted)',
-                }}>
-                  {precip}%
-                </span>
-              </div>
+              <ForecastCol
+                key={idx}
+                top={`${String(hour).padStart(2, '0')}:00`}
+                mid={`${symbol} ${temp}°`}
+                bot={`${precip}%`}
+                midSize={midSize}
+                accent={i === 0}
+              />
             )
           })}
         </div>
       )}
 
-      {DIVIDER}
+      {divider}
 
-      {/* ── Line 3: daily — 7 equal columns ── */}
+      {/* ── Line 3: daily ── */}
       {config.show_daily !== false && (
-        <div className="flex flex-1 min-h-0" style={{ width: '100%' }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '0.3rem',
+          flex: 1,
+          minHeight: 0,
+        }}>
           {data.daily.time.slice(0, 7).map((t, i) => {
             const d = new Date(t)
             const label = i === 0 ? 'Today' : SHORT_DAYS[d.getDay()]
@@ -155,29 +178,14 @@ export function WeatherWidget({ config }: Props) {
             const hi = Math.round(data.daily.temperature_2m_max[i])
             const lo = Math.round(data.daily.temperature_2m_min[i])
             return (
-              <div key={t} style={{
-                ...COL,
-                flex: 1,
-                background: i === 0 ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.03)',
-                borderRadius: 6,
-              }}>
-                {/* day label */}
-                <span style={{ fontSize: hourLabel, color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
-                               fontWeight: i === 0 ? 700 : 400 }}>
-                  {label}
-                </span>
-                {/* symbol + hi on one line */}
-                <span style={{ fontSize: hourSymbol, lineHeight: 1 }}>
-                  {symbol}{' '}
-                  <span className="tabular-nums font-bold" style={{ fontSize: hourTemp }}>
-                    {hi}°
-                  </span>
-                </span>
-                {/* lo temp */}
-                <span style={{ fontSize: hourRain, color: 'var(--color-muted)' }}>
-                  {lo}°
-                </span>
-              </div>
+              <ForecastCol
+                key={t}
+                top={label}
+                mid={`${symbol} ${hi}°`}
+                bot={`${lo}°`}
+                midSize={midSize}
+                accent={i === 0}
+              />
             )
           })}
         </div>
