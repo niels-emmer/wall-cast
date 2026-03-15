@@ -173,9 +173,6 @@ export function NewsTickerWidget({ config }: Props) {
         height: '100%',
         overflow: 'hidden',
         borderTop: '1px solid var(--color-border)',
-        // Subtle red left-edge glow when breaking news is active
-        borderLeft: breaking ? '3px solid #cc0000' : '3px solid transparent',
-        transition: 'border-left-color 0.4s ease',
       }}>
         <div
           ref={trackRef}
