@@ -5,23 +5,22 @@ import type { WidgetConfig } from './types/config'
 export default function App() {
   const { data: config, isLoading, isError } = useConfig()
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center w-full h-full"
-        style={{ color: 'var(--color-muted)', fontSize: '1rem', letterSpacing: '0.2em' }}>
-        LOADING
-      </div>
-    )
+  const fullscreen: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: '100vw', height: '100vh',
   }
 
-  if (isError || !config) {
-    return (
-      <div className="flex items-center justify-center w-full h-full"
-        style={{ color: '#ff4444', fontSize: '0.9rem' }}>
-        Cannot reach wall-cast backend
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div style={{ ...fullscreen, color: 'var(--color-muted)', fontSize: '1rem', letterSpacing: '0.2em' }}>
+      LOADING
+    </div>
+  )
+
+  if (isError || !config) return (
+    <div style={{ ...fullscreen, color: '#ff4444', fontSize: '0.9rem' }}>
+      Cannot reach wall-cast backend
+    </div>
+  )
 
   const cols = config.layout?.columns ?? 12
   const rows = config.layout?.rows ?? 8
@@ -46,6 +45,9 @@ export default function App() {
           style={{
             gridColumn: `${widget.col} / span ${widget.col_span}`,
             gridRow: `${widget.row} / span ${widget.row_span}`,
+            height: '100%',        // stretch to fill the grid cell
+            minHeight: 0,          // allow shrinking below content size
+            overflow: 'hidden',
           }}
         >
           <WidgetRenderer widget={widget} />

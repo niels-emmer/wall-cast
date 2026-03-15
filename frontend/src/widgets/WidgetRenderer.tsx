@@ -8,22 +8,26 @@ interface Props {
 export function WidgetRenderer({ widget }: Props) {
   const Component = WIDGET_REGISTRY[widget.type]
 
+  const shell: React.CSSProperties = {
+    height: '100%',
+    overflow: 'hidden',
+    background: 'var(--color-panel)',
+    borderRadius: 8,
+    boxSizing: 'border-box',
+  }
+
   if (!Component) {
     return (
-      <div
-        className="flex items-center justify-center h-full text-xs"
-        style={{ color: 'var(--color-muted)', border: '1px dashed var(--color-border)', borderRadius: 8 }}
-      >
+      <div style={{ ...shell, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.75rem', color: 'var(--color-muted)',
+                    border: '1px dashed var(--color-border)' }}>
         Unknown widget: {widget.type}
       </div>
     )
   }
 
   return (
-    <div
-      className="h-full overflow-hidden"
-      style={{ background: 'var(--color-panel)', borderRadius: 8 }}
-    >
+    <div style={shell}>
       <Component config={widget.config ?? {}} />
     </div>
   )
