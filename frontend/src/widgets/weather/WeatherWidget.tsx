@@ -33,7 +33,7 @@ const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
-// ── Hourly column — compact, top-aligned ──────────────────────────────────────
+// ── Hourly column — fills available height, content distributed evenly ────────
 function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
   hour: string; symbol: string; temp: number; precip: number; accent?: boolean
 }) {
@@ -43,13 +43,12 @@ function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingTop: '0.5em',
-      paddingBottom: '0.4em',
-      gap: '0.28em',
+      justifyContent: 'space-evenly',
+      padding: '0.4em 0.2em',
       background: accent ? 'rgba(0,212,255,0.09)' : 'rgba(255,255,255,0.03)',
       borderRadius: 8,
       minWidth: 0,
+      minHeight: 0,
     }}>
       <span style={{
         fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
@@ -155,9 +154,9 @@ export function WeatherWidget({ config }: Props) {
         gap: '0.45em',
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: 'clamp(3.75rem, 7.5vw, 6.75rem)', lineHeight: 1 }}>{curSymbol}</span>
+        <span style={{ fontSize: 'clamp(2rem, 4vw, 3.2rem)', lineHeight: 1 }}>{curSymbol}</span>
         <span style={{
-          fontSize: 'clamp(3.75rem, 7.5vw, 6.75rem)',
+          fontSize: 'clamp(2rem, 4vw, 3.2rem)',
           fontWeight: 900, lineHeight: 1,
           fontVariantNumeric: 'tabular-nums',
         }}>
@@ -177,7 +176,7 @@ export function WeatherWidget({ config }: Props) {
 
       {/* ── Hourly ── */}
       {config.show_hourly !== false && (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '0.3rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '0.3rem', flex: 1, minHeight: 0 }}>
           {Array.from({ length: 7 }, (_, i) => {
             const idx  = startIdx + i
             const hour = `${String(new Date(data.hourly.time[idx]).getHours()).padStart(2, '0')}:00`
