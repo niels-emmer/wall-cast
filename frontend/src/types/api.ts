@@ -24,12 +24,19 @@ export interface WeatherData {
 
 export interface RainEntry {
   time: string
-  intensity: number
   mm_per_hour: number
+}
+
+export interface RainLevels {
+  light: number
+  moderate: number
+  heavy: number
 }
 
 export interface RainData {
   forecast: RainEntry[]
+  levels: RainLevels
+  start_human: string
 }
 
 export interface NewsItem {

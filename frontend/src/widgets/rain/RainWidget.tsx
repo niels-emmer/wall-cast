@@ -34,9 +34,7 @@ export function RainWidget({ config: _config }: Props) {
     </div>
   )
 
-  const forecast = data.forecast as Array<{ time: string; mm_per_hour: number }>
-  const levels = (data.levels as { light: number; moderate: number; heavy: number }) ??
-                 { light: 0.25, moderate: 1, heavy: 2.5 }
+  const { forecast, levels } = data
 
   const hasRain = forecast.some(f => f.mm_per_hour > 0)
   // Scale to at least 2.5 mm/h so a heavy bar fills fully
