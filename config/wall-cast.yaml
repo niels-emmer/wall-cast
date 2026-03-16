@@ -2,17 +2,13 @@
 # Edit this file and save — the display updates automatically within ~1 second.
 
 location:
-  lat: 52.5257
-  lon: 6.4510
-  name: Smilde
+  lat: 52.0    # your latitude (decimal degrees)
+  lon: 5.0     # your longitude (decimal degrees)
+  name: My City
 
 layout:
   columns: 12   # CSS grid columns
   rows: 8       # CSS grid rows
-
-garbage:
-  postcode: "9422KM"
-  huisnummer: "5"
 
 widgets:
   - id: clock

@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     garbage_cache_ttl: int = 3600  # 1 hour
     polestar_cache_ttl: int = 300  # 5 minutes
 
+    # Timezone used for calendar date/time display (IANA name, e.g. "Europe/Amsterdam")
+    # Defaults to UTC if not set. Also used by the TZ env var if set.
+    timezone: str = "UTC"
+
+    # Garbage collection address (mijnafvalwijzer.nl)
+    garbage_postcode: str = ""
+    garbage_huisnummer: str = ""
+
     polestar_username: str = ""
     polestar_password: str = ""
 

@@ -22,7 +22,7 @@ router = APIRouter(tags=["calendar"])
 _cache: dict[str, Any] = {}
 _cache_ts: float = 0.0
 
-_TZ = ZoneInfo("Europe/Amsterdam")
+_TZ = ZoneInfo(settings.timezone)
 
 # Google Calendar colorId → hex (matches Google UI palette)
 _COLOR_MAP: dict[str, str] = {

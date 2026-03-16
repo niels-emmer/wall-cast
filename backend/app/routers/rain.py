@@ -61,8 +61,8 @@ async def get_rain() -> dict:
 
     cfg = wall_config.get_config()
     location = cfg.get("location", {})
-    lat = location.get("lat", 52.3676)
-    lon = location.get("lon", 4.9041)
+    lat = location.get("lat", 0.0)
+    lon = location.get("lon", 0.0)
 
     url = BUIENALARM_URL.format(lat=lat, lon=lon)
     try:

@@ -106,7 +106,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
-- Config (`postcode`, `huisnummer`) read from top-level `garbage:` YAML section, passed as query params
+- Config (`GARBAGE_POSTCODE`, `GARBAGE_HUISNUMMER`) read from env vars / `.env` — no longer in YAML
 - JSON path: `raw["data"]["ophaaldagen"]["data"]` — do NOT include `afvaldata` param (breaks the response)
 - Status check: `raw.get("response") != "OK"` (not `"status"`)
 

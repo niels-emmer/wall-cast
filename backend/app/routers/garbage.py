@@ -2,10 +2,9 @@
 Proxy to mijnafvalwijzer.nl for garbage collection dates.
 Returns upcoming GFT / PMD / Restafval dates within the next 7 days.
 
-Config (wall-cast.yaml):
-  garbage:
-    postcode: "9422KM"
-    huisnummer: "5"
+Config via environment variables:
+  GARBAGE_POSTCODE=1234AB
+  GARBAGE_HUISNUMMER=1
 """
 
 import logging
@@ -15,7 +14,6 @@ from typing import Any
 
 import httpx
 
-from app import wall_config
 from app.config import settings
 from fastapi import APIRouter, HTTPException
 
@@ -53,13 +51,14 @@ async def get_garbage() -> dict:
     if _cache and (time.monotonic() - _cache_ts) < settings.garbage_cache_ttl:
         return _cache
 
-    cfg = wall_config.get_config()
-    garbage_cfg = cfg.get("garbage", {})
-    postcode = str(garbage_cfg.get("postcode", "")).replace(" ", "")
-    huisnummer = str(garbage_cfg.get("huisnummer", ""))
+    postcode = settings.garbage_postcode.replace(" ", "")
+    huisnummer = settings.garbage_huisnummer
 
     if not postcode or not huisnummer:
-        raise HTTPException(status_code=400, detail="garbage.postcode and garbage.huisnummer must be set in wall-cast.yaml")
+        raise HTTPException(
+            status_code=400,
+            detail="GARBAGE_POSTCODE and GARBAGE_HUISNUMMER must be set in the environment (or .env file)",
+        )
 
     today = date.today()
     url = AFVALWIJZER_URL.format(postcode=postcode, huisnummer=huisnummer)

@@ -189,14 +189,14 @@ curl -H "Title: Headline" -d "Message text" https://ntfy.example.com/wall-cast
 
 ### `garbage`
 
-Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows collections due within the next 7 days as horizontal cards. Postcode and house number are configured at the top level under `garbage:`, not in the widget config.
+Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows collections due within the next 7 days as horizontal cards. Postcode and house number are configured via environment variables in `.env` (see `.env.example`).
+
+```env
+GARBAGE_POSTCODE=1234AB
+GARBAGE_HUISNUMMER=1
+```
 
 ```yaml
-# Top-level section (required once):
-garbage:
-  postcode: "9422KM"
-  huisnummer: "5"
-
 # Widget entry:
 - id: garbage
   type: garbage
