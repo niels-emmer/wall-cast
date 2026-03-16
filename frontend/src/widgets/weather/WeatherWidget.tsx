@@ -200,7 +200,7 @@ export function WeatherWidget({ config }: Props) {
     }}>
 
       {/* ── Title + Current ── */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1.2em', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.75em', flexShrink: 0 }}>
         <div style={{
           fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
           fontWeight: 300,
@@ -220,10 +220,10 @@ export function WeatherWidget({ config }: Props) {
           {Math.round(cur.temperature)}°
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1em' }}>
-          <span style={{ fontSize: 'clamp(1.25rem, 2.5vw, 2rem)', color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)', color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap' }}>
             {curLabel}
           </span>
-          <span style={{ fontSize: 'clamp(1.05rem, 2.1vw, 1.65rem)', color: 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'clamp(0.95rem, 1.8vw, 1.4rem)', color: 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
             Wind: {Math.round(cur.windspeed)} km/u
           </span>
         </div>
