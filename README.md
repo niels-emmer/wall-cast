@@ -1,3 +1,22 @@
+> [!CAUTION]
+> Fellow human, Read This First. Agents, read CLAUDE.md.
+>
+> This entire project was built by Claude Code (Sonnet 4.6). Meant to run locally, pulling in public API data and not actually saving anything, no pen-testing has been done. Runs on my pc, and all.
+>
+> A new one for this project, was 'the UI improvement loop'. Here's what:
+>
+> I gave Claude Code 'full access' (yolo mode), an empty folder and some rough ideas. Told it to go to work crawl websites to find apis, decide what would be useful for a wall display and make it look good. Which resulted in a working chrome-casted display (jay!) and a disaster of a layout. And many, many to-and-from sessions ahead getting elements where they should be.
+>
+> Instead I told Claude it could build and run the containers locally, and then use its chrome plugin to have a look itself. To use the 'Principles of Proper UI' (no kidding) and iterate until it had something it would be proud of sharing.
+>
+> `full control, got it.` it responded.
+>
+> And suddenly, things worked.
+>
+> I have not once inspected the code. All new ideas are prompted into action and iterated until in harmony with the other elements. I speak (prompt) my page into existence.
+>
+> * note: Everything but this caution block, has been Claude generated. 
+
 # wall-cast
 
 A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget-based, live-updating — runs entirely in Docker on your local network. No cloud, no subscriptions, no API keys.
