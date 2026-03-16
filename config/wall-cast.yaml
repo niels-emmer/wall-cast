@@ -31,13 +31,19 @@ widgets:
       show_hourly: true
       show_daily: true
 
-  - id: rain
-    type: rain
+  - id: rain-info-rotator
+    type: rotate
     col: 1
     row: 4
     col_span: 4
     row_span: 4
-    config: {}
+    config:
+      interval_sec: 30
+      widgets:
+        - type: rain
+          config: {}
+        - type: info
+          config: {}
 
   - id: news
     type: news

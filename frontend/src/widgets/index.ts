@@ -3,6 +3,8 @@ import { ClockWidget } from './clock/ClockWidget'
 import { WeatherWidget } from './weather/WeatherWidget'
 import { RainWidget } from './rain/RainWidget'
 import { NewsTickerWidget } from './news/NewsTickerWidget'
+import { InfoWidget } from './info/InfoWidget'
+import { RotatorWidget } from './rotate/RotatorWidget'
 
 export interface WidgetProps {
   config: Record<string, unknown>
@@ -13,4 +15,6 @@ export const WIDGET_REGISTRY: Record<string, ComponentType<WidgetProps>> = {
   weather: WeatherWidget,
   rain: RainWidget,
   news: NewsTickerWidget,
+  info: InfoWidget,
+  rotate: RotatorWidget,
 }

@@ -96,24 +96,24 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
       minHeight: 0,
     }}>
       <span style={{
-        fontSize: 'clamp(1.275rem, 2.25vw, 1.8rem)',
+        fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
         color: accent ? 'var(--color-accent)' : 'var(--color-muted)',
         fontWeight: accent ? 700 : 400,
         whiteSpace: 'nowrap',
       }}>
         {label}
       </span>
-      <span style={{ fontSize: 'clamp(2.7rem, 5.25vw, 4.2rem)', lineHeight: 1 }}>{symbol}</span>
+      <span style={{ fontSize: 'clamp(1.8rem, 3.45vw, 2.85rem)', lineHeight: 1 }}>{symbol}</span>
       <span style={{
-        fontSize: 'clamp(1.95rem, 3.75vw, 3rem)',
-        fontWeight: 800,
+        fontSize: 'clamp(1.5rem, 2.85vw, 2.25rem)',
+        fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1,
       }}>
         {hi}°
       </span>
       <span style={{
-        fontSize: 'clamp(1.275rem, 2.25vw, 1.8rem)',
+        fontSize: 'clamp(1.1rem, 1.95vw, 1.5rem)',
         color: 'var(--color-muted)',
         whiteSpace: 'nowrap',
       }}>

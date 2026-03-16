@@ -1,8 +1,36 @@
+import { useEffect } from 'react'
 import { useConfig } from './hooks/use-config'
 import { WidgetRenderer } from './widgets/WidgetRenderer'
 import type { WidgetConfig } from './types/config'
 
+function useWakeLock() {
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null
+
+    async function acquire() {
+      try {
+        lock = await navigator.wakeLock.request('screen')
+        lock.addEventListener('release', () => {
+          // Re-acquire if the OS releases the lock (e.g. tab hidden, then visible again)
+          if (document.visibilityState === 'visible') acquire()
+        })
+      } catch {
+        // Wake Lock not supported or denied — silently ignore
+      }
+    }
+
+    acquire()
+    document.addEventListener('visibilitychange', acquire)
+
+    return () => {
+      document.removeEventListener('visibilitychange', acquire)
+      lock?.release()
+    }
+  }, [])
+}
+
 export default function App() {
+  useWakeLock()
   const { data: config, isLoading, isError } = useConfig()
 
   const fullscreen: React.CSSProperties = {
