@@ -77,6 +77,9 @@ export interface PolestarData {
   days_to_service: number | null
   distance_to_service_km: number | null
   service_warning: string | null
+  brake_fluid_warning: string | null
+  coolant_warning: string | null
+  oil_warning: string | null
 }
 
 export interface SunData {

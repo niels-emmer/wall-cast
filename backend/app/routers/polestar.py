@@ -73,15 +73,31 @@ async def get_polestar() -> dict:
         service_warning = None
         days_to_service = None
         distance_to_service_km = None
+        brake_fluid_warning = None
+        coolant_warning = None
+        oil_warning = None
+        _no_warn = ("NO_WARNING", "UNSPECIFIED")
         if health:
             if health.service_warning is not None:
                 sw = health.service_warning.name
-                if sw not in ("SERVICE_WARNING_NO_WARNING", "SERVICE_WARNING_UNSPECIFIED", "NO_WARNING", "UNSPECIFIED"):
+                if not any(sw.endswith(s) for s in _no_warn):
                     service_warning = sw
             if health.days_to_service is not None:
                 days_to_service = health.days_to_service
             if health.distance_to_service_km is not None:
                 distance_to_service_km = round(health.distance_to_service_km)
+            if health.brake_fluid_level_warning is not None:
+                bfw = health.brake_fluid_level_warning.name
+                if not any(bfw.endswith(s) for s in _no_warn):
+                    brake_fluid_warning = bfw
+            if health.engine_coolant_level_warning is not None:
+                ecw = health.engine_coolant_level_warning.name
+                if not any(ecw.endswith(s) for s in _no_warn):
+                    coolant_warning = ecw
+            if health.oil_level_warning is not None:
+                olw = health.oil_level_warning.name
+                if not any(olw.endswith(s) for s in _no_warn):
+                    oil_warning = olw
 
         _cache = {
             "soc": battery.battery_charge_level_percentage if battery else None,
@@ -99,6 +115,9 @@ async def get_polestar() -> dict:
             "days_to_service": days_to_service,
             "distance_to_service_km": distance_to_service_km,
             "service_warning": service_warning,
+            "brake_fluid_warning": brake_fluid_warning,
+            "coolant_warning": coolant_warning,
+            "oil_warning": oil_warning,
         }
         _cache_ts = time.monotonic()
 

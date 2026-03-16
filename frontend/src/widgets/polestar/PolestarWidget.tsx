@@ -40,6 +40,15 @@ function serviceLabel(warning: string | null): string | null {
   return 'Service melding'
 }
 
+function fluidLabel(warning: string | null, fluid: 'brake' | 'coolant' | 'oil'): string | null {
+  if (!warning) return null
+  const name = { brake: 'Remvloeistof', coolant: 'Koelvloeistof', oil: 'Olie' }[fluid]
+  if (warning.includes('TOO_LOW')) return `${name} te laag`
+  if (warning.includes('TOO_HIGH')) return `${name} te hoog`
+  if (warning.includes('SERVICE_REQUIRED')) return `${name}: service vereist`
+  return `${name}: controleer`
+}
+
 export function PolestarWidget({ config: _config }: WidgetProps) {
   const { data, isError, isLoading } = usePolestar()
 
@@ -83,6 +92,11 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
   const color = socColor(soc)
   const isCharging = isActivelyCharging(data.charging_status)
   const serviceMsg = serviceLabel(data.service_warning)
+  const fluidAlerts = [
+    fluidLabel(data.brake_fluid_warning, 'brake'),
+    fluidLabel(data.coolant_warning, 'coolant'),
+    fluidLabel(data.oil_warning, 'oil'),
+  ].filter(Boolean) as string[]
   const capKw = data.charging_power_watts != null ? (data.charging_power_watts / 1000).toFixed(1) : null
   const capA  = data.charging_current_amps
 
@@ -238,6 +252,29 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
               </span>
             )}
           </span>
+        </div>
+      )}
+
+      {/* Fluid warnings — only shown when active */}
+      {fluidAlerts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flexShrink: 0 }}>
+          {fluidAlerts.map(msg => (
+            <div key={msg} style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4em',
+              padding: '0.3em 0.65em',
+              background: 'rgba(244,67,54,0.12)',
+              border: '1px solid rgba(244,67,54,0.35)',
+              borderRadius: 6,
+              alignSelf: 'flex-start',
+            }}>
+              <span style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)' }}>⚠</span>
+              <span style={{ color: '#f44336', fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', fontWeight: 500 }}>
+                {msg}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
