@@ -211,7 +211,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
             flex: 1,
             minHeight: 0,
           }}>
-            {sectionLabel('Deze week')}
+            {sectionLabel('Komende dagen')}
             <div style={{
               display: 'flex',
               flexDirection: 'column',

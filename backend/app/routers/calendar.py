@@ -51,7 +51,7 @@ def _fetch_events() -> dict:
 
     now = datetime.now(_TZ)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_window      = start_of_today + timedelta(days=8)
+    end_window      = start_of_today + timedelta(days=60)
 
     creds = service_account.Credentials.from_service_account_file(
         settings.google_sa_key_file,
@@ -103,13 +103,17 @@ def _fetch_events() -> dict:
     today_str    = now.strftime("%Y-%m-%d")
     today_events: list[dict] = []
     week_by_date: dict[str, list[dict]] = {}
+    upcoming_count = 0
 
     for item in items:
         ev = _parse(item)
         if ev["date"] == today_str:
             today_events.append(ev)
         elif ev["date"] > today_str:
+            if upcoming_count >= 3:
+                continue
             week_by_date.setdefault(ev["date"], []).append(ev)
+            upcoming_count += 1
 
     week_days = []
     for date_str in sorted(week_by_date):
