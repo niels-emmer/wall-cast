@@ -1,6 +1,27 @@
 # Config Reference
 
-The display is fully controlled by `config/wall-cast.yaml`. Save the file — the display updates within ~1 second without any restart required.
+The display is controlled by two things:
+
+- **`config/wall-cast.yaml`** — layout and widget list. Save the file and the display updates within ~1 second (no restart needed).
+- **`.env`** — secrets and personal settings. Requires a container restart when changed. Copy `.env.example` to `.env` and fill in only the sections you need.
+
+---
+
+## Environment variables (`.env`)
+
+| Variable | Required for | Default | Description |
+|----------|-------------|---------|-------------|
+| `TIMEZONE` | `calendar` | `UTC` | IANA timezone name, e.g. `Europe/Amsterdam`. Controls date/time display in the calendar widget. See [tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). |
+| `GARBAGE_POSTCODE` | `garbage` | — | Dutch postcode (e.g. `1234AB`). Find yours on [mijnafvalwijzer.nl](https://www.mijnafvalwijzer.nl). |
+| `GARBAGE_HUISNUMMER` | `garbage` | — | House number for the garbage collection lookup. |
+| `POLESTAR_USERNAME` | `polestar` | — | Email address for your Polestar account. |
+| `POLESTAR_PASSWORD` | `polestar` | — | Password for your Polestar account. |
+| `GOOGLE_CALENDAR_ID` | `calendar` | — | Calendar ID from Google Calendar settings (e.g. `xxxxx@group.calendar.google.com`). |
+| `GOOGLE_SA_KEY_FILE` | `calendar` | `/config/google-sa.json` | Path inside the container to the service account JSON key file. Leave at the default and place your JSON at `config/google-sa.json` in the repo root — it is gitignored and never committed. |
+
+See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
+
+---
 
 ## Top-level structure
 
@@ -255,15 +276,18 @@ Family calendar from Google Calendar via a service account. Shows today's events
 
 **Environment variables (`.env`):**
 ```
+TIMEZONE=Europe/Amsterdam
 GOOGLE_CALENDAR_ID=xxxxx@group.calendar.google.com
 GOOGLE_SA_KEY_FILE=/config/google-sa.json
 ```
 
 **One-time Google setup:**
-1. Create a Google Cloud project and enable the Google Calendar API
-2. Create a Service Account, download the JSON key → place in `config/google-sa.json`
-3. Share your calendar with the service account email (read-only)
-4. Copy the Calendar ID from calendar settings → "Integrate calendar"
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → create (or select) a project
+2. APIs & Services → Enable APIs → search **Google Calendar API** → Enable
+3. APIs & Services → Credentials → Create Credentials → **Service Account**. Give it any name. Click Done.
+4. Click the service account → **Keys** tab → Add Key → Create new key → **JSON**. Save the downloaded file as `config/google-sa.json` in the repo root. (`config/*.json` is gitignored — this file is never committed.)
+5. Open Google Calendar → Settings → your calendar → **Share with specific people**. Add the service account email (ends in `@...iam.gserviceaccount.com`). Permission: "See all event details".
+6. Google Calendar → Settings → your calendar → **Integrate calendar**. Copy the **Calendar ID**.
 
 **Display:** "FAMILY" title. "VANDAAG" section with today's events as cards (or a "Niets gepland" placeholder card). "DEZE WEEK" section with events for the next 7 days grouped by day, each day showing a label column (Di / 17 mrt) beside the event cards. Each event card has a 4px coloured left border matching the event's Google Calendar colour. The day/time line below the event title shows "Hele dag" for all-day events.
 
