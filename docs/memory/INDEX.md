@@ -38,6 +38,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | news | /api/news | NewsTickerWidget.tsx | ✅ production |
 | garbage | /api/garbage | GarbageWidget.tsx | ✅ production |
 | polestar | /api/polestar | PolestarWidget.tsx | ✅ production |
+| calendar | /api/calendar | CalendarWidget.tsx | ✅ production |
 | rotate | n/a (container) | RotatorWidget.tsx | ✅ production |
 
 ## Feature Status
@@ -49,10 +50,11 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Weather widget | ✅ | WEER title + current + 7h hourly + 7-day daily + sunrise/sunset/daylight |
 | Rain SVG chart | ✅ | REGEN title, bezier area chart, Dutch labels, HTML overlay labels |
 | News RSS ticker | ✅ | Infinite scroll, Web Animations API |
-| Sunrise/sunset block | ✅ | Embedded top-right of weather widget (Opkomst/Ondergang + daglichttijd) |
+| Sunrise/sunset block | ✅ | Embedded top-right of weather widget (Op/Onder + daglichttijd) |
 | Breaking news (ntfy) | ✅ | SSE direct to browser, interspersed every ~3 items |
 | Garbage widget | ✅ | mijnafvalwijzer.nl, 7-day window, horizontal cards, accent for today/tomorrow |
-| Polestar widget | ✅ | pypolestar, SOC/range/charging/stats/service warning; creds via .env |
+| Polestar widget | ✅ | pypolestar, SOC/range/charging/stats; amber service tag + red fluid warning tags |
+| Calendar widget | ✅ | Google Calendar via service account; card layout, event colours, Dutch labels |
 | Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval |
 | Visual harmony | ✅ | All widgets share title style (weight 300, uppercase, 0.25em tracking, white) |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
@@ -90,7 +92,17 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Credentials via `POLESTAR_USERNAME` / `POLESTAR_PASSWORD` env vars from `.env` (gitignored, see `.env.example`)
 - Enum names are prefixed: `CHARGING_STATUS_CHARGING`, `CHARGER_CONNECTION_STATUS_CONNECTED`, etc. — use `.includes()` not `===`
 - Extra fields (consumption, avg speed, trip meters) come back null from the API for this vehicle — rows are hidden when null
-- Service warning only shown as alert tag when `service_warning` is not null (API returns null when no warning active)
+- Service warning → amber alert tag; brake_fluid / coolant / oil warnings → red alert tags — all suppressed when `NO_WARNING` or `UNSPECIFIED`
+- `_no_warn = ("NO_WARNING", "UNSPECIFIED")` sentinel tuple used for all health field filtering
+
+### Calendar widget
+- Uses `google-api-python-client` + `google-auth` (service account JSON at `GOOGLE_SA_KEY_FILE`, default `/config/google-sa.json`)
+- `config/google-sa.json` is gitignored via `config/*.json` rule — never commit it
+- Google API call is synchronous — wrapped in `asyncio.to_thread(_fetch_events)` to avoid blocking the event loop
+- Returns `today` (events on current date) + `week` (next 7 days grouped by date) + `today_label` (Dutch "Ma 16 mrt")
+- Timezone: `Europe/Amsterdam` via Python `zoneinfo` (stdlib, no extra dep)
+- Event `color` field maps colorId (1–11) to hex; `null` when no colour set → widget falls back to `rgba(255,255,255,0.3)` dot
+- `docker-compose.dev.yml` has `env_file` block so `GOOGLE_CALENDAR_ID` and `GOOGLE_SA_KEY_FILE` are available in dev
 
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
@@ -109,10 +121,10 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Sun: `api.sunrise-sunset.org/json` — no key, 6 h TTL
 - Garbage: `api.mijnafvalwijzer.nl` — public key, 1 h TTL
 - Polestar: `pypolestar` → Polestar cloud API — 5 min TTL, uses cached data on error
+- Calendar: Google Calendar API v3 (service account) — 10 min TTL
 - ntfy: browser connects directly, no backend proxy
 
 ## Open Items
 
-- [ ] Push repo to GitHub
 - [ ] Consider ENTSO-E energy price widget (free API, no key)
 - [ ] Consider NS train departures widget (requires NS API key)

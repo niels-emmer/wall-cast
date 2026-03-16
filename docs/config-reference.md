@@ -100,7 +100,7 @@ Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from 
 
 **Display (top to bottom):**
 1. Title row — "WEER" + current weather icon, temperature, condition label, wind speed (km/u)
-2. Sunrise (Opkomst) · Sunset (Ondergang) times + daylight duration (top-right)
+2. Sunrise (Op) · Sunset (Onder) times + daylight duration (top-right)
 3. Hourly row — 7 columns: time, weather icon, temperature, precipitation %
 4. Daily row — 7 columns: day name, icon, high, low temperature
 
@@ -233,9 +233,41 @@ POLESTAR_USERNAME=your@email.com
 POLESTAR_PASSWORD=yourpassword
 ```
 
-**Display:** "POLESTAR" title, large SOC percentage (colour-coded green/amber/red), range in km, battery progress bar, charging status with live kW and amps when charging, estimated time to full charge. Additional rows appear automatically when the API returns data: efficiency (kWh/100km), average speed, trip meters A/B. Service warning appears as an amber alert tag only when a warning is active (not during normal operation). Odometer in small muted text at the bottom.
+**Display:** "POLESTAR" title, large SOC percentage (colour-coded green/amber/red), range in km, battery progress bar, charging status with live kW and amps when charging, estimated time to full charge. Additional rows appear automatically when the API returns data: efficiency (kWh/100km), average speed, trip meters A/B. Service warning appears as an amber alert tag only when active. Fluid warnings (brake fluid, coolant, oil) appear as red alert tags only when the car reports a problem. Odometer in small muted text at the bottom.
 
 **Backend cache:** 5 min. Shows last known data on API error.
+
+---
+
+### `calendar`
+
+Family calendar from Google Calendar via a service account. Shows today's events and the next 7 days. Credentials are provided via environment variables — the service account JSON key file is placed in `config/` (gitignored).
+
+```yaml
+- id: calendar
+  type: calendar
+  col: 5
+  row: 1
+  col_span: 8
+  row_span: 7
+  config: {}   # no configuration options currently
+```
+
+**Environment variables (`.env`):**
+```
+GOOGLE_CALENDAR_ID=xxxxx@group.calendar.google.com
+GOOGLE_SA_KEY_FILE=/config/google-sa.json
+```
+
+**One-time Google setup:**
+1. Create a Google Cloud project and enable the Google Calendar API
+2. Create a Service Account, download the JSON key → place in `config/google-sa.json`
+3. Share your calendar with the service account email (read-only)
+4. Copy the Calendar ID from calendar settings → "Integrate calendar"
+
+**Display:** "FAMILY" title. "VANDAAG" section with today's events as cards (or a "Niets gepland" placeholder card). "DEZE WEEK" section with events for the next 7 days grouped by day, each day showing a label column (Di / 17 mrt) beside the event cards. Each event card has a 4px coloured left border matching the event's Google Calendar colour. The day/time line below the event title shows "Hele dag" for all-day events.
+
+**Backend cache:** 10 min.
 
 ---
 
@@ -279,12 +311,12 @@ Cycles through a list of child widgets, showing one at a time. Used to display m
 
 ```
 Col:  1   2   3   4   5   6   7   8   9  10  11  12
-Row 1 ├── clock (4×3) ──┤├──────── weather (8×7) ────────────────────┤
-Row 2 │                 ││                                            │
+Row 1 ├── clock (4×3) ──┤├──── main rotator (8×7) ───────────────────┤
+Row 2 │                 ││  weather ↔ calendar (30s interval)         │
 Row 3 │                 ││                                            │
-Row 4 ├── rain  (4×4) ──┤│                                            │
-Row 5 │                 ││                                            │
-Row 6 │                 ││                                            │
+Row 4 ├─ rotator (4×4) ─┤│                                            │
+Row 5 │ rain/garbage/   ││                                            │
+Row 6 │ polestar (20s)  ││                                            │
 Row 7 │                 │└────────────────────────────────────────────┘
 Row 8 ├────────────────── news ticker (12×1) ─────────────────────────┤
 ```
@@ -304,5 +336,6 @@ All data sources refresh automatically — the display never needs a manual relo
 | Sunrise/sunset | Every 6 hours |
 | Garbage | Every 1 hour |
 | Polestar | Every 5 minutes |
+| Calendar | Every 10 minutes |
 | Config (YAML) | Instant (SSE push on file save) |
 | Breaking news (ntfy) | Instant (persistent SSE connection) |
