@@ -145,8 +145,10 @@ function timeLabels(forecast: RainEntry[]): { label: string; i: number }[] {
   return forecast
     .map((f, i) => ({ label: f.time, i }))
     .filter(({ i }) => i % 6 === 0)
-    .map(({ label, i }) => ({ label: i === 0 ? 'Now' : label, i }))
+    .map(({ label, i }) => ({ label: i === 0 ? 'Nu' : label, i }))
 }
+
+const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
 export function RainWidget({ config: _config }: Props) {
   const { data, isError } = useRain()
@@ -155,27 +157,34 @@ export function RainWidget({ config: _config }: Props) {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: '0.75rem 0.85rem 0.55rem',
-    gap: '0.4rem',
+    padding: '0.85rem',
+    gap: '0.55rem',
     boxSizing: 'border-box',
   }
 
+  const title = (
+    <div style={{
+      fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
+      fontWeight: 300,
+      textTransform: 'uppercase',
+      letterSpacing: '0.25em',
+      color: 'var(--color-text)',
+      flexShrink: 0,
+    }}>
+      Regen
+    </div>
+  )
+
   if (isError) return (
     <div style={shell}>
-      <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        Rain — next 2 hours
+      {title}
+      {divider}
+      <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
+        Niet beschikbaar
       </span>
-      <span style={{ color: 'var(--color-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Unavailable</span>
     </div>
   )
-  if (!data) return (
-    <div style={shell}>
-      <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        Rain — next 2 hours
-      </span>
-      <span style={{ color: 'var(--color-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Loading...</span>
-    </div>
-  )
+  if (!data) return <div style={shell}>{title}</div>
 
   const { forecast, levels } = data
   const hasRain   = forecast.some(f => f.mm_per_hour > 0)
@@ -186,30 +195,21 @@ export function RainWidget({ config: _config }: Props) {
   return (
     <div style={shell}>
 
-      {/* Header */}
-      <div style={{
-        display: 'flex', flexDirection: 'row',
-        justifyContent: 'space-between', alignItems: 'baseline',
-        flexShrink: 0,
-      }}>
+      {/* Title + status */}
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexShrink: 0 }}>
+        {title}
         <span style={{
-          color: 'var(--color-muted)',
-          fontSize: 'clamp(0.975rem, 1.65vw, 1.275rem)',
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-        }}>
-          Rain — next 2 hours
-        </span>
-        <span style={{
-          fontSize: 'clamp(1.2rem, 2.25vw, 1.65rem)',
+          fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
           color: hasRain ? 'var(--color-accent)' : 'var(--color-muted)',
           fontWeight: hasRain ? 600 : 400,
         }}>
           {hasRain
-            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}peak ${peakMm.toFixed(1)} mm/h`
-            : 'Dry'}
+            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}piek ${peakMm.toFixed(1)} mm/h`
+            : 'Droog'}
         </span>
       </div>
+
+      {divider}
 
       {/* Chart */}
       <RainChart forecast={forecast} levels={levels} />
@@ -222,7 +222,7 @@ export function RainWidget({ config: _config }: Props) {
         {labels.map(({ label, i }) => (
           <span key={i} style={{
             color: i === 0 ? 'var(--color-accent)' : 'var(--color-muted)',
-            fontSize: 'clamp(0.9rem, 1.5vw, 1.2rem)',
+            fontSize: 'clamp(1.1rem, 1.95vw, 1.5rem)',
             fontWeight: i === 0 ? 700 : 400,
           }}>
             {label}
@@ -235,12 +235,12 @@ export function RainWidget({ config: _config }: Props) {
         display: 'flex', flexDirection: 'row',
         gap: '0.7rem', flexShrink: 0,
         color: 'var(--color-muted)',
-        fontSize: 'clamp(0.825rem, 1.425vw, 1.125rem)',
+        fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
         opacity: 0.65,
       }}>
         <span><span style={{ color: 'rgba(0,212,255,0.7)' }}>—</span> {levels.light}</span>
         <span><span style={{ color: 'rgba(0,150,255,0.8)' }}>—</span> {levels.moderate}</span>
-        <span><span style={{ color: 'rgba(255,80,80,0.7)' }}>—</span> {levels.heavy} mm/h</span>
+        <span><span style={{ color: 'rgba(255,80,80,0.7)' }}>—</span> {levels.heavy} mm/u</span>
       </div>
 
     </div>

@@ -33,10 +33,12 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Widget | Backend route | Frontend component | Status |
 |--------|--------------|-------------------|--------|
 | clock | n/a (client-side) | ClockWidget.tsx | ✅ production |
-| weather | /api/weather | WeatherWidget.tsx | ✅ production |
+| weather | /api/weather + /api/sun | WeatherWidget.tsx | ✅ production |
 | rain | /api/rain | RainWidget.tsx | ✅ production |
 | news | /api/news | NewsTickerWidget.tsx | ✅ production |
-| sun | /api/sun | embedded in WeatherWidget | ✅ production |
+| garbage | /api/garbage | GarbageWidget.tsx | ✅ production |
+| polestar | /api/polestar | PolestarWidget.tsx | ✅ production |
+| rotate | n/a (container) | RotatorWidget.tsx | ✅ production |
 
 ## Feature Status
 
@@ -44,11 +46,15 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 |---------|--------|-------|
 | CSS grid layout | ✅ | 12×8, widget positions from YAML |
 | YAML hot-reload | ✅ | SSE push within ~1s of file save |
-| Weather widget | ✅ | Current + 7h hourly + 7-day daily |
-| Rain SVG chart | ✅ | Bezier area chart, HTML overlay labels |
+| Weather widget | ✅ | WEER title + current + 7h hourly + 7-day daily + sunrise/sunset/daylight |
+| Rain SVG chart | ✅ | REGEN title, bezier area chart, Dutch labels, HTML overlay labels |
 | News RSS ticker | ✅ | Infinite scroll, Web Animations API |
-| Sunrise/sunset block | ✅ | Embedded top-right of weather widget |
+| Sunrise/sunset block | ✅ | Embedded top-right of weather widget (Opkomst/Ondergang + daglichttijd) |
 | Breaking news (ntfy) | ✅ | SSE direct to browser, interspersed every ~3 items |
+| Garbage widget | ✅ | mijnafvalwijzer.nl, 7-day window, horizontal cards, accent for today/tomorrow |
+| Polestar widget | ✅ | pypolestar, SOC/range/charging/stats/service warning; creds via .env |
+| Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval |
+| Visual harmony | ✅ | All widgets share title style (weight 300, uppercase, 0.25em tracking, white) |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
@@ -79,11 +85,30 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - `DISPLAY_URL` **must** be the host machine's LAN IP — `http://localhost/` fails because the Google TV resolves localhost as itself, causing DashCast to get a blank page and immediately close
 - `catt status` returns only volume info (no app name) when no session is active; the keepalive loop detects this and re-casts
 
+### Polestar widget
+- Uses `pypolestar` library; requires `async_init()` → `update_latest_data(vin, update_telematics=True)` → `get_car_telematics(vin)` in that order
+- Credentials via `POLESTAR_USERNAME` / `POLESTAR_PASSWORD` env vars from `.env` (gitignored, see `.env.example`)
+- Enum names are prefixed: `CHARGING_STATUS_CHARGING`, `CHARGER_CONNECTION_STATUS_CONNECTED`, etc. — use `.includes()` not `===`
+- Extra fields (consumption, avg speed, trip meters) come back null from the API for this vehicle — rows are hidden when null
+- Service warning only shown as alert tag when `service_warning` is not null (API returns null when no warning active)
+
+### Garbage widget
+- API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
+- Config (`postcode`, `huisnummer`) read from top-level `garbage:` YAML section, passed as query params
+- JSON path: `raw["data"]["ophaaldagen"]["data"]` — do NOT include `afvaldata` param (breaks the response)
+- Status check: `raw.get("response") != "OK"` (not `"status"`)
+
+### Widget registry
+- `BASE_REGISTRY` in `base-registry.ts` holds all widgets except `rotate`
+- `WIDGET_REGISTRY` in `index.ts` adds `rotate` on top — avoids circular import since RotatorWidget imports BASE_REGISTRY
+
 ### API sources
 - Weather: `api.open-meteo.com/v1/forecast` — no key, 15 min TTL
 - Rain: `cdn-secure.buienalarm.nl/api/3.4/forecast.php` — replaced dead gpsgadget endpoint, 5 min TTL
 - News: `feedparser` parsing RSS URLs from config, 10 min TTL
 - Sun: `api.sunrise-sunset.org/json` — no key, 6 h TTL
+- Garbage: `api.mijnafvalwijzer.nl` — public key, 1 h TTL
+- Polestar: `pypolestar` → Polestar cloud API — 5 min TTL, uses cached data on error
 - ntfy: browser connects directly, no backend proxy
 
 ## Open Items

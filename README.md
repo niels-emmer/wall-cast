@@ -4,30 +4,17 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 
 ## What it looks like
 
-```
-┌──────────────────┬──────────────────────────────────────────────────────┐
-│  15:42  37       │  ☀ 11°  Clear          🌅 SUNRISE  🌇 SUNSET         │
-│  ────────        │  Wind: 12 km/h          05:46       17:39            │
-│  SUNDAY          │  ✦ 05:46–06:46 · 16:39–17:39 ✦  ☀ 11h 53m          │
-│  15 March 2026   ├──────────┬──────────┬──────────┬───────────────────  │
-│                  │  16:00   │  17:00   │  18:00   │  …                  │
-├──────────────────│  ☀ 11°   │  ☀ 10°   │  ☀ 9°    │                    │
-│  RAIN — NEXT 2H  │  0%      │  0%      │  0%      │                    │
-│  ___________     ├──────────┼──────────┼──────────┼───────────────────  │
-│  no rain exp.    │  Today   │  Mon     │  Tue     │  …                  │
-│                  │  ☁ 11°   │  🌧 9°   │  🌦 10°  │                    │
-└──────────────────┴──────────┴──────────┴──────────┴────────────────────┘
-  NOS  Auto met gezin beschoten op Westelijke Jordaanoever ·  NU.NL  …
-```
+![wall-cast screenshot](docs/screenshot.png)
 
 ## Features
 
-- **Polestar-style dark UI** — pure black background, bold white type, cyan accent
+- **Dark UI** — pure black background, bold white type, cyan accent
 - **Widget layout via YAML** — positions, spans, and widget options all in one file
 - **Hot reload** — save the config, the screen updates within ~1 second (no container restart)
 - **Breaking news via ntfy** — push any message to a self-hosted ntfy topic and it appears instantly as a `BREAKING` ticker item
 - **Fully auto-refreshing** — weather every 15 min, rain every 5 min, news every 10 min, sun data every 6 h
-- **No API keys** — all data sources are free and unauthenticated
+- **No API keys** — most data sources are free and unauthenticated
+- **Rotate widget** — cycle multiple widgets in one grid cell
 - **Modular** — add new widgets without touching core code
 
 ### Widgets
@@ -38,7 +25,10 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 | **Weather** | [open-meteo.com](https://open-meteo.com) — current, hourly, 7-day | 15 min |
 | **Rain forecast** | [buienalarm.nl](https://buienalarm.nl) — SVG rain chart for next 2 h | 5 min |
 | **News ticker** | RSS feeds (configurable) | 10 min |
-| **Sunrise/sunset** | [sunrise-sunset.org](https://sunrise-sunset.org/api) — golden hour windows | 6 h |
+| **Sunrise/sunset** | [sunrise-sunset.org](https://sunrise-sunset.org/api) — embedded in weather widget | 6 h |
+| **Garbage** | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — next 7-day collection schedule | 1 h |
+| **Polestar** | [pypolestar](https://github.com/pypolestar/pypolestar) — SOC, range, charging, service | 5 min |
+| **Rotate** | Container — cycles child widgets in one grid cell | n/a |
 
 ## Requirements
 
@@ -226,7 +216,9 @@ Host (Docker)
 │              ├── GET /api/weather         open-meteo proxy, 15 min cache
 │              ├── GET /api/rain            buienalarm proxy, 5 min cache
 │              ├── GET /api/news            RSS aggregator, 10 min cache
-│              └── GET /api/sun             sunrise-sunset.org proxy, 6 h cache
+│              ├── GET /api/sun             sunrise-sunset.org proxy, 6 h cache
+│              ├── GET /api/garbage         mijnafvalwijzer.nl proxy, 1 h cache
+│              └── GET /api/polestar        pypolestar → Polestar cloud, 5 min cache
 │
 └── caster     python:3.12-slim (network_mode: host)
                catt cast_site → Chromecast via DashCast receiver

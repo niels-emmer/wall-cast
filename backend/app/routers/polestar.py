@@ -68,13 +68,37 @@ async def get_polestar() -> dict:
         if odometer and odometer.odometer_meters is not None:
             odometer_km = round(odometer.odometer_meters / 1000)
 
+        health = telematics.health
+
+        service_warning = None
+        days_to_service = None
+        distance_to_service_km = None
+        if health:
+            if health.service_warning is not None:
+                sw = health.service_warning.name
+                if sw not in ("SERVICE_WARNING_NO_WARNING", "SERVICE_WARNING_UNSPECIFIED", "NO_WARNING", "UNSPECIFIED"):
+                    service_warning = sw
+            if health.days_to_service is not None:
+                days_to_service = health.days_to_service
+            if health.distance_to_service_km is not None:
+                distance_to_service_km = round(health.distance_to_service_km)
+
         _cache = {
             "soc": battery.battery_charge_level_percentage if battery else None,
             "range_km": battery.estimated_distance_to_empty_km if battery else None,
             "charging_status": charging_status,
             "charging_connection_status": connection_status,
             "charging_time_min": battery.estimated_charging_time_to_full_minutes if battery else None,
+            "charging_power_watts": battery.charging_power_watts if battery else None,
+            "charging_current_amps": battery.charging_current_amps if battery else None,
             "odometer_km": odometer_km,
+            "avg_consumption_kwh_per_100km": battery.average_energy_consumption_kwh_per_100km if battery else None,
+            "avg_speed_kmh": odometer.average_speed_km_per_hour if odometer else None,
+            "trip_auto_km": odometer.trip_meter_automatic_km if odometer else None,
+            "trip_manual_km": odometer.trip_meter_manual_km if odometer else None,
+            "days_to_service": days_to_service,
+            "distance_to_service_km": distance_to_service_km,
+            "service_warning": service_warning,
         }
         _cache_ts = time.monotonic()
 

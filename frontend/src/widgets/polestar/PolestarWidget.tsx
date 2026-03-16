@@ -21,10 +21,23 @@ function chargingLabel(status: string | null, connection: string | null): string
   return 'Niet aangesloten'
 }
 
-function chargingIcon(status: string | null, connection: string | null): string {
+function chargingIcon(status: string | null, _connection: string | null): string {
   if (isActivelyCharging(status)) return '⚡'
-  if (isConnected(connection)) return '🔌'
-  return '○'
+  return '🔌'
+}
+
+function chargingIconOpacity(status: string | null, connection: string | null): number {
+  if (isActivelyCharging(status) || isConnected(connection)) return 1
+  return 0.25
+}
+
+function serviceLabel(warning: string | null): string | null {
+  if (!warning) return null
+  if (warning.includes('OVERDUE')) return 'Service achterstallig'
+  if (warning.includes('TIME_FOR_SERVICE')) return 'Tijd voor service'
+  if (warning.includes('ALMOST')) return 'Service bijna nodig'
+  if (warning.includes('REQUIRED')) return 'Service vereist'
+  return 'Service melding'
 }
 
 export function PolestarWidget({ config: _config }: WidgetProps) {
@@ -69,6 +82,9 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
   const soc = data.soc ?? 0
   const color = socColor(soc)
   const isCharging = isActivelyCharging(data.charging_status)
+  const serviceMsg = serviceLabel(data.service_warning)
+  const capKw = data.charging_power_watts != null ? (data.charging_power_watts / 1000).toFixed(1) : null
+  const capA  = data.charging_current_amps
 
   return (
     <div style={shell}>
@@ -137,7 +153,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
         gap: '0.5rem',
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)', lineHeight: 1 }}>
+        <span style={{ fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)', lineHeight: 1, opacity: chargingIconOpacity(data.charging_status, data.charging_connection_status) }}>
           {chargingIcon(data.charging_status, data.charging_connection_status)}
         </span>
         <span style={{
@@ -147,16 +163,83 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
         }}>
           {chargingLabel(data.charging_status, data.charging_connection_status)}
         </span>
+        {isCharging && (capKw || capA) && (
+          <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', marginLeft: '0.2rem' }}>
+            {capKw && `${capKw} kW`}{capKw && capA ? ' · ' : ''}{capA ? `${capA} A` : ''}
+          </span>
+        )}
         {isCharging && data.charging_time_min != null && data.charging_time_min > 0 && (
           <span style={{
             color: 'var(--color-muted)',
             fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
             marginLeft: 'auto',
           }}>
-            vol over {Math.round(data.charging_time_min / 60)}u{data.charging_time_min % 60 > 0 ? `${data.charging_time_min % 60}m` : ''}
+            vol over {Math.floor(data.charging_time_min / 60)}u{data.charging_time_min % 60 > 0 ? `${data.charging_time_min % 60}m` : ''}
           </span>
         )}
       </div>
+
+      {/* Stats: consumption + avg speed */}
+      {(data.avg_consumption_kwh_per_100km != null || data.avg_speed_kmh != null) && (
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          flexShrink: 0,
+          color: 'var(--color-muted)',
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
+        }}>
+          {data.avg_consumption_kwh_per_100km != null && (
+            <span>{data.avg_consumption_kwh_per_100km.toFixed(1)} kWh/100km</span>
+          )}
+          {data.avg_speed_kmh != null && (
+            <span>gem. {data.avg_speed_kmh} km/u</span>
+          )}
+        </div>
+      )}
+
+      {/* Trip meters */}
+      {(data.trip_auto_km != null || data.trip_manual_km != null) && (
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          flexShrink: 0,
+          color: 'var(--color-muted)',
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
+        }}>
+          {data.trip_auto_km != null && (
+            <span>rit A: {data.trip_auto_km.toFixed(1)} km</span>
+          )}
+          {data.trip_manual_km != null && (
+            <span>rit B: {data.trip_manual_km.toFixed(1)} km</span>
+          )}
+        </div>
+      )}
+
+      {/* Service warning tag — only shown when active */}
+      {serviceMsg && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4em',
+          padding: '0.3em 0.65em',
+          background: 'rgba(255,152,0,0.12)',
+          border: '1px solid rgba(255,152,0,0.35)',
+          borderRadius: 6,
+          flexShrink: 0,
+          alignSelf: 'flex-start',
+        }}>
+          <span style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)' }}>⚠</span>
+          <span style={{ color: '#ff9800', fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', fontWeight: 500 }}>
+            {serviceMsg}
+            {(data.days_to_service != null || data.distance_to_service_km != null) && (
+              <span style={{ color: 'var(--color-muted)', fontWeight: 400 }}>
+                {data.days_to_service != null ? ` · ${data.days_to_service}d` : ''}
+                {data.distance_to_service_km != null ? ` · ${data.distance_to_service_km.toLocaleString('nl-NL')} km` : ''}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Odometer */}
       {data.odometer_km != null && (

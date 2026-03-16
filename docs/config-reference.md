@@ -84,7 +84,7 @@ Live clock with seconds and date. Purely client-side — no API calls.
 
 ### `weather`
 
-Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from [open-meteo.com](https://open-meteo.com) — no API key required. Sunrise/sunset and golden hour times are fetched from [sunrise-sunset.org](https://sunrise-sunset.org/api) and displayed in the top-right of the widget.
+Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from [open-meteo.com](https://open-meteo.com) — no API key required. Sunrise/sunset times are fetched from [sunrise-sunset.org](https://sunrise-sunset.org/api) and displayed in the top-right of the widget.
 
 ```yaml
 - id: weather
@@ -99,8 +99,8 @@ Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from 
 ```
 
 **Display (top to bottom):**
-1. Current weather — icon, temperature, condition label, wind speed
-2. Sunrise · Sunset times + golden hour windows + daylight duration (top-right)
+1. Title row — "WEER" + current weather icon, temperature, condition label, wind speed (km/u)
+2. Sunrise (Opkomst) · Sunset (Ondergang) times + daylight duration (top-right)
 3. Hourly row — 7 columns: time, weather icon, temperature, precipitation %
 4. Daily row — 7 columns: day name, icon, high, low temperature
 
@@ -124,7 +124,7 @@ Hourly and daily rows share equal height in the widget.
   config: {}   # no configuration options currently
 ```
 
-**Display:** SVG area chart with gradient fill, dashed threshold lines (light / moderate / heavy), time axis, and HTML-overlay Y-axis labels. Shows "no rain expected" when the forecast is dry.
+**Display:** "REGEN" title with current status ("Droog" or peak mm/h) on the right. SVG area chart with gradient fill, dashed threshold lines (light / moderate / heavy), time axis ("Nu" for current), legend in mm/u, and HTML-overlay Y-axis labels. Shows "no rain expected" when the forecast is dry.
 
 **Backend cache:** 5 min.
 
@@ -187,6 +187,86 @@ curl -H "Title: Headline" -d "Message text" https://ntfy.example.com/wall-cast
 
 ---
 
+### `garbage`
+
+Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows collections due within the next 7 days as horizontal cards. Postcode and house number are configured at the top level under `garbage:`, not in the widget config.
+
+```yaml
+# Top-level section (required once):
+garbage:
+  postcode: "9422KM"
+  huisnummer: "5"
+
+# Widget entry:
+- id: garbage
+  type: garbage
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config: {}
+```
+
+**Display:** "AFVAL" title. One horizontal card per upcoming collection. Cards for today or tomorrow have an accent background. Each card shows a colour-coded left border, large emoji icon (🌿 GFT / ♻️ PMD / 🗑️ Restafval), container name, and relative day label + date on the right. Shows "Geen ophaling deze week" when nothing is due.
+
+**Backend cache:** 1 hour (collection dates change infrequently).
+
+---
+
+### `polestar`
+
+Battery, range, charging status, and service data for a Polestar vehicle via the [pypolestar](https://github.com/pypolestar/pypolestar) library. Credentials are provided via environment variables — set them in `.env` at the repo root (see `.env.example`).
+
+```yaml
+- id: polestar
+  type: polestar
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config: {}
+```
+
+**Environment variables (`.env`):**
+```
+POLESTAR_USERNAME=your@email.com
+POLESTAR_PASSWORD=yourpassword
+```
+
+**Display:** "POLESTAR" title, large SOC percentage (colour-coded green/amber/red), range in km, battery progress bar, charging status with live kW and amps when charging, estimated time to full charge. Additional rows appear automatically when the API returns data: efficiency (kWh/100km), average speed, trip meters A/B. Service warning appears as an amber alert tag only when a warning is active (not during normal operation). Odometer in small muted text at the bottom.
+
+**Backend cache:** 5 min. Shows last known data on API error.
+
+---
+
+### `rotate`
+
+Cycles through a list of child widgets, showing one at a time. Used to display multiple widgets in a single grid cell.
+
+```yaml
+- id: rotator
+  type: rotate
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config:
+    interval_sec: 20    # seconds per slot (default: 10)
+    widgets:
+      - type: rain
+        config: {}
+      - type: garbage
+        config: {}
+      - type: polestar
+        config: {}
+```
+
+**Notes:**
+- Child widgets in `config.widgets` use the same `type` and `config` keys as top-level widgets, but do not need `id`, `col`, `row`, `col_span`, or `row_span` — they inherit the rotator's grid cell.
+- The `info` widget type (plain key/value display) is also available as a child type.
+
+---
+
 ## Layout tips
 
 - The default 12 × 8 grid gives fine-grained control. Think of it like a newspaper layout.
@@ -222,5 +302,7 @@ All data sources refresh automatically — the display never needs a manual relo
 | Rain | Every 5 minutes |
 | News | Every 10 minutes |
 | Sunrise/sunset | Every 6 hours |
+| Garbage | Every 1 hour |
+| Polestar | Every 5 minutes |
 | Config (YAML) | Instant (SSE push on file save) |
 | Breaking news (ntfy) | Instant (persistent SSE connection) |

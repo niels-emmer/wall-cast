@@ -67,7 +67,16 @@ export interface PolestarData {
   charging_status: string | null
   charging_connection_status: string | null
   charging_time_min: number | null
+  charging_power_watts: number | null
+  charging_current_amps: number | null
   odometer_km: number | null
+  avg_consumption_kwh_per_100km: number | null
+  avg_speed_kmh: number | null
+  trip_auto_km: number | null
+  trip_manual_km: number | null
+  days_to_service: number | null
+  distance_to_service_km: number | null
+  service_warning: string | null
 }
 
 export interface SunData {

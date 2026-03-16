@@ -125,26 +125,20 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
 
 // ── Sun block — top-right of current weather row ──────────────────────────────
 function SunBlock({ d }: { d: SunData }) {
-  const gold   = 'rgba(255, 190, 60, 0.9)'
-  const muted  = 'var(--color-muted)'
+  const muted = 'var(--color-muted)'
   const mono: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
 
-  return (
-    <div style={{
-      marginLeft: 'auto',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'flex-end',
-      justifyContent: 'center',
-      gap: '0.3em',
-    }}>
+  const cols = [
+    { emoji: '🌅', label: 'Opkomst',   time: d.sunrise },
+    { emoji: '🌇', label: 'Ondergang', time: d.sunset  },
+  ]
 
-      {/* Rise + Set */}
+  return (
+    <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2em' }}>
+
+      {/* Two columns: sunrise | sunset */}
       <div style={{ display: 'flex', gap: '1.6em', alignItems: 'flex-end' }}>
-        {[
-          { emoji: '🌅', label: 'Sunrise', time: d.sunrise },
-          { emoji: '🌇', label: 'Sunset',  time: d.sunset  },
-        ].map(({ emoji, label, time }) => (
+        {cols.map(({ emoji, label, time }) => (
           <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.05em' }}>
             <span style={{
               fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)',
@@ -166,28 +160,13 @@ function SunBlock({ d }: { d: SunData }) {
         ))}
       </div>
 
-      {/* Golden hour */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.4em',
-        fontSize: 'clamp(0.8rem, 1.4vw, 1.1rem)',
-        color: muted,
-      }}>
-        <span style={{ color: gold, fontSize: '0.9em' }}>✦</span>
-        <span style={mono}>{d.golden_dawn_start}–{d.golden_dawn_end}</span>
-        <span style={{ opacity: 0.35 }}>·</span>
-        <span style={mono}>{d.golden_dusk_start}–{d.golden_dusk_end}</span>
-        <span style={{ color: gold, fontSize: '0.9em' }}>✦</span>
-      </div>
-
       {/* Day length */}
       <span style={{
         fontSize: 'clamp(0.75rem, 1.2vw, 0.95rem)',
         color: muted,
         letterSpacing: '0.05em',
       }}>
-        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m daylight
+        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m daglichttijd
       </span>
 
     </div>
@@ -202,8 +181,8 @@ export function WeatherWidget({ config }: Props) {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     height: '100%', color: 'var(--color-muted)', fontSize: '1rem',
   }
-  if (isError) return <div style={center}>Weather unavailable</div>
-  if (!data)   return <div style={center}>Loading...</div>
+  if (isError) return <div style={center}>Weer niet beschikbaar</div>
+  if (!data)   return <div style={center}>Laden...</div>
 
   const now = new Date()
   const startIdx = Math.max(0, data.hourly.time.findIndex(t => new Date(t) >= now))
@@ -220,14 +199,18 @@ export function WeatherWidget({ config }: Props) {
       boxSizing: 'border-box',
     }}>
 
-      {/* ── Current ── */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: '0.45em',
-        flexShrink: 0,
-      }}>
+      {/* ── Title + Current ── */}
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1.2em', flexShrink: 0 }}>
+        <div style={{
+          fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
+          fontWeight: 300,
+          textTransform: 'uppercase',
+          letterSpacing: '0.25em',
+          color: 'var(--color-text)',
+          flexShrink: 0,
+        }}>
+          Weer
+        </div>
         <span style={{ fontSize: 'clamp(2rem, 4vw, 3.2rem)', lineHeight: 1 }}>{curSymbol}</span>
         <span style={{
           fontSize: 'clamp(2rem, 4vw, 3.2rem)',
@@ -236,12 +219,12 @@ export function WeatherWidget({ config }: Props) {
         }}>
           {Math.round(cur.temperature)}°
         </span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1em', marginLeft: '0.2em' }}>
-          <span style={{ fontSize: 'clamp(1.5rem, 3vw, 2.4rem)', color: 'var(--color-text)', lineHeight: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1em' }}>
+          <span style={{ fontSize: 'clamp(1.5rem, 3vw, 2.4rem)', color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap' }}>
             {curLabel}
           </span>
-          <span style={{ fontSize: 'clamp(1.275rem, 2.55vw, 2rem)', color: 'var(--color-muted)', lineHeight: 1 }}>
-            Wind: {Math.round(cur.windspeed)} km/h
+          <span style={{ fontSize: 'clamp(1.275rem, 2.55vw, 2rem)', color: 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            Wind: {Math.round(cur.windspeed)} km/u
           </span>
         </div>
         {sunData && <SunBlock d={sunData} />}
