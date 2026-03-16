@@ -1,3 +1,4 @@
+import React from 'react'
 import { useCalendar } from '../../hooks/use-calendar'
 import type { CalendarEvent, CalendarDay } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
