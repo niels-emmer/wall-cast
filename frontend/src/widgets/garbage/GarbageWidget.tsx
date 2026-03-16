@@ -3,16 +3,24 @@ import type { GarbageCollection } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
 
 const CONTAINER_COLORS: Record<string, string> = {
-  gft:        '#4caf50',   // green
-  pmd:        '#ff9800',   // orange
-  restafval:  '#9e9e9e',   // gray
+  gft:       '#4caf50',
+  pmd:       '#ff9800',
+  restafval: '#9e9e9e',
 }
 
 const CONTAINER_ICONS: Record<string, string> = {
-  gft:        '🌿',
-  pmd:        '♻️',
-  restafval:  '🗑️',
+  gft:       '🌿',
+  pmd:       '♻️',
+  restafval: '🗑️',
 }
+
+const CONTAINER_NAMES: Record<string, string> = {
+  gft:       'GFT',
+  pmd:       'PMD',
+  restafval: 'Restafval',
+}
+
+const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
 function dayLabel(days: number): string {
   if (days === 0) return 'Vandaag'
@@ -21,57 +29,74 @@ function dayLabel(days: number): string {
 }
 
 function dateLabel(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function CollectionRow({ item }: { item: GarbageCollection }) {
-  const color = CONTAINER_COLORS[item.type] ?? 'var(--color-muted)'
-  const isUrgent = item.days_until <= 1
+// Horizontal card — mirrors HourlyCol / DailyCol layout but as a row
+function CollectionCard({ item }: { item: GarbageCollection }) {
+  const accent = item.days_until <= 1
+  const color  = CONTAINER_COLORS[item.type] ?? 'var(--color-muted)'
 
   return (
     <div style={{
+      flex: '1 1 0',
       display: 'flex',
+      flexDirection: 'row',
       alignItems: 'center',
-      gap: '0.6rem',
+      gap: '0.55em',
+      padding: '0.4em 0.65em',
+      background: accent ? 'rgba(0,212,255,0.09)' : 'rgba(255,255,255,0.03)',
+      borderRadius: 8,
+      borderLeft: `3px solid ${color}`,
+      minHeight: 0,
+      overflow: 'hidden',
     }}>
-      {/* Colour dot */}
-      <div style={{
-        width: '0.55rem',
-        height: '0.55rem',
-        borderRadius: '50%',
-        background: color,
-        flexShrink: 0,
-      }} />
-
-      {/* Container name */}
+      {/* Big icon */}
       <span style={{
-        color: 'var(--color-muted)',
-        fontSize: 'clamp(0.7rem, 1.1vw, 0.85rem)',
-        flex: 1,
-        whiteSpace: 'nowrap',
+        fontSize: 'clamp(1.8rem, 3.45vw, 2.85rem)',
+        lineHeight: 1,
+        flexShrink: 0,
       }}>
-        {CONTAINER_ICONS[item.type]} {item.label}
+        {CONTAINER_ICONS[item.type]}
       </span>
 
-      {/* Days + date */}
+      {/* Name */}
+      <span style={{
+        fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
+        fontWeight: 500,
+        color: 'var(--color-text)',
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+      }}>
+        {CONTAINER_NAMES[item.type]}
+      </span>
+
+      {/* Day + date — right-aligned */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-end',
-        gap: '0.05rem',
+        flexShrink: 0,
+        gap: '0.05em',
       }}>
         <span style={{
-          color: isUrgent ? color : 'var(--color-text)',
-          fontSize: 'clamp(0.75rem, 1.2vw, 0.9rem)',
-          fontWeight: isUrgent ? 700 : 500,
+          fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
+          fontWeight: accent ? 700 : 500,
+          color: accent ? 'var(--color-accent)' : 'var(--color-text)',
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
         }}>
           {dayLabel(item.days_until)}
         </span>
         <span style={{
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
           color: 'var(--color-muted)',
-          fontSize: 'clamp(0.6rem, 0.95vw, 0.75rem)',
-          opacity: 0.7,
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
         }}>
           {dateLabel(item.date)}
         </span>
@@ -87,46 +112,47 @@ export function GarbageWidget({ config: _config }: WidgetProps) {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: '0.75rem 0.85rem 0.6rem',
+    padding: '0.85rem',
     boxSizing: 'border-box',
-    gap: '0.5rem',
+    gap: '0.55rem',
   }
 
-  const header = (
+  const title = (
     <div style={{
-      color: 'var(--color-muted)',
-      fontSize: 'clamp(0.7rem, 1.1vw, 0.85rem)',
-      letterSpacing: '0.1em',
+      fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
+      fontWeight: 300,
       textTransform: 'uppercase',
+      letterSpacing: '0.25em',
+      color: 'var(--color-text)',
       flexShrink: 0,
     }}>
-      Afval — deze week
+      Afval
     </div>
   )
 
-  if (isLoading) return (
-    <div style={shell}>{header}</div>
-  )
+  if (isLoading) return <div style={shell}>{title}</div>
 
   if (isError || !data) return (
     <div style={shell}>
-      {header}
-      <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-        Ophaaldata niet beschikbaar
+      {title}
+      {divider}
+      <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
+        Niet beschikbaar
       </span>
     </div>
   )
 
   if (data.collections.length === 0) return (
     <div style={shell}>
-      {header}
+      {title}
+      {divider}
       <div style={{
         flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: 'var(--color-muted)',
-        fontSize: 'clamp(0.7rem, 1.1vw, 0.85rem)',
+        fontSize: 'clamp(1.1rem, 2vw, 1.5rem)',
         opacity: 0.5,
       }}>
         Geen ophaling deze week
@@ -136,16 +162,17 @@ export function GarbageWidget({ config: _config }: WidgetProps) {
 
   return (
     <div style={shell}>
-      {header}
+      {title}
+      {divider}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-evenly',
+        gap: '0.3rem',
         minHeight: 0,
       }}>
         {data.collections.map(item => (
-          <CollectionRow key={item.type} item={item} />
+          <CollectionCard key={item.type} item={item} />
         ))}
       </div>
     </div>

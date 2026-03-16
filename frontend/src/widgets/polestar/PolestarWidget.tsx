@@ -7,83 +7,110 @@ function socColor(soc: number): string {
   return '#f44336'                  // red
 }
 
+// Polestar enum names come in as e.g. "CHARGING_STATUS_CHARGING", "CHARGING_STATUS_IDLE"
+function isActivelyCharging(status: string | null): boolean {
+  return status?.includes('CHARGING') === true && !status?.includes('IDLE') && !status?.includes('DONE') && !status?.includes('FAULT')
+}
+function isConnected(connection: string | null): boolean {
+  return connection?.includes('CONNECTED') === true && !connection?.includes('DISCONNECTED')
+}
+
 function chargingLabel(status: string | null, connection: string | null): string {
-  if (status === 'CHARGING') return 'Aan het laden'
-  if (connection === 'CONNECTED') return 'Aangesloten'
+  if (isActivelyCharging(status)) return 'Aan het laden'
+  if (isConnected(connection)) return 'Aangesloten'
   return 'Niet aangesloten'
 }
 
 function chargingIcon(status: string | null, connection: string | null): string {
-  if (status === 'CHARGING') return '⚡'
-  if (connection === 'CONNECTED') return '🔌'
+  if (isActivelyCharging(status)) return '⚡'
+  if (isConnected(connection)) return '🔌'
   return '○'
 }
 
 export function PolestarWidget({ config: _config }: WidgetProps) {
   const { data, isError, isLoading } = usePolestar()
 
+  const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+
   const shell: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: '0.75rem 0.85rem 0.6rem',
+    padding: '0.85rem',
     boxSizing: 'border-box',
-    gap: '0.4rem',
+    gap: '0.55rem',
   }
 
-  const header = (
+  const title = (
     <div style={{
-      color: 'var(--color-muted)',
-      fontSize: 'clamp(0.7rem, 1.1vw, 0.85rem)',
-      letterSpacing: '0.1em',
+      fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
+      fontWeight: 300,
       textTransform: 'uppercase',
+      letterSpacing: '0.25em',
+      color: 'var(--color-text)',
       flexShrink: 0,
     }}>
       Polestar
     </div>
   )
 
-  if (isLoading) return <div style={shell}>{header}</div>
+  if (isLoading) return <div style={shell}>{title}</div>
 
   if (isError || !data) return (
     <div style={shell}>
-      {header}
-      <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-        Autodata niet beschikbaar
+      {title}
+      {divider}
+      <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
+        Niet beschikbaar
       </span>
     </div>
   )
 
   const soc = data.soc ?? 0
   const color = socColor(soc)
-  const isCharging = data.charging_status === 'CHARGING'
+  const isCharging = isActivelyCharging(data.charging_status)
 
   return (
     <div style={shell}>
-      {header}
+      {title}
+      {divider}
 
-      {/* SOC + range row */}
+      {/* SOC + range */}
       <div style={{
         display: 'flex',
-        alignItems: 'baseline',
-        gap: '0.5rem',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '0.55rem',
         flexShrink: 0,
       }}>
         <span style={{
-          fontSize: 'clamp(1.8rem, 3.2vw, 2.6rem)',
-          fontWeight: 700,
+          fontSize: 'clamp(2rem, 4.5vw, 3.6rem)',
+          fontWeight: 900,
           color,
           lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
         }}>
           {soc}%
         </span>
         {data.range_km != null && (
-          <span style={{
-            fontSize: 'clamp(0.85rem, 1.4vw, 1.1rem)',
-            color: 'var(--color-muted)',
-          }}>
-            {data.range_km} km
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1em' }}>
+            <span style={{
+              fontSize: 'clamp(1.5rem, 2.85vw, 2.25rem)',
+              fontWeight: 700,
+              color: 'var(--color-text)',
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {data.range_km} km
+            </span>
+            <span style={{
+              fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
+              color: 'var(--color-muted)',
+              lineHeight: 1,
+            }}>
+              bereik
+            </span>
+          </div>
         )}
       </div>
 
@@ -100,7 +127,6 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
           width: `${soc}%`,
           background: color,
           borderRadius: '3px',
-          transition: 'width 0.4s ease',
         }} />
       </div>
 
@@ -108,22 +134,23 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '0.4rem',
+        gap: '0.5rem',
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: '0.9rem' }}>
+        <span style={{ fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)', lineHeight: 1 }}>
           {chargingIcon(data.charging_status, data.charging_connection_status)}
         </span>
         <span style={{
           color: isCharging ? '#4caf50' : 'var(--color-muted)',
-          fontSize: 'clamp(0.7rem, 1.1vw, 0.85rem)',
+          fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
+          lineHeight: 1,
         }}>
           {chargingLabel(data.charging_status, data.charging_connection_status)}
         </span>
-        {isCharging && data.charging_time_min != null && (
+        {isCharging && data.charging_time_min != null && data.charging_time_min > 0 && (
           <span style={{
             color: 'var(--color-muted)',
-            fontSize: 'clamp(0.65rem, 1vw, 0.8rem)',
+            fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
             marginLeft: 'auto',
           }}>
             vol over {Math.round(data.charging_time_min / 60)}u{data.charging_time_min % 60 > 0 ? `${data.charging_time_min % 60}m` : ''}
@@ -136,7 +163,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
         <div style={{
           marginTop: 'auto',
           color: 'var(--color-muted)',
-          fontSize: 'clamp(0.6rem, 0.95vw, 0.75rem)',
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
           opacity: 0.55,
         }}>
           {data.odometer_km.toLocaleString('nl-NL')} km

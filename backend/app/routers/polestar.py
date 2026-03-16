@@ -45,28 +45,35 @@ async def get_polestar() -> dict:
             raise ValueError("No vehicles found on this Polestar account")
 
         vin = vins[0]
+
+        # Must call update_latest_data before the getter has anything to return
+        await api.update_latest_data(vin=vin, update_telematics=True)
+
         telematics = api.get_car_telematics(vin)
+        if telematics is None:
+            raise ValueError("Telematics returned None after update")
+
         battery = telematics.battery
         odometer = telematics.odometer
 
         charging_status = None
-        if battery.charging_status is not None:
+        if battery and battery.charging_status is not None:
             charging_status = battery.charging_status.name
 
         connection_status = None
-        if battery.charging_connection_status is not None:
-            connection_status = battery.charging_connection_status.name
+        if battery and battery.charger_connection_status is not None:
+            connection_status = battery.charger_connection_status.name
 
         odometer_km = None
         if odometer and odometer.odometer_meters is not None:
             odometer_km = round(odometer.odometer_meters / 1000)
 
         _cache = {
-            "soc": battery.battery_charge_level_percentage,
-            "range_km": battery.estimated_distance_to_empty,
+            "soc": battery.battery_charge_level_percentage if battery else None,
+            "range_km": battery.estimated_distance_to_empty_km if battery else None,
             "charging_status": charging_status,
             "charging_connection_status": connection_status,
-            "charging_time_min": battery.estimated_charging_time_minutes,
+            "charging_time_min": battery.estimated_charging_time_to_full_minutes if battery else None,
             "odometer_km": odometer_km,
         }
         _cache_ts = time.monotonic()
