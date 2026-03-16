@@ -66,5 +66,5 @@ widgets:
         - url: https://www.nu.nl/rss/Algemeen
           label: NU.nl
       scroll_speed_px_per_sec: 80
-      ntfy_url: https://ntfy.macjuu.com
+      ntfy_url: https://ntfy.example.com   # optional — remove to disable breaking news
       ntfy_topic: wall-cast

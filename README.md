@@ -72,9 +72,9 @@ Edit `config/wall-cast.yaml` — at minimum, set your location:
 
 ```yaml
 location:
-  lat: 52.5257
-  lon: 6.4510
-  name: Smilde
+  lat: 52.37    # your latitude (decimal degrees)
+  lon: 4.90     # your longitude (decimal degrees)
+  name: Amsterdam
 ```
 
 See [docs/config-reference.md](docs/config-reference.md) for all options.
@@ -122,9 +122,9 @@ All display settings live in **`config/wall-cast.yaml`**. Edit and save the file
 
 ```yaml
 location:
-  lat: 52.5257       # latitude for weather and rain
-  lon: 6.4510        # longitude
-  name: Smilde       # display name (cosmetic only)
+  lat: 52.37         # latitude for weather and rain
+  lon: 4.90          # longitude
+  name: Amsterdam    # display name (cosmetic only)
 
 layout:
   columns: 12        # CSS grid columns

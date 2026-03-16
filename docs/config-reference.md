@@ -45,9 +45,9 @@ Used by the weather, rain, and sunrise/sunset widgets.
 
 ```yaml
 location:
-  lat: 52.5257
-  lon: 6.4510
-  name: Smilde
+  lat: 52.37      # your latitude (decimal degrees)
+  lon: 4.90       # your longitude (decimal degrees)
+  name: Amsterdam
 ```
 
 ---
@@ -289,7 +289,7 @@ GOOGLE_SA_KEY_FILE=/config/google-sa.json
 5. Open Google Calendar → Settings → your calendar → **Share with specific people**. Add the service account email (ends in `@...iam.gserviceaccount.com`). Permission: "See all event details".
 6. Google Calendar → Settings → your calendar → **Integrate calendar**. Copy the **Calendar ID**.
 
-**Display:** "FAMILY" title. "VANDAAG" section with today's events as cards (or a "Niets gepland" placeholder card). "DEZE WEEK" section with events for the next 7 days grouped by day, each day showing a label column (Di / 17 mrt) beside the event cards. Each event card has a 4px coloured left border matching the event's Google Calendar colour. The day/time line below the event title shows "Hele dag" for all-day events.
+**Display:** "FAMILY" title. "VANDAAG" section with today's events as cards (or a "Niets gepland" placeholder card). "KOMENDE DAGEN" section with the next 3 upcoming events grouped by day, each day showing a label column (Di / 17 mrt) beside the event cards. Each event card has a 4px coloured left border matching the event's Google Calendar colour. The day/time line below the event title shows "Hele dag" for all-day events.
 
 **Backend cache:** 10 min.
 
