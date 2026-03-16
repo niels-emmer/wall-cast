@@ -277,6 +277,35 @@ wall-cast/
 └── docker-compose.dev.yml      development
 ```
 
+## Credits
+
+### Built with AI assistance
+
+This project was built in collaboration with [Claude](https://claude.ai) (Anthropic) — used throughout for architecture decisions, widget implementation, backend routing, and debugging.
+
+### Data sources
+
+| Source | Used for |
+|--------|----------|
+| [open-meteo.com](https://open-meteo.com) | Weather forecasts — free, no API key |
+| [buienalarm.nl](https://buienalarm.nl) | Rain intensity forecast (2 h) |
+| [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, and daylight duration |
+| [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) | Waste collection schedule (NL) |
+| [pypolestar](https://github.com/pypolestar/pypolestar) | Polestar vehicle data |
+| [ntfy.sh](https://ntfy.sh) | Self-hosted push notifications (breaking news) |
+
+### Libraries and tools
+
+| Library | Role |
+|---------|------|
+| [FastAPI](https://fastapi.tiangolo.com) | Python backend framework |
+| [React](https://react.dev) | Frontend UI |
+| [Vite](https://vitejs.dev) | Frontend build tool |
+| [TanStack Query](https://tanstack.com/query) | Data fetching and caching |
+| [Tailwind CSS](https://tailwindcss.com) | Utility CSS |
+| [catt](https://github.com/skorokithakis/catt) | Cast any URL to Chromecast via DashCast |
+| [feedparser](https://feedparser.readthedocs.io) | RSS feed parsing |
+
 ## License
 
 MIT
