@@ -129,8 +129,8 @@ function SunBlock({ d }: { d: SunData }) {
   const mono: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
 
   const cols = [
-    { emoji: '🌅', label: 'Opkomst',   time: d.sunrise },
-    { emoji: '🌇', label: 'Ondergang', time: d.sunset  },
+    { emoji: '🌅', label: 'Op',    time: d.sunrise },
+    { emoji: '🌇', label: 'Onder', time: d.sunset  },
   ]
 
   return (
