@@ -5,9 +5,20 @@
 **Phase**: Production-ready — fully functional, deployed via Docker Compose, cast to Chromecast.
 **Location**: Smilde, NL (lat 52.5257, lon 6.4510)
 
+## Dev Environments
+
+Two Claude environments work on this project — they are NOT the same:
+
+| Environment | Repo path | Capabilities |
+|-------------|-----------|-------------|
+| **Desktop Claude Code** (user's Mac) | `/Users/nemmer/repositories/wall-cast` | Git commit + push (authoritative). No local Docker. |
+| **Web-based Claude IDE** (VPS/server) | `/home/coder/project/docker/wall-cast` | Docker Compose runs here. Does not own the git remote. |
+
+When in the desktop environment: commit and push freely. When in the web IDE: run/test Docker, but do not assume git push capability.
+
 ## Quick Context
 
-- Repo: `/Users/nemmer/repositories/wall-cast`
+- Repo: `/Users/nemmer/repositories/wall-cast` (desktop) or `/home/coder/project/docker/wall-cast` (server)
 - Stack: FastAPI 0.115 backend + React 18 / Vite / Tailwind frontend, Docker Compose
 - Casting: `caster` Docker service uses `catt cast_site` → DashCast receiver on Google TV (192.168.101.77). `DISPLAY_URL` must be the host's LAN IP (192.168.101.184), NOT `localhost` — the TV resolves localhost as itself
 - Config: `config/wall-cast.yaml` hot-reloads via SSE without container restart
