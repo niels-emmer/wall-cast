@@ -1,20 +1,10 @@
 import type { ComponentType } from 'react'
-import { ClockWidget } from './clock/ClockWidget'
-import { WeatherWidget } from './weather/WeatherWidget'
-import { RainWidget } from './rain/RainWidget'
-import { NewsTickerWidget } from './news/NewsTickerWidget'
-import { InfoWidget } from './info/InfoWidget'
+import { BASE_REGISTRY } from './base-registry'
 import { RotatorWidget } from './rotate/RotatorWidget'
 
-export interface WidgetProps {
-  config: Record<string, unknown>
-}
+export type { WidgetProps } from './base-registry'
 
-export const WIDGET_REGISTRY: Record<string, ComponentType<WidgetProps>> = {
-  clock: ClockWidget,
-  weather: WeatherWidget,
-  rain: RainWidget,
-  news: NewsTickerWidget,
-  info: InfoWidget,
+export const WIDGET_REGISTRY: Record<string, ComponentType<{ config: Record<string, unknown> }>> = {
+  ...BASE_REGISTRY,
   rotate: RotatorWidget,
 }

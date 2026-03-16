@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { WIDGET_REGISTRY } from '../index'
-import type { WidgetProps } from '../index'
+import { BASE_REGISTRY } from '../base-registry'
+import type { WidgetProps } from '../base-registry'
 
 interface SlotConfig {
   type: string
@@ -23,7 +23,7 @@ export function RotatorWidget({ config }: WidgetProps) {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {slots.map((slot, idx) => {
-        const Component = WIDGET_REGISTRY[slot.type]
+        const Component = BASE_REGISTRY[slot.type]
         if (!Component) return null
         return (
           <div
