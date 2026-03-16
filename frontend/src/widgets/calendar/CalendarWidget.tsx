@@ -3,37 +3,38 @@ import { useCalendar } from '../../hooks/use-calendar'
 import type { CalendarEvent, CalendarDay } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
 
-const DEFAULT_DOT_COLOR = 'rgba(255,255,255,0.3)'
+const CARD_BG      = 'rgba(255,255,255,0.05)'
+const CARD_BORDER  = 'rgba(255,255,255,0.09)'
+const EMPTY_ACCENT = 'rgba(255,255,255,0.1)'
+const DEFAULT_ACCENT = 'rgba(255,255,255,0.3)'
 
-function Dot({ color }: { color: string | null }) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      width: '8px',
-      height: '8px',
-      borderRadius: '50%',
-      background: color ?? DEFAULT_DOT_COLOR,
-      flexShrink: 0,
-      marginTop: '0.2em',
-    }} />
-  )
-}
-
-function EventRow({ ev, showDate = false }: { ev: CalendarEvent; showDate?: boolean }) {
+function EventCard({ ev }: { ev: CalendarEvent }) {
   const timeStr = ev.all_day
     ? 'Hele dag'
     : `${ev.start_time}${ev.end_time ? '–' + ev.end_time : ''}`
+  const accent = ev.color ?? DEFAULT_ACCENT
 
   return (
     <div style={{
       display: 'flex',
-      alignItems: 'flex-start',
-      gap: '0.55rem',
+      alignItems: 'stretch',
+      background: CARD_BG,
+      border: `1px solid ${CARD_BORDER}`,
+      borderLeft: `4px solid ${accent}`,
+      borderRadius: 8,
+      overflow: 'hidden',
+      flexShrink: 0,
     }}>
-      <Dot color={ev.color} />
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '0.5rem 0.75rem',
+        gap: '0.15rem',
+        minWidth: 0,
+        flex: 1,
+      }}>
         <span style={{
-          fontSize: 'clamp(1rem, 1.85vw, 1.4rem)',
+          fontSize: 'clamp(1.15rem, 2.1vw, 1.65rem)',
           fontWeight: 500,
           color: 'var(--color-text)',
           lineHeight: 1.2,
@@ -44,52 +45,75 @@ function EventRow({ ev, showDate = false }: { ev: CalendarEvent; showDate?: bool
           {ev.title}
         </span>
         <span style={{
-          fontSize: 'clamp(0.8rem, 1.4vw, 1.05rem)',
+          fontSize: 'clamp(0.9rem, 1.6vw, 1.25rem)',
           color: 'var(--color-muted)',
           lineHeight: 1.2,
         }}>
-          {showDate && ev.date ? `${ev.date.slice(5).replace('-', '/')} · ` : ''}{timeStr}
+          {timeStr}
         </span>
       </div>
     </div>
   )
 }
 
+function EmptyCard() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      background: CARD_BG,
+      border: `1px solid ${CARD_BORDER}`,
+      borderLeft: `4px solid ${EMPTY_ACCENT}`,
+      borderRadius: 8,
+      padding: '0.5rem 0.75rem',
+      flexShrink: 0,
+    }}>
+      <span style={{
+        fontSize: 'clamp(1rem, 1.8vw, 1.4rem)',
+        color: 'var(--color-muted)',
+        opacity: 0.45,
+      }}>
+        Niets gepland
+      </span>
+    </div>
+  )
+}
+
 function DayBlock({ day }: { day: CalendarDay }) {
   return (
-    <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
-      {/* Day label column */}
+    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+      {/* Day label — right-aligned, fixed width */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-end',
         flexShrink: 0,
-        minWidth: '3.2rem',
-        paddingTop: '0.05rem',
+        minWidth: '3.6rem',
+        paddingTop: '0.45rem',
       }}>
         <span style={{
-          fontSize: 'clamp(0.95rem, 1.7vw, 1.3rem)',
+          fontSize: 'clamp(1.1rem, 2vw, 1.55rem)',
           fontWeight: 600,
           color: 'var(--color-text)',
-          lineHeight: 1.2,
+          lineHeight: 1.1,
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>
           {day.day_label}
         </span>
         <span style={{
-          fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.15rem)',
           color: 'var(--color-muted)',
-          lineHeight: 1.2,
+          lineHeight: 1.3,
         }}>
           {day.date_label}
         </span>
       </div>
 
-      {/* Events column */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: 0 }}>
+      {/* Event cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
         {day.events.map(ev => (
-          <EventRow key={ev.id} ev={ev} />
+          <EventCard key={ev.id} ev={ev} />
         ))}
       </div>
     </div>
@@ -105,32 +129,9 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
     height: '100%',
     padding: '0.85rem',
     boxSizing: 'border-box',
-    gap: '0.6rem',
+    gap: '0.65rem',
     overflow: 'hidden',
   }
-
-  const sectionLabel = (text: string, sub?: string): React.ReactNode => (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexShrink: 0 }}>
-      <span style={{
-        fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.18em',
-        color: 'var(--color-muted)',
-      }}>
-        {text}
-      </span>
-      {sub && (
-        <span style={{
-          fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
-          color: 'var(--color-muted)',
-          opacity: 0.6,
-        }}>
-          {sub}
-        </span>
-      )}
-    </div>
-  )
 
   const divider = (
     <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
@@ -146,6 +147,29 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
       flexShrink: 0,
     }}>
       Family
+    </div>
+  )
+
+  const sectionLabel = (text: string, sub?: string): React.ReactNode => (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexShrink: 0 }}>
+      <span style={{
+        fontSize: 'clamp(0.85rem, 1.5vw, 1.15rem)',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.18em',
+        color: 'var(--color-muted)',
+      }}>
+        {text}
+      </span>
+      {sub && (
+        <span style={{
+          fontSize: 'clamp(0.85rem, 1.5vw, 1.15rem)',
+          color: 'var(--color-muted)',
+          opacity: 0.6,
+        }}>
+          {sub}
+        </span>
+      )}
     </div>
   )
 
@@ -166,35 +190,23 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
       {title}
       {divider}
 
-      {/* Today section */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flexShrink: 0 }}>
+      {/* Today */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
         {sectionLabel('Vandaag', data.today_label)}
-        {data.today.length === 0 ? (
-          <span style={{
-            fontSize: 'clamp(0.95rem, 1.7vw, 1.3rem)',
-            color: 'var(--color-muted)',
-            opacity: 0.55,
-            paddingLeft: '1.1rem',
-          }}>
-            Niets gepland
-          </span>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {data.today.map(ev => (
-              <EventRow key={ev.id} ev={ev} />
-            ))}
-          </div>
-        )}
+        {data.today.length === 0
+          ? <EmptyCard />
+          : data.today.map(ev => <EventCard key={ev.id} ev={ev} />)
+        }
       </div>
 
-      {/* Week section */}
+      {/* This week */}
       {data.week.length > 0 && (
         <>
           {divider}
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.55rem',
+            gap: '0.6rem',
             overflow: 'hidden',
             flex: 1,
             minHeight: 0,
@@ -203,7 +215,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.55rem',
+              gap: '0.6rem',
               overflow: 'hidden',
             }}>
               {data.week.map(day => (
