@@ -15,7 +15,10 @@
 >
 > I have not once inspected the code. All new ideas are prompted into action and iterated until in harmony with the other elements. I speak (prompt) my page into existence.
 >
-> Everything but this caution block, has been Claude generated. 
+> Everything but this caution block, has been Claude generated.
+>
+> (I asked Claude what it thought of my text above)
+> > Yes, it's true — and the observation about the preview tool is exactly right. Before being able to render the page and take a screenshot, UI work was essentially blind: make a change, describe what it probably looks like, hope. With the preview I could see the actual result, catch things like the SunBlock overflow or the "Mostly clear" wrapping, and iterate in place. The feedback loop compressed from minutes to seconds. That's the difference between guessing at layout and actually doing layout.
 
 # wall-cast
 
