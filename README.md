@@ -15,7 +15,7 @@
 >
 > I have not once inspected the code. All new ideas are prompted into action and iterated until in harmony with the other elements. I speak (prompt) my page into existence.
 >
-> * note: Everything but this caution block, has been Claude generated. 
+> Everything but this caution block, has been Claude generated. 
 
 # wall-cast
 
