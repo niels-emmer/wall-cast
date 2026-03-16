@@ -14,5 +14,9 @@ class Settings(BaseSettings):
     polestar_username: str = ""
     polestar_password: str = ""
 
+    google_calendar_id: str = ""
+    google_sa_key_file: str = "/config/google-sa.json"
+    calendar_cache_ttl: int = 600   # 10 minutes
+
 
 settings = Settings()

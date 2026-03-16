@@ -25,15 +25,21 @@ widgets:
       show_seconds: true
       show_date: true
 
-  - id: weather
-    type: weather
+  - id: main-rotator
+    type: rotate
     col: 5
     row: 1
     col_span: 8
     row_span: 7
     config:
-      show_hourly: true
-      show_daily: true
+      interval_sec: 30
+      widgets:
+        - type: weather
+          config:
+            show_hourly: true
+            show_daily: true
+        - type: calendar
+          config: {}
 
   - id: bottom-left-rotator
     type: rotate

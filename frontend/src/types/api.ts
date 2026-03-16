@@ -82,6 +82,30 @@ export interface PolestarData {
   oil_warning: string | null
 }
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  all_day: boolean
+  start_time: string | null
+  end_time: string | null
+  date: string
+  color: string | null
+  location: string | null
+}
+
+export interface CalendarDay {
+  date: string
+  day_label: string
+  date_label: string
+  events: CalendarEvent[]
+}
+
+export interface CalendarData {
+  today: CalendarEvent[]
+  week: CalendarDay[]
+  today_label: string
+}
+
 export interface SunData {
   sunrise: string
   sunset: string

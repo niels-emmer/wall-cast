@@ -6,6 +6,7 @@ import { NewsTickerWidget } from './news/NewsTickerWidget'
 import { InfoWidget } from './info/InfoWidget'
 import { GarbageWidget } from './garbage/GarbageWidget'
 import { PolestarWidget } from './polestar/PolestarWidget'
+import { CalendarWidget } from './calendar/CalendarWidget'
 
 export interface WidgetProps {
   config: Record<string, unknown>
@@ -21,4 +22,5 @@ export const BASE_REGISTRY: Record<string, ComponentType<WidgetProps>> = {
   info: InfoWidget,
   garbage: GarbageWidget,
   polestar: PolestarWidget,
+  calendar: CalendarWidget,
 }
