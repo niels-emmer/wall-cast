@@ -8,6 +8,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./config:/config:ro
+    env_file:
+      - path: .env
+        required: false
     environment:
       WALL_CONFIG_PATH: /config/wall-cast.yaml
     expose:

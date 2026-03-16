@@ -50,6 +50,26 @@ export interface NewsData {
   items: NewsItem[]
 }
 
+export interface GarbageCollection {
+  type: 'gft' | 'pmd' | 'restafval'
+  label: string
+  date: string
+  days_until: number
+}
+
+export interface GarbageData {
+  collections: GarbageCollection[]
+}
+
+export interface PolestarData {
+  soc: number | null
+  range_km: number | null
+  charging_status: string | null
+  charging_connection_status: string | null
+  charging_time_min: number | null
+  odometer_km: number | null
+}
+
 export interface SunData {
   sunrise: string
   sunset: string

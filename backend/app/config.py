@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     weather_cache_ttl: int = 900   # 15 minutes
     rain_cache_ttl: int = 300      # 5 minutes
     news_cache_ttl: int = 600      # 10 minutes
+    garbage_cache_ttl: int = 3600  # 1 hour
+    polestar_cache_ttl: int = 300  # 5 minutes
+
+    polestar_username: str = ""
+    polestar_password: str = ""
 
 
 settings = Settings()

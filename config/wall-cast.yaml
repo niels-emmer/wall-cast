@@ -10,6 +10,10 @@ layout:
   columns: 12   # CSS grid columns
   rows: 8       # CSS grid rows
 
+garbage:
+  postcode: "9422KM"
+  huisnummer: "5"
+
 widgets:
   - id: clock
     type: clock
@@ -31,18 +35,20 @@ widgets:
       show_hourly: true
       show_daily: true
 
-  - id: rain-info-rotator
+  - id: bottom-left-rotator
     type: rotate
     col: 1
     row: 4
     col_span: 4
     row_span: 4
     config:
-      interval_sec: 30
+      interval_sec: 20
       widgets:
         - type: rain
           config: {}
-        - type: info
+        - type: garbage
+          config: {}
+        - type: polestar
           config: {}
 
   - id: news
