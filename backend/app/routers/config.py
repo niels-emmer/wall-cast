@@ -30,6 +30,10 @@ async def config_stream() -> StreamingResponse:
     """
 
     async def event_generator():
+        # First: announce startup ID so clients can detect a backend restart
+        hello = json.dumps({"startup_id": wall_config.get_startup_id()})
+        yield f"event: server-hello\ndata: {hello}\n\n"
+
         # Send current config on connect so the client is immediately in sync
         data = json.dumps(wall_config.get_config())
         yield f"event: config\ndata: {data}\n\n"

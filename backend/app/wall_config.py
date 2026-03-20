@@ -7,6 +7,7 @@ When wall-cast.yaml is saved, all connected SSE clients receive a
 
 import asyncio
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,14 @@ logger = logging.getLogger(__name__)
 
 _config: dict[str, Any] = {}
 _subscribers: list[asyncio.Queue] = []
+
+# Unique ID for this backend process. Changes on every container restart.
+# Clients use this to detect a restart and reload the page.
+_startup_id: str = str(uuid.uuid4())
+
+
+def get_startup_id() -> str:
+    return _startup_id
 
 
 def load_config() -> dict[str, Any]:
