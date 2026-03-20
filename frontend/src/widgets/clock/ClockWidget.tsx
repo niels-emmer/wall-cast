@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useLang } from '../../i18n/use-lang'
 
 interface Props {
   config: Record<string, unknown>
 }
 
-const DAYS   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December']
-
 export function ClockWidget({ config }: Props) {
+  const t = useLang()
   const showSeconds = config.show_seconds !== false
   const showDate    = config.show_date !== false
 
@@ -24,8 +22,8 @@ export function ClockWidget({ config }: Props) {
   const hours   = pad(now.getHours())
   const minutes = pad(now.getMinutes())
   const seconds = pad(now.getSeconds())
-  const dayName = DAYS[now.getDay()]
-  const dateNum = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`
+  const dayName = t.days[now.getDay()]
+  const dateNum = `${now.getDate()} ${t.months[now.getMonth()]} ${now.getFullYear()}`
 
   return (
     <div style={{

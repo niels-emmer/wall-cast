@@ -1,5 +1,7 @@
 import { useRain } from '../../hooks/use-rain'
+import { useLang } from '../../i18n/use-lang'
 import type { RainEntry, RainLevels } from '../../types/api'
+import type { Translations } from '../../i18n/translations'
 
 interface Props {
   config: Record<string, unknown>
@@ -22,7 +24,7 @@ function buildPath(pts: { x: number; y: number }[]): string {
   }).join(' ')
 }
 
-function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLevels }) {
+function RainChart({ forecast, levels, t }: { forecast: RainEntry[]; levels: RainLevels; t: Translations }) {
   const hasRain = forecast.some(f => f.mm_per_hour > 0)
   const maxMm   = Math.max(...forecast.map(f => f.mm_per_hour), levels.heavy * 1.2, 0.01)
 
@@ -112,13 +114,13 @@ function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLe
 
       {/* Y-axis labels as HTML — not subject to SVG stretch distortion */}
       <span style={{ ...labelStyle('rgba(0,212,255,0.45)'), top: `${pctLight}%` }}>
-        light
+        {t.rainLight}
       </span>
       <span style={{ ...labelStyle('rgba(0,150,255,0.45)'), top: `${pctModerate}%` }}>
-        mod.
+        {t.rainMod}
       </span>
       <span style={{ ...labelStyle('rgba(255,80,80,0.45)'), top: `${pctHeavy}%` }}>
-        heavy
+        {t.rainHeavy}
       </span>
 
       {/* "No rain" overlay */}
@@ -134,7 +136,7 @@ function RainChart({ forecast, levels }: { forecast: RainEntry[]; levels: RainLe
           pointerEvents: 'none',
           userSelect: 'none',
         }}>
-          no rain expected
+          {t.noRainExpected}
         </span>
       )}
     </div>
@@ -145,12 +147,13 @@ function timeLabels(forecast: RainEntry[]): { label: string; i: number }[] {
   return forecast
     .map((f, i) => ({ label: f.time, i }))
     .filter(({ i }) => i % 6 === 0)
-    .map(({ label, i }) => ({ label: i === 0 ? 'Nu' : label, i }))
+    .map(({ label, i }) => ({ label: i === 0 ? '_NOW_' : label, i }))
 }
 
 const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
 export function RainWidget({ config: _config }: Props) {
+  const t = useLang()
   const { data, isError } = useRain()
 
   const shell: React.CSSProperties = {
@@ -171,7 +174,7 @@ export function RainWidget({ config: _config }: Props) {
       color: 'var(--color-text)',
       flexShrink: 0,
     }}>
-      Regen
+      {t.rainTitle}
     </div>
   )
 
@@ -180,7 +183,7 @@ export function RainWidget({ config: _config }: Props) {
       {title}
       {divider}
       <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
-        Niet beschikbaar
+        {t.unavailable}
       </span>
     </div>
   )
@@ -188,7 +191,7 @@ export function RainWidget({ config: _config }: Props) {
 
   const { forecast, levels } = data
   const hasRain   = forecast.some(f => f.mm_per_hour > 0)
-  const labels    = timeLabels(forecast)
+  const labels    = timeLabels(forecast).map(l => ({ ...l, label: l.label === '_NOW_' ? t.now : l.label }))
   const currentMm = forecast[0]?.mm_per_hour ?? 0
   const peakMm    = Math.max(...forecast.map(f => f.mm_per_hour))
 
@@ -205,14 +208,14 @@ export function RainWidget({ config: _config }: Props) {
         }}>
           {hasRain
             ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}piek ${peakMm.toFixed(1)} mm/h`
-            : 'Droog'}
+            : t.dry}
         </span>
       </div>
 
       {divider}
 
       {/* Chart */}
-      <RainChart forecast={forecast} levels={levels} />
+      <RainChart forecast={forecast} levels={levels} t={t} />
 
       {/* Time axis */}
       <div style={{

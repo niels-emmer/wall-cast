@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     volumes:
-      - ./config:/config:ro
+      - ./config:/config
     env_file:
       - path: .env
         required: false

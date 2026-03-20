@@ -33,10 +33,12 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 - **Dark UI** — pure black background, bold white type, cyan accent
 - **Widget layout via YAML** — positions, spans, and widget options all in one file
 - **Hot reload** — save the config, the screen updates within ~1 second (no container restart)
+- **Admin panel** — browser-based UI at `/#admin` to manage rotation, feeds, language, and more without editing YAML
+- **Dutch / English** — all widget labels and text follow the `language` setting; switching takes effect immediately
 - **Breaking news via ntfy** — push any message to a self-hosted ntfy topic and it appears instantly as a `BREAKING` ticker item
 - **Fully auto-refreshing** — weather every 15 min, rain every 5 min, news every 10 min, sun data every 6 h
-- **No API keys** — most data sources are free and unauthenticated
-- **Rotate widget** — cycle multiple widgets in one grid cell
+- **No API keys** — all data sources are free and unauthenticated
+- **Rotate widget** — cycle multiple widgets in one grid cell, with per-slot enable/disable
 - **Modular** — add new widgets without touching core code
 
 ### Widgets
@@ -48,8 +50,9 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 | **Rain forecast** | [buienalarm.nl](https://buienalarm.nl) — SVG rain chart for next 2 h | 5 min |
 | **News ticker** | RSS feeds (configurable) | 10 min |
 | **Sunrise/sunset** | [sunrise-sunset.org](https://sunrise-sunset.org/api) — embedded in weather widget | 6 h |
-| **Garbage** | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — next 7-day collection schedule | 1 h |
+| **Garbage** | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — upcoming collection schedule, configurable window | 1 h |
 | **Polestar** | [pypolestar](https://github.com/pypolestar/pypolestar) — SOC, range, charging, service | 5 min |
+| **Calendar** | Google Calendar (service account) | 10 min |
 | **Rotate** | Container — cycles child widgets in one grid cell | n/a |
 
 ## Requirements
@@ -75,6 +78,8 @@ location:
   lat: 52.37    # your latitude (decimal degrees)
   lon: 4.90     # your longitude (decimal degrees)
   name: Amsterdam
+
+language: nl    # nl (Dutch) or en (English)
 ```
 
 See [docs/config-reference.md](docs/config-reference.md) for all options.
@@ -98,8 +103,8 @@ hostname -I | awk '{print $1}'  # Linux
 **Edit `docker-compose.yml`** and fill in the `caster` environment block:
 
 ```yaml
-CHROMECAST_IP: "192.168.1.42"    # your Chromecast/Google TV
-DISPLAY_URL: "http://192.168.1.10/"  # this machine's LAN IP — must be reachable from the TV
+CHROMECAST_IP: "192.168.1.42"       # your Chromecast/Google TV
+DISPLAY_URL: "http://192.168.1.10/" # this machine's LAN IP — must be reachable from the TV
 ```
 
 > ⚠ Use the **LAN IP** for `DISPLAY_URL`, not `http://localhost/`. The TV resolves `localhost` as itself, which results in a blank page and the cast session immediately closing.
@@ -120,11 +125,27 @@ To stop: `docker compose down`
 
 All display settings live in **`config/wall-cast.yaml`**. Edit and save the file — the display reacts within ~1 second with no restart required.
 
+### Via admin panel
+
+Open **`http://<host-ip>/#admin`** in a browser to use the point-and-click admin panel. From there you can:
+
+- Enable or disable individual rotation slots
+- Change the rotation interval
+- Add or remove RSS feed URLs for the news ticker
+- Switch the display language (Dutch / English)
+- Set the garbage collection look-ahead window
+
+Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
+
+### Via YAML directly
+
 ```yaml
 location:
   lat: 52.37         # latitude for weather and rain
   lon: 4.90          # longitude
   name: Amsterdam    # display name (cosmetic only)
+
+language: nl         # nl (Dutch) or en (English)
 
 layout:
   columns: 12        # CSS grid columns
@@ -148,12 +169,22 @@ widgets:
     col_span: 8
     row_span: 7
 
-  - id: rain
-    type: rain
+  - id: rotator
+    type: rotate
     col: 1
     row: 4
     col_span: 4
     row_span: 4
+    config:
+      interval_sec: 20
+      widgets:
+        - type: rain
+          config: {}
+        - type: garbage
+          config:
+            days_ahead: 7
+        - type: polestar
+          config: {}
 
   - id: news
     type: news
@@ -233,14 +264,16 @@ Host (Docker)
 │
 ├── backend    python:3.12-slim (internal only)
 │              FastAPI
-│              ├── GET /api/config          parsed YAML as JSON
-│              ├── GET /api/config/stream   SSE — pushes on YAML save
-│              ├── GET /api/weather         open-meteo proxy, 15 min cache
-│              ├── GET /api/rain            buienalarm proxy, 5 min cache
-│              ├── GET /api/news            RSS aggregator, 10 min cache
-│              ├── GET /api/sun             sunrise-sunset.org proxy, 6 h cache
-│              ├── GET /api/garbage         mijnafvalwijzer.nl proxy, 1 h cache
-│              └── GET /api/polestar        pypolestar → Polestar cloud, 5 min cache
+│              ├── GET  /api/config          parsed YAML as JSON
+│              ├── GET  /api/config/stream   SSE — pushes on YAML save
+│              ├── PUT  /api/admin/config    write config from admin panel
+│              ├── GET  /api/weather         open-meteo proxy, 15 min cache
+│              ├── GET  /api/rain            buienalarm proxy, 5 min cache
+│              ├── GET  /api/news            RSS aggregator, 10 min cache
+│              ├── GET  /api/sun             sunrise-sunset.org proxy, 6 h cache
+│              ├── GET  /api/garbage         mijnafvalwijzer.nl proxy, 1 h cache
+│              ├── GET  /api/polestar        pypolestar → Polestar cloud, 5 min cache
+│              └── GET  /api/calendar        Google Calendar API, 10 min cache
 │
 └── caster     python:3.12-slim (network_mode: host)
                catt cast_site → Chromecast via DashCast receiver
@@ -255,8 +288,7 @@ Chromecast / Google TV (same LAN)
 ## Security
 
 - The **backend is never exposed** on the host — only nginx is reachable from the network
-- The config file is mounted **read-only** into the backend container
-- All external API calls are **proxied server-side** — no CORS leakage, cached responses
+- All external API calls are **proxied server-side** — no CORS leakage, responses cached
 - **No authentication by design** — intended for local networks only
 - `server_tokens off` and standard security headers set in nginx
 
@@ -284,7 +316,9 @@ wall-cast/
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── App.tsx             CSS grid layout
+│       ├── App.tsx             CSS grid layout + admin routing
+│       ├── admin/              admin panel UI (/#admin)
+│       ├── i18n/               translations (nl/en) + useLang() hook
 │       ├── widgets/            one directory per widget type
 │       │   └── index.ts        ← widget registry
 │       └── hooks/              one hook per data source

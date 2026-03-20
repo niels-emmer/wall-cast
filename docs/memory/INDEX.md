@@ -52,14 +52,16 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | News RSS ticker | ✅ | Infinite scroll, Web Animations API |
 | Sunrise/sunset block | ✅ | Embedded top-right of weather widget (Op/Onder + daglichttijd) |
 | Breaking news (ntfy) | ✅ | SSE direct to browser, interspersed every ~3 items |
-| Garbage widget | ✅ | mijnafvalwijzer.nl, 7-day window, horizontal cards, accent for today/tomorrow |
+| Garbage widget | ✅ | mijnafvalwijzer.nl, configurable days-ahead window, fit-to-box, accent for today/tomorrow |
 | Polestar widget | ✅ | pypolestar, SOC/range/charging/stats; amber service tag + red fluid warning tags |
-| Calendar widget | ✅ | Google Calendar via service account; card layout, event colours, Dutch labels |
+| Calendar widget | ✅ | Google Calendar via service account; card layout, event colours |
 | Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval |
 | Visual harmony | ✅ | All widgets share title style (weight 300, uppercase, 0.25em tracking, white) |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
+| **Admin panel** | ✅ | `/#admin` — configure rotation, intervals, feeds, language, garbage days-ahead |
+| **i18n (nl/en)** | ✅ | `language: nl/en` in YAML; all widget labels translated via `useLang()` hook |
 
 ## Critical Implementation Notes
 
@@ -99,16 +101,32 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Uses `google-api-python-client` + `google-auth` (service account JSON at `GOOGLE_SA_KEY_FILE`, default `/config/google-sa.json`)
 - `config/google-sa.json` is gitignored via `config/*.json` rule — never commit it
 - Google API call is synchronous — wrapped in `asyncio.to_thread(_fetch_events)` to avoid blocking the event loop
-- Returns `today` (events on current date) + `week` (next 7 days grouped by date) + `today_label` (Dutch "Ma 16 mrt")
+- Returns `today` (events on current date) + `week` (next 7 days grouped by date) + `today_label` (formatted date string)
 - Timezone: `Europe/Amsterdam` via Python `zoneinfo` (stdlib, no extra dep)
 - Event `color` field maps colorId (1–11) to hex; `null` when no colour set → widget falls back to `rgba(255,255,255,0.3)` dot
 - `docker-compose.dev.yml` has `env_file` block so `GOOGLE_CALENDAR_ID` and `GOOGLE_SA_KEY_FILE` are available in dev
 
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
-- Config (`GARBAGE_POSTCODE`, `GARBAGE_HUISNUMMER`) read from env vars / `.env` — no longer in YAML
-- JSON path: `raw["data"]["ophaaldagen"]["data"]` — do NOT include `afvaldata` param (breaks the response)
+- Config (`GARBAGE_POSTCODE`, `GARBAGE_HUISNUMMER`) read from env vars / `.env` — not in YAML
+- `days_ahead` is configurable per-widget in YAML (default 7); backend accepts `?days_ahead=N` (1–365); cache is keyed per days_ahead value
+- JSON path: `raw["data"]["ophaaldaten"]["data"]` — do NOT include `afvaldata` param (breaks the response)
 - Status check: `raw.get("response") != "OK"` (not `"status"`)
+- Fit-to-box: `ResizeObserver` on the list container measures first card height and slices `collections` to only show complete cards
+
+### Admin panel
+- Route: `/#admin` — hash-based, no React Router dependency, works with nginx static serving
+- `PUT /api/admin/config` — receives full WallConfig JSON, serialises to YAML atomically (tmpfile + `os.replace()`); existing `watchfiles` watcher detects the rename and broadcasts SSE to the display
+- Config volume is **read-write** (`./config:/config`, not `:ro`) — required for admin writes
+- Admin state: full config loaded from `useConfig()`, draft state held locally in AdminPanel; `setDraft()` updates the draft; save sends the whole thing
+- Rotation slots: toggled per widget via `enabled` field on each slot in `config.widgets`
+
+### i18n
+- `frontend/src/i18n/translations.ts` — `Translations` interface + `nl` and `en` objects; all widget labels, day/month names, WMO codes, and format functions live here
+- `frontend/src/i18n/use-lang.ts` — `useLang()` reads `config.language` via `useQuery(['config'], ...)` directly (NOT via `useConfig()` — that would create an extra SSE `EventSource` per widget)
+- **Do NOT call `useConfig()` from `useLang()`** — `useConfig()` sets up a new SSE connection per render; `useLang()` must use `useQuery` directly with the same `['config']` key so TanStack Query deduplicates
+- `LANGUAGES` registry supports additional languages: add a new `Lang` union member + object in `translations.ts`
+- `language` is a top-level YAML key alongside `location` and `layout`
 
 ### Widget registry
 - `BASE_REGISTRY` in `base-registry.ts` holds all widgets except `rotate`
@@ -119,7 +137,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Rain: `cdn-secure.buienalarm.nl/api/3.4/forecast.php` — replaced dead gpsgadget endpoint, 5 min TTL
 - News: `feedparser` parsing RSS URLs from config, 10 min TTL
 - Sun: `api.sunrise-sunset.org/json` — no key, 6 h TTL
-- Garbage: `api.mijnafvalwijzer.nl` — public key, 1 h TTL
+- Garbage: `api.mijnafvalwijzer.nl` — public key, 1 h TTL per days_ahead value
 - Polestar: `pypolestar` → Polestar cloud API — 5 min TTL, uses cached data on error
 - Calendar: Google Calendar API v3 (service account) — 10 min TTL
 - ntfy: browser connects directly, no backend proxy

@@ -5,12 +5,18 @@ import type { WidgetProps } from '../base-registry'
 interface SlotConfig {
   type: string
   config: Record<string, unknown>
+  enabled?: boolean
 }
 
 export function RotatorWidget({ config }: WidgetProps) {
-  const slots = (config.widgets as SlotConfig[]) ?? []
+  const allSlots = (config.widgets as SlotConfig[]) ?? []
+  const slots = allSlots.filter(s => s.enabled !== false)
   const intervalSec = (config.interval_sec as number) ?? 30
   const [activeIdx, setActiveIdx] = useState(0)
+
+  useEffect(() => {
+    setActiveIdx(0)
+  }, [slots.length])
 
   useEffect(() => {
     if (slots.length < 2) return

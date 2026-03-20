@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCalendar } from '../../hooks/use-calendar'
+import { useLang } from '../../i18n/use-lang'
 import type { CalendarEvent, CalendarDay } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
 
@@ -8,9 +9,9 @@ const CARD_BORDER  = 'rgba(255,255,255,0.09)'
 const EMPTY_ACCENT = 'rgba(255,255,255,0.1)'
 const DEFAULT_ACCENT = 'rgba(255,255,255,0.3)'
 
-function EventCard({ ev }: { ev: CalendarEvent }) {
+function EventCard({ ev, allDayLabel }: { ev: CalendarEvent; allDayLabel: string }) {
   const timeStr = ev.all_day
-    ? 'Hele dag'
+    ? allDayLabel
     : `${ev.start_time}${ev.end_time ? '–' + ev.end_time : ''}`
   const accent = ev.color ?? DEFAULT_ACCENT
 
@@ -56,7 +57,7 @@ function EventCard({ ev }: { ev: CalendarEvent }) {
   )
 }
 
-function EmptyCard() {
+function EmptyCard({ text }: { text: string }) {
   return (
     <div style={{
       display: 'flex',
@@ -73,13 +74,13 @@ function EmptyCard() {
         color: 'var(--color-muted)',
         opacity: 0.45,
       }}>
-        Niets gepland
+        {text}
       </span>
     </div>
   )
 }
 
-function DayBlock({ day }: { day: CalendarDay }) {
+function DayBlock({ day, allDayLabel }: { day: CalendarDay; allDayLabel: string }) {
   return (
     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
       {/* Day label — right-aligned, fixed width */}
@@ -113,7 +114,7 @@ function DayBlock({ day }: { day: CalendarDay }) {
       {/* Event cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
         {day.events.map(ev => (
-          <EventCard key={ev.id} ev={ev} />
+          <EventCard key={ev.id} ev={ev} allDayLabel={allDayLabel} />
         ))}
       </div>
     </div>
@@ -121,6 +122,7 @@ function DayBlock({ day }: { day: CalendarDay }) {
 }
 
 export function CalendarWidget({ config: _config }: WidgetProps) {
+  const t = useLang()
   const { data, isError, isLoading } = useCalendar()
 
   const shell: React.CSSProperties = {
@@ -180,7 +182,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
       {title}
       {divider}
       <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)' }}>
-        Agenda niet beschikbaar
+        {t.calendarUnavailable}
       </span>
     </div>
   )
@@ -192,10 +194,10 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
 
       {/* Today */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
-        {sectionLabel('Vandaag', data.today_label)}
+        {sectionLabel(t.todaySection, data.today_label)}
         {data.today.length === 0
-          ? <EmptyCard />
-          : data.today.map(ev => <EventCard key={ev.id} ev={ev} />)
+          ? <EmptyCard text={t.nothingScheduled} />
+          : data.today.map(ev => <EventCard key={ev.id} ev={ev} allDayLabel={t.allDay} />)
         }
       </div>
 
@@ -211,7 +213,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
             flex: 1,
             minHeight: 0,
           }}>
-            {sectionLabel('Komende dagen')}
+            {sectionLabel(t.upcomingDays)}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -219,7 +221,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
               overflow: 'hidden',
             }}>
               {data.week.map(day => (
-                <DayBlock key={day.date} day={day} />
+                <DayBlock key={day.date} day={day} allDayLabel={t.allDay} />
               ))}
             </div>
           </div>

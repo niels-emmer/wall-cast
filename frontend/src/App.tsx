@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useConfig } from './hooks/use-config'
 import { WidgetRenderer } from './widgets/WidgetRenderer'
 import type { WidgetConfig } from './types/config'
+import AdminPanel from './admin/AdminPanel'
 
 function useWakeLock() {
   useEffect(() => {
@@ -31,7 +32,17 @@ function useWakeLock() {
 
 export default function App() {
   useWakeLock()
+
+  const [isAdmin, setIsAdmin] = useState(window.location.hash === '#admin')
+  useEffect(() => {
+    const handler = () => setIsAdmin(window.location.hash === '#admin')
+    window.addEventListener('hashchange', handler)
+    return () => window.removeEventListener('hashchange', handler)
+  }, [])
+
   const { data: config, isLoading, isError } = useConfig()
+
+  if (isAdmin) return <AdminPanel />
 
   const fullscreen: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',

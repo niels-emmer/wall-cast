@@ -20,5 +20,6 @@ export interface WallConfig {
     columns: number
     rows: number
   }
+  language?: string
   widgets: WidgetConfig[]
 }
