@@ -3,6 +3,20 @@ import { useConfig } from '../hooks/use-config'
 import { LANGUAGE_LABELS, type Lang } from '../i18n/translations'
 import type { WallConfig } from '../types/config'
 
+/** Unlock scrolling while the admin panel is open (index.css locks html+body for the kiosk). */
+function useScrollUnlock() {
+  useEffect(() => {
+    const html = document.documentElement
+    const prev = { html: html.style.overflow, body: document.body.style.overflow }
+    html.style.overflow = 'auto'
+    document.body.style.overflow = 'auto'
+    return () => {
+      html.style.overflow = prev.html
+      document.body.style.overflow = prev.body
+    }
+  }, [])
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -147,6 +161,7 @@ function NewsSection({
 // ---------------------------------------------------------------------------
 
 export default function AdminPanel() {
+  useScrollUnlock()
   const { data: remoteConfig, isLoading, isError } = useConfig()
   const [draft, setDraft] = useState<WallConfig | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
