@@ -61,15 +61,17 @@ def _fetch_events() -> dict:
     except Exception as exc:
         logger.warning("Could not fetch color palette: %s", exc)
 
-    # Fetch the calendar's own background color as a fallback for events
-    # that have no individual colorId (they inherit the calendar color in the UI).
+    # Fetch the calendar's background color from the CalendarListEntry
+    # (backgroundColor lives there, NOT on the Calendar resource).
+    # This works when the service account has the calendar in its own list;
+    # it may 404 if access was only granted via sharing without adding.
     calendar_color: str | None = None
     try:
-        cal_meta = service.calendars().get(calendarId=settings.google_calendar_id).execute()
-        calendar_color = cal_meta.get("backgroundColor")
-        logger.info("Calendar background color: %s", calendar_color)
+        entry = service.calendarList().get(calendarId=settings.google_calendar_id).execute()
+        calendar_color = entry.get("backgroundColor")
+        logger.info("Calendar list entry backgroundColor: %s", calendar_color)
     except Exception as exc:
-        logger.warning("Could not fetch calendar metadata: %s", exc)
+        logger.warning("calendarList.get() failed — will use config fallback if set: %s", exc)
 
     result = service.events().list(
         calendarId=settings.google_calendar_id,

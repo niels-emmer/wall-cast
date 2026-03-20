@@ -9,11 +9,15 @@ const CARD_BORDER  = 'rgba(255,255,255,0.09)'
 const EMPTY_ACCENT = 'rgba(255,255,255,0.1)'
 const DEFAULT_ACCENT = 'rgba(255,255,255,0.3)'
 
-function EventCard({ ev, allDayLabel }: { ev: CalendarEvent; allDayLabel: string }) {
+function EventCard({ ev, allDayLabel, fallbackColor }: {
+  ev: CalendarEvent
+  allDayLabel: string
+  fallbackColor: string
+}) {
   const timeStr = ev.all_day
     ? allDayLabel
     : `${ev.start_time}${ev.end_time ? '–' + ev.end_time : ''}`
-  const accent = ev.color ?? DEFAULT_ACCENT
+  const accent = ev.color ?? fallbackColor
 
   return (
     <div style={{
@@ -80,7 +84,11 @@ function EmptyCard({ text }: { text: string }) {
   )
 }
 
-function DayBlock({ day, allDayLabel }: { day: CalendarDay; allDayLabel: string }) {
+function DayBlock({ day, allDayLabel, fallbackColor }: {
+  day: CalendarDay
+  allDayLabel: string
+  fallbackColor: string
+}) {
   return (
     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
       {/* Day label — right-aligned, fixed width */}
@@ -114,15 +122,18 @@ function DayBlock({ day, allDayLabel }: { day: CalendarDay; allDayLabel: string 
       {/* Event cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
         {day.events.map(ev => (
-          <EventCard key={ev.id} ev={ev} allDayLabel={allDayLabel} />
+          <EventCard key={ev.id} ev={ev} allDayLabel={allDayLabel} fallbackColor={fallbackColor} />
         ))}
       </div>
     </div>
   )
 }
 
-export function CalendarWidget({ config: _config }: WidgetProps) {
+export function CalendarWidget({ config }: WidgetProps) {
   const t = useLang()
+  // calendar_color in YAML lets you hardcode a fallback accent when events
+  // have no individual colorId and the API can't resolve the calendar color.
+  const fallbackColor = (config.calendar_color as string) ?? DEFAULT_ACCENT
   const { data, isError, isLoading } = useCalendar()
 
   const shell: React.CSSProperties = {
@@ -197,7 +208,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
         {sectionLabel(t.todaySection, data.today_label)}
         {data.today.length === 0
           ? <EmptyCard text={t.nothingScheduled} />
-          : data.today.map(ev => <EventCard key={ev.id} ev={ev} allDayLabel={t.allDay} />)
+          : data.today.map(ev => <EventCard key={ev.id} ev={ev} allDayLabel={t.allDay} fallbackColor={fallbackColor} />)
         }
       </div>
 
@@ -221,7 +232,7 @@ export function CalendarWidget({ config: _config }: WidgetProps) {
               overflow: 'hidden',
             }}>
               {data.week.map(day => (
-                <DayBlock key={day.date} day={day} allDayLabel={t.allDay} />
+                <DayBlock key={day.date} day={day} allDayLabel={t.allDay} fallbackColor={fallbackColor} />
               ))}
             </div>
           </div>
