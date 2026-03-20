@@ -24,20 +24,9 @@ _cache_ts: float = 0.0
 
 _TZ = ZoneInfo(settings.timezone)
 
-# Google Calendar colorId → hex (matches Google UI palette)
-_COLOR_MAP: dict[str, str] = {
-    "1":  "#D50000",  # Tomato
-    "2":  "#E67C73",  # Flamingo
-    "3":  "#F4511E",  # Tangerine
-    "4":  "#F6BF26",  # Banana
-    "5":  "#33B679",  # Sage
-    "6":  "#0B8043",  # Basil
-    "7":  "#039BE5",  # Peacock
-    "8":  "#3F51B5",  # Blueberry
-    "9":  "#7986CB",  # Lavender
-    "10": "#8E24AA",  # Grape
-    "11": "#616161",  # Graphite
-}
+# Populated at runtime from colors.list() — keyed by colorId string → hex background.
+# Fetched once per cache refresh so we always match Google's actual palette.
+_event_colors: dict[str, str] = {}
 
 _NL_DAYS   = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"]
 _NL_MONTHS = ["", "jan", "feb", "mrt", "apr", "mei", "jun",
@@ -59,13 +48,26 @@ def _fetch_events() -> dict:
     )
     service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
+    # Fetch the authoritative event color palette from Google so we don't
+    # have to maintain a hardcoded colorId→hex map.
+    global _event_colors
+    try:
+        colors_resp = service.colors().list().execute()
+        _event_colors = {
+            cid: meta["background"]
+            for cid, meta in colors_resp.get("event", {}).items()
+        }
+        logger.info("Fetched %d event colors from Google", len(_event_colors))
+    except Exception as exc:
+        logger.warning("Could not fetch color palette: %s", exc)
+
     # Fetch the calendar's own background color as a fallback for events
     # that have no individual colorId (they inherit the calendar color in the UI).
     calendar_color: str | None = None
     try:
         cal_meta = service.calendars().get(calendarId=settings.google_calendar_id).execute()
         calendar_color = cal_meta.get("backgroundColor")
-        logger.debug("Calendar background color: %s", calendar_color)
+        logger.info("Calendar background color: %s", calendar_color)
     except Exception as exc:
         logger.warning("Could not fetch calendar metadata: %s", exc)
 
@@ -86,9 +88,9 @@ def _fetch_events() -> dict:
         all_day   = "dateTime" not in start_raw
 
         color_id = item.get("colorId")
-        logger.debug("Event %r colorId=%r", item.get("summary", "?"), color_id)
         # Prefer the event's own colorId; fall back to the calendar's background color.
-        color = _COLOR_MAP.get(str(color_id)) if color_id else calendar_color
+        color = _event_colors.get(str(color_id)) if color_id else calendar_color
+        logger.info("Event %r colorId=%r → %s", item.get("summary", "?"), color_id, color)
 
         if all_day:
             date_str   = start_raw["date"]
