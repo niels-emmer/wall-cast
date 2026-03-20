@@ -31,13 +31,16 @@ export function RotatorWidget({ config }: WidgetProps) {
       {slots.map((slot, idx) => {
         const Component = BASE_REGISTRY[slot.type]
         if (!Component) return null
+        const active = idx === activeIdx
         return (
           <div
             key={idx}
             style={{
-              display: idx === activeIdx ? 'block' : 'none',
-              width: '100%',
-              height: '100%',
+              position: 'absolute',
+              inset: 0,
+              opacity: active ? 1 : 0,
+              transition: 'opacity 0.8s ease',
+              pointerEvents: active ? 'auto' : 'none',
             }}
           >
             <Component config={slot.config ?? {}} />
