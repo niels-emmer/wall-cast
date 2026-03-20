@@ -64,6 +64,17 @@ export interface Translations {
   tripB: string
   polestarUnavailable: string
 
+  // Traffic
+  trafficTitle: string
+  trafficUnavailable: string
+  travelTime: string
+  trafficDelay: string
+  noDelay: string
+  trafficJams: string
+  noJams: string
+  km: string
+  min: string
+
   // Shared
   unavailable: string
   loading: string
@@ -158,6 +169,16 @@ export const nl: Translations = {
   tripB: 'rit B',
   polestarUnavailable: 'Niet beschikbaar',
 
+  trafficTitle: 'Verkeer',
+  trafficUnavailable: 'Verkeer niet beschikbaar',
+  travelTime: 'Reistijd',
+  trafficDelay: 'vertraging',
+  noDelay: 'geen vertraging',
+  trafficJams: 'Files',
+  noJams: 'Geen files',
+  km: 'km',
+  min: 'min',
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -250,6 +271,16 @@ export const en: Translations = {
   tripA: 'trip A',
   tripB: 'trip B',
   polestarUnavailable: 'Unavailable',
+
+  trafficTitle: 'Traffic',
+  trafficUnavailable: 'Traffic unavailable',
+  travelTime: 'Travel time',
+  trafficDelay: 'delay',
+  noDelay: 'no delay',
+  trafficJams: 'Traffic jams',
+  noJams: 'No jams',
+  km: 'km',
+  min: 'min',
 
   unavailable: 'Unavailable',
   loading: 'Loading...',
