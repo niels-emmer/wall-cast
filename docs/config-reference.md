@@ -2,7 +2,7 @@
 
 The display is controlled by two things:
 
-- **`config/wall-cast.yaml`** — layout and widget list. Save the file and the display updates within ~1 second (no restart needed).
+- **`config/wall-cast.yaml`** — layout and widget list. Save the file and the display updates within ~1 second (no restart needed). Can also be edited via the **admin panel** at `/#admin`.
 - **`.env`** — secrets and personal settings. Requires a container restart when changed. Copy `.env.example` to `.env` and fill in only the sections you need.
 
 ---
@@ -27,6 +27,7 @@ See `.env.example` for the full template with step-by-step setup instructions fo
 
 ```yaml
 location:   { lat, lon, name }
+language:   nl              # display language: nl (default) or en
 layout:     { columns, rows }
 widgets:    [ ... ]
 ```
@@ -49,6 +50,23 @@ location:
   lon: 4.90       # your longitude (decimal degrees)
   name: Amsterdam
 ```
+
+---
+
+## `language`
+
+Controls all widget labels, day/month names, weather condition descriptions, and status text.
+
+| Value | Language |
+|-------|----------|
+| `nl` | Dutch (default) |
+| `en` | English |
+
+```yaml
+language: nl
+```
+
+Can be changed live via the admin panel at `/#admin` — the display updates without a restart.
 
 ---
 
@@ -120,8 +138,8 @@ Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from 
 ```
 
 **Display (top to bottom):**
-1. Title row — "WEER" + current weather icon, temperature, condition label, wind speed (km/u)
-2. Sunrise (Op) · Sunset (Onder) times + daylight duration (top-right)
+1. Title row — weather icon, temperature, condition label, wind speed
+2. Sunrise · Sunset times + daylight duration (top-right)
 3. Hourly row — 7 columns: time, weather icon, temperature, precipitation %
 4. Daily row — 7 columns: day name, icon, high, low temperature
 
@@ -145,7 +163,7 @@ Hourly and daily rows share equal height in the widget.
   config: {}   # no configuration options currently
 ```
 
-**Display:** "REGEN" title with current status ("Droog" or peak mm/h) on the right. SVG area chart with gradient fill, dashed threshold lines (light / moderate / heavy), time axis ("Nu" for current), legend in mm/u, and HTML-overlay Y-axis labels. Shows "no rain expected" when the forecast is dry.
+**Display:** Title with current status ("Droog" / "Dry" or peak mm/h) on the right. SVG area chart with gradient fill, dashed threshold lines (light / moderate / heavy), time axis, legend, and HTML-overlay Y-axis labels. Shows "no rain expected" when the forecast is dry.
 
 **Backend cache:** 5 min.
 
@@ -210,7 +228,7 @@ curl -H "Title: Headline" -d "Message text" https://ntfy.example.com/wall-cast
 
 ### `garbage`
 
-Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows collections due within the next 7 days as horizontal cards. Postcode and house number are configured via environment variables in `.env` (see `.env.example`).
+Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows the next collection per type (GFT, PMD, Restafval) as horizontal cards. Postcode and house number are configured via environment variables in `.env`.
 
 ```env
 GARBAGE_POSTCODE=1234AB
@@ -218,25 +236,27 @@ GARBAGE_HUISNUMMER=1
 ```
 
 ```yaml
-# Widget entry:
 - id: garbage
   type: garbage
   col: 1
   row: 4
   col_span: 4
   row_span: 4
-  config: {}
+  config:
+    days_ahead: 7   # look-ahead window in days (default: 7, range: 1–365)
 ```
 
-**Display:** "AFVAL" title. One horizontal card per upcoming collection. Cards for today or tomorrow have an accent background. Each card shows a colour-coded left border, large emoji icon (🌿 GFT / ♻️ PMD / 🗑️ Restafval), container name, and relative day label + date on the right. Shows "Geen ophaling deze week" when nothing is due.
+`days_ahead` controls how far ahead to look for upcoming collections. Only collections due within this window are shown. The widget automatically shows only as many cards as fit in the available space — no scrolling, no cut-off cards.
 
-**Backend cache:** 1 hour (collection dates change infrequently).
+**Display:** Title. One horizontal card per upcoming collection, sorted by proximity. Cards for today or tomorrow have an accent background. Each card shows a colour-coded left border, large emoji icon (🌿 GFT / ♻️ PMD / 🗑️ Restafval), container name, and relative day label + date on the right.
+
+**Backend cache:** 1 hour (results are cached per `days_ahead` value).
 
 ---
 
 ### `polestar`
 
-Battery, range, charging status, and service data for a Polestar vehicle via the [pypolestar](https://github.com/pypolestar/pypolestar) library. Credentials are provided via environment variables — set them in `.env` at the repo root (see `.env.example`).
+Battery, range, charging status, and service data for a Polestar vehicle via the [pypolestar](https://github.com/pypolestar/pypolestar) library. Credentials are provided via environment variables.
 
 ```yaml
 - id: polestar
@@ -254,7 +274,7 @@ POLESTAR_USERNAME=your@email.com
 POLESTAR_PASSWORD=yourpassword
 ```
 
-**Display:** "POLESTAR" title, large SOC percentage (colour-coded green/amber/red), range in km, battery progress bar, charging status with live kW and amps when charging, estimated time to full charge. Additional rows appear automatically when the API returns data: efficiency (kWh/100km), average speed, trip meters A/B. Service warning appears as an amber alert tag only when active. Fluid warnings (brake fluid, coolant, oil) appear as red alert tags only when the car reports a problem. Odometer in small muted text at the bottom.
+**Display:** Title, large SOC percentage (colour-coded green/amber/red), range in km, battery progress bar, charging status with live kW and amps when charging, estimated time to full charge. Additional rows appear automatically when the API returns data: efficiency (kWh/100km), average speed, trip meters A/B. Service warning appears as an amber alert tag only when active. Fluid warnings (brake fluid, coolant, oil) appear as red alert tags only when the car reports a problem.
 
 **Backend cache:** 5 min. Shows last known data on API error.
 
@@ -289,7 +309,7 @@ GOOGLE_SA_KEY_FILE=/config/google-sa.json
 5. Open Google Calendar → Settings → your calendar → **Share with specific people**. Add the service account email (ends in `@...iam.gserviceaccount.com`). Permission: "See all event details".
 6. Google Calendar → Settings → your calendar → **Integrate calendar**. Copy the **Calendar ID**.
 
-**Display:** "FAMILY" title. "VANDAAG" section with today's events as cards (or a "Niets gepland" placeholder card). "KOMENDE DAGEN" section with the next 3 upcoming events grouped by day, each day showing a label column (Di / 17 mrt) beside the event cards. Each event card has a 4px coloured left border matching the event's Google Calendar colour. The day/time line below the event title shows "Hele dag" for all-day events.
+**Display:** Title. Today's events as cards (or a "nothing scheduled" placeholder). Upcoming days section with the next events grouped by day. Each event card has a 4px coloured left border matching the event's Google Calendar colour.
 
 **Backend cache:** 10 min.
 
@@ -311,15 +331,32 @@ Cycles through a list of child widgets, showing one at a time. Used to display m
     widgets:
       - type: rain
         config: {}
+        enabled: true   # set to false to skip this slot (default: true)
       - type: garbage
-        config: {}
+        config:
+          days_ahead: 7
       - type: polestar
         config: {}
 ```
 
 **Notes:**
 - Child widgets in `config.widgets` use the same `type` and `config` keys as top-level widgets, but do not need `id`, `col`, `row`, `col_span`, or `row_span` — they inherit the rotator's grid cell.
-- The `info` widget type (plain key/value display) is also available as a child type.
+- `enabled: false` skips a slot entirely. Useful for temporarily hiding a widget without removing its config.
+- Rotation and individual slot `enabled` states can be toggled live from the admin panel at `/#admin`.
+
+---
+
+## Admin panel
+
+Open `http://<your-host>/#admin` to access the admin panel. From here you can:
+
+- **Enable / disable** individual rotation slots without editing the YAML directly
+- **Change the rotation interval** (seconds per slot)
+- **Add or remove RSS feeds** for the news ticker
+- **Set the display language** (Dutch or English)
+- **Set the garbage look-ahead window** (days ahead to check for collections)
+
+Changes are saved back to `config/wall-cast.yaml` and take effect on the display immediately via hot-reload.
 
 ---
 

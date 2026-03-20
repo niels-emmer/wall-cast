@@ -1,37 +1,25 @@
 import { useWeather } from '../../hooks/use-weather'
 import { useSun } from '../../hooks/use-sun'
+import { useLang } from '../../i18n/use-lang'
 import type { SunData } from '../../types/api'
+import type { Translations } from '../../i18n/translations'
 
 interface Props {
   config: Record<string, unknown>
 }
 
-const WMO: Record<number, { symbol: string; label: string }> = {
-  0:  { symbol: '☀',  label: 'Clear' },
-  1:  { symbol: '🌤', label: 'Mostly clear' },
-  2:  { symbol: '⛅', label: 'Partly cloudy' },
-  3:  { symbol: '☁',  label: 'Overcast' },
-  45: { symbol: '🌫', label: 'Fog' },
-  48: { symbol: '🌫', label: 'Icy fog' },
-  51: { symbol: '🌦', label: 'Light drizzle' },
-  53: { symbol: '🌦', label: 'Drizzle' },
-  55: { symbol: '🌧', label: 'Heavy drizzle' },
-  61: { symbol: '🌧', label: 'Light rain' },
-  63: { symbol: '🌧', label: 'Rain' },
-  65: { symbol: '🌧', label: 'Heavy rain' },
-  71: { symbol: '🌨', label: 'Light snow' },
-  73: { symbol: '🌨', label: 'Snow' },
-  75: { symbol: '❄',  label: 'Heavy snow' },
-  80: { symbol: '🌦', label: 'Showers' },
-  81: { symbol: '🌧', label: 'Showers' },
-  82: { symbol: '⛈',  label: 'Heavy showers' },
-  95: { symbol: '⛈',  label: 'Thunderstorm' },
-  96: { symbol: '⛈',  label: 'Thunderstorm+hail' },
-  99: { symbol: '⛈',  label: 'Thunderstorm+hail' },
+const WMO_SYMBOLS: Record<number, string> = {
+  0:  '☀',  1:  '🌤', 2:  '⛅', 3:  '☁',
+  45: '🌫', 48: '🌫',
+  51: '🌦', 53: '🌦', 55: '🌧',
+  61: '🌧', 63: '🌧', 65: '🌧',
+  71: '🌨', 73: '🌨', 75: '❄',
+  80: '🌦', 81: '🌧', 82: '⛈',
+  95: '⛈', 96: '⛈', 99: '⛈',
 }
-function wmo(code: number) { return WMO[code] ?? { symbol: '?', label: 'Unknown' } }
-
-const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+function wmo(code: number, t: Translations) {
+  return { symbol: WMO_SYMBOLS[code] ?? '?', label: t.wmoLabels[code] ?? '?' }
+}
 
 const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
@@ -124,13 +112,13 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
 }
 
 // ── Sun block — top-right of current weather row ──────────────────────────────
-function SunBlock({ d }: { d: SunData }) {
+function SunBlock({ d, t }: { d: SunData; t: Translations }) {
   const muted = 'var(--color-muted)'
   const mono: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
 
   const cols = [
-    { emoji: '🌅', label: 'Op',    time: d.sunrise },
-    { emoji: '🌇', label: 'Onder', time: d.sunset  },
+    { emoji: '🌅', label: t.sunrise, time: d.sunrise },
+    { emoji: '🌇', label: t.sunset,  time: d.sunset  },
   ]
 
   return (
@@ -166,7 +154,7 @@ function SunBlock({ d }: { d: SunData }) {
         color: muted,
         letterSpacing: '0.05em',
       }}>
-        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m daglichttijd
+        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m {t.daylight}
       </span>
 
     </div>
@@ -174,6 +162,7 @@ function SunBlock({ d }: { d: SunData }) {
 }
 
 export function WeatherWidget({ config }: Props) {
+  const t = useLang()
   const { data, isError } = useWeather()
   const { data: sunData } = useSun()
 
@@ -181,13 +170,13 @@ export function WeatherWidget({ config }: Props) {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     height: '100%', color: 'var(--color-muted)', fontSize: '1rem',
   }
-  if (isError) return <div style={center}>Weer niet beschikbaar</div>
-  if (!data)   return <div style={center}>Laden...</div>
+  if (isError) return <div style={center}>{t.weatherUnavailable}</div>
+  if (!data)   return <div style={center}>{t.weatherLoading}</div>
 
   const now = new Date()
-  const startIdx = Math.max(0, data.hourly.time.findIndex(t => new Date(t) >= now))
+  const startIdx = Math.max(0, data.hourly.time.findIndex(ts => new Date(ts) >= now))
   const cur = data.current_weather
-  const { symbol: curSymbol, label: curLabel } = wmo(cur.weathercode)
+  const { symbol: curSymbol, label: curLabel } = wmo(cur.weathercode, t)
 
   return (
     <div style={{
@@ -209,7 +198,7 @@ export function WeatherWidget({ config }: Props) {
           color: 'var(--color-text)',
           flexShrink: 0,
         }}>
-          Weer
+          {t.weatherTitle}
         </div>
         <span style={{ fontSize: 'clamp(2rem, 4vw, 3.2rem)', lineHeight: 1 }}>{curSymbol}</span>
         <span style={{
@@ -224,10 +213,10 @@ export function WeatherWidget({ config }: Props) {
             {curLabel}
           </span>
           <span style={{ fontSize: 'clamp(0.95rem, 1.8vw, 1.4rem)', color: 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
-            Wind: {Math.round(cur.windspeed)} km/u
+            {t.wind} {Math.round(cur.windspeed)} km/u
           </span>
         </div>
-        {sunData && <SunBlock d={sunData} />}
+        {sunData && <SunBlock d={sunData} t={t} />}
       </div>
 
       {divider}
@@ -238,7 +227,7 @@ export function WeatherWidget({ config }: Props) {
           {Array.from({ length: 7 }, (_, i) => {
             const idx  = startIdx + i
             const hour = `${String(new Date(data.hourly.time[idx]).getHours()).padStart(2, '0')}:00`
-            const { symbol } = wmo(data.hourly.weathercode[idx])
+            const { symbol } = wmo(data.hourly.weathercode[idx], t)
             return (
               <HourlyCol
                 key={idx}
@@ -258,13 +247,13 @@ export function WeatherWidget({ config }: Props) {
       {/* ── Daily ── */}
       {config.show_daily !== false && (
         <div style={{ display: 'flex', flexDirection: 'row', gap: '0.3rem', flex: 1, minHeight: 0 }}>
-          {data.daily.time.slice(0, 7).map((t, i) => {
-            const d = new Date(t)
+          {data.daily.time.slice(0, 7).map((ts, i) => {
+            const d = new Date(ts)
             return (
               <DailyCol
-                key={t}
-                label={i === 0 ? 'Today' : SHORT_DAYS[d.getDay()]}
-                symbol={wmo(data.daily.weathercode[i]).symbol}
+                key={ts}
+                label={i === 0 ? t.today : t.daysShort[d.getDay()]}
+                symbol={wmo(data.daily.weathercode[i], t).symbol}
                 hi={Math.round(data.daily.temperature_2m_max[i])}
                 lo={Math.round(data.daily.temperature_2m_min[i])}
                 accent={i === 0}

@@ -15,13 +15,13 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["garbage"])
 
-_cache: dict[str, Any] = {}
-_cache_ts: float = 0.0
+_cache: dict[int, dict] = {}       # days_ahead -> result
+_cache_ts: dict[int, float] = {}   # days_ahead -> timestamp
 
 AFVALWIJZER_URL = (
     "https://api.mijnafvalwijzer.nl/webservices/appsinput/"
@@ -45,11 +45,11 @@ CONTAINER_LABELS = {
 
 
 @router.get("/garbage")
-async def get_garbage() -> dict:
+async def get_garbage(days_ahead: int = Query(default=7, ge=1, le=365)) -> dict:
     global _cache, _cache_ts
 
-    if _cache and (time.monotonic() - _cache_ts) < settings.garbage_cache_ttl:
-        return _cache
+    if days_ahead in _cache and (time.monotonic() - _cache_ts.get(days_ahead, 0)) < settings.garbage_cache_ttl:
+        return _cache[days_ahead]
 
     postcode = settings.garbage_postcode.replace(" ", "")
     huisnummer = settings.garbage_huisnummer
@@ -69,15 +69,15 @@ async def get_garbage() -> dict:
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("Garbage fetch failed: %s", exc)
-        if _cache:
-            return _cache
+        if days_ahead in _cache:
+            return _cache[days_ahead]
         raise HTTPException(status_code=502, detail="Afvalwijzer API unavailable")
 
     raw = resp.json()
     if raw.get("response") != "OK":
         logger.error("Afvalwijzer returned response %s", raw.get("response"))
-        if _cache:
-            return _cache
+        if days_ahead in _cache:
+            return _cache[days_ahead]
         raise HTTPException(status_code=502, detail="Afvalwijzer returned error status")
 
     all_dates: list = (
@@ -86,8 +86,8 @@ async def get_garbage() -> dict:
            .get("data", [])
     )
 
-    cutoff = today + timedelta(days=7)
-    # Find the next upcoming date per type (within 7 days)
+    cutoff = today + timedelta(days=days_ahead)
+    # Find the next upcoming date per type (within days_ahead days)
     next_per_type: dict[str, date] = {}
     for item in all_dates:
         waste_type = item.get("type", "").lower()
@@ -114,6 +114,7 @@ async def get_garbage() -> dict:
     ]
     collections.sort(key=lambda x: x["days_until"])
 
-    _cache = {"collections": collections}
-    _cache_ts = time.monotonic()
-    return _cache
+    result = {"collections": collections}
+    _cache[days_ahead] = result
+    _cache_ts[days_ahead] = time.monotonic()
+    return result

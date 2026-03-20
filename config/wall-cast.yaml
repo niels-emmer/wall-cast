@@ -1,70 +1,63 @@
-# wall-cast configuration
-# Edit this file and save — the display updates automatically within ~1 second.
-
 location:
-  lat: 52.0    # your latitude (decimal degrees)
-  lon: 5.0     # your longitude (decimal degrees)
+  lat: 52
+  lon: 5
   name: My City
-
+language: nl
 layout:
-  columns: 12   # CSS grid columns
-  rows: 8       # CSS grid rows
-
+  columns: 12
+  rows: 8
 widgets:
-  - id: clock
-    type: clock
-    col: 1
-    row: 1
-    col_span: 4
-    row_span: 3
-    config:
-      show_seconds: true
-      show_date: true
-
-  - id: main-rotator
-    type: rotate
-    col: 5
-    row: 1
-    col_span: 8
-    row_span: 7
-    config:
-      interval_sec: 30
-      widgets:
-        - type: weather
-          config:
-            show_hourly: true
-            show_daily: true
-        - type: calendar
-          config: {}
-
-  - id: bottom-left-rotator
-    type: rotate
-    col: 1
-    row: 4
-    col_span: 4
-    row_span: 4
-    config:
-      interval_sec: 20
-      widgets:
-        - type: rain
-          config: {}
-        - type: garbage
-          config: {}
-        - type: polestar
-          config: {}
-
-  - id: news
-    type: news
-    col: 1
-    row: 8
-    col_span: 12
-    row_span: 1
-    config:
-      feeds:
-        - url: https://feeds.nos.nl/nosnieuwsalgemeen
-          label: NOS
-        - url: https://www.nu.nl/rss/Algemeen
-          label: NU.nl
-      scroll_speed_px_per_sec: 80
-      ntfy_url: https://ntfy.example.com   # optional — remove to disable breaking news
-      ntfy_topic: wall-cast
+- id: clock
+  type: clock
+  col: 1
+  row: 1
+  col_span: 4
+  row_span: 3
+  config:
+    show_seconds: true
+    show_date: true
+- id: main-rotator
+  type: rotate
+  col: 5
+  row: 1
+  col_span: 8
+  row_span: 7
+  config:
+    interval_sec: 30
+    widgets:
+    - type: weather
+      config:
+        show_hourly: true
+        show_daily: true
+    - type: calendar
+      config: {}
+- id: bottom-left-rotator
+  type: rotate
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config:
+    interval_sec: 20
+    widgets:
+    - type: rain
+      config: {}
+    - type: garbage
+      config: {}
+    - type: polestar
+      config: {}
+- id: news
+  type: news
+  col: 1
+  row: 8
+  col_span: 12
+  row_span: 1
+  config:
+    feeds:
+    - url: https://feeds.nos.nl/nosnieuwsalgemeen
+      label: NOS
+    - url: https://www.nu.nl/rss/Algemeen
+      label: NU.nl
+    scroll_speed_px_per_sec: 80
+    ntfy_url: https://ntfy.example.com
+    ntfy_topic: wall-cast

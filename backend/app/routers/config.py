@@ -1,11 +1,17 @@
 import asyncio
 import json
 import logging
+import os
+import tempfile
+from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter
+import yaml
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import wall_config
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["config"])
@@ -50,3 +56,26 @@ async def config_stream() -> StreamingResponse:
             "X-Accel-Buffering": "no",  # disable nginx buffering for SSE
         },
     )
+
+
+@router.put("/admin/config", status_code=204)
+async def update_config(body: dict[str, Any]) -> None:
+    """Write a new config to wall-cast.yaml atomically."""
+    path = Path(settings.wall_config_path)
+    try:
+        yaml_text = yaml.dump(body, allow_unicode=True, sort_keys=False, default_flow_style=False)
+    except yaml.YAMLError as exc:
+        raise HTTPException(status_code=422, detail=f"Cannot serialize config: {exc}")
+
+    # Atomic write: write to a sibling tmp file then rename
+    try:
+        fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(yaml_text)
+            os.replace(tmp_path, path)
+        except Exception:
+            os.unlink(tmp_path)
+            raise
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Cannot write config: {exc}")

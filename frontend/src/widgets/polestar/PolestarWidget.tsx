@@ -1,4 +1,5 @@
 import { usePolestar } from '../../hooks/use-polestar'
+import { useLang } from '../../i18n/use-lang'
 import type { WidgetProps } from '../base-registry'
 
 function socColor(soc: number): string {
@@ -15,11 +16,7 @@ function isConnected(connection: string | null): boolean {
   return connection?.includes('CONNECTED') === true && !connection?.includes('DISCONNECTED')
 }
 
-function chargingLabel(status: string | null, connection: string | null): string {
-  if (isActivelyCharging(status)) return 'Aan het laden'
-  if (isConnected(connection)) return 'Aangesloten'
-  return 'Niet aangesloten'
-}
+// Labels are now injected from translations — see usePolestarLabels below
 
 function chargingIcon(status: string | null, _connection: string | null): string {
   if (isActivelyCharging(status)) return '⚡'
@@ -31,25 +28,34 @@ function chargingIconOpacity(status: string | null, connection: string | null): 
   return 0.25
 }
 
-function serviceLabel(warning: string | null): string | null {
+import type { Translations } from '../../i18n/translations'
+
+function serviceLabel(warning: string | null, t: Translations): string | null {
   if (!warning) return null
-  if (warning.includes('OVERDUE')) return 'Service achterstallig'
-  if (warning.includes('TIME_FOR_SERVICE')) return 'Tijd voor service'
-  if (warning.includes('ALMOST')) return 'Service bijna nodig'
-  if (warning.includes('REQUIRED')) return 'Service vereist'
-  return 'Service melding'
+  if (warning.includes('OVERDUE')) return t.serviceOverdue
+  if (warning.includes('TIME_FOR_SERVICE')) return t.timeForService
+  if (warning.includes('ALMOST')) return t.serviceAlmostNeeded
+  if (warning.includes('REQUIRED')) return t.serviceRequired
+  return t.serviceNotification
 }
 
-function fluidLabel(warning: string | null, fluid: 'brake' | 'coolant' | 'oil'): string | null {
+function fluidLabel(warning: string | null, fluid: 'brake' | 'coolant' | 'oil', t: Translations): string | null {
   if (!warning) return null
-  const name = { brake: 'Remvloeistof', coolant: 'Koelvloeistof', oil: 'Olie' }[fluid]
-  if (warning.includes('TOO_LOW')) return `${name} te laag`
-  if (warning.includes('TOO_HIGH')) return `${name} te hoog`
-  if (warning.includes('SERVICE_REQUIRED')) return `${name}: service vereist`
-  return `${name}: controleer`
+  const name = { brake: t.brakeFluid, coolant: t.coolant, oil: t.oil }[fluid]
+  if (warning.includes('TOO_LOW')) return `${name} ${t.fluidTooLow}`
+  if (warning.includes('TOO_HIGH')) return `${name} ${t.fluidTooHigh}`
+  if (warning.includes('SERVICE_REQUIRED')) return `${name}: ${t.fluidServiceRequired}`
+  return `${name}: ${t.fluidCheck}`
+}
+
+function chargingLabel(status: string | null, connection: string | null, t: Translations): string {
+  if (isActivelyCharging(status)) return t.charging
+  if (isConnected(connection)) return t.connected
+  return t.notConnected
 }
 
 export function PolestarWidget({ config: _config }: WidgetProps) {
+  const t = useLang()
   const { data, isError, isLoading } = usePolestar()
 
   const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
@@ -83,7 +89,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
       {title}
       {divider}
       <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
-        Niet beschikbaar
+        {t.polestarUnavailable}
       </span>
     </div>
   )
@@ -91,11 +97,11 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
   const soc = data.soc ?? 0
   const color = socColor(soc)
   const isCharging = isActivelyCharging(data.charging_status)
-  const serviceMsg = serviceLabel(data.service_warning)
+  const serviceMsg = serviceLabel(data.service_warning, t)
   const fluidAlerts = [
-    fluidLabel(data.brake_fluid_warning, 'brake'),
-    fluidLabel(data.coolant_warning, 'coolant'),
-    fluidLabel(data.oil_warning, 'oil'),
+    fluidLabel(data.brake_fluid_warning, 'brake', t),
+    fluidLabel(data.coolant_warning, 'coolant', t),
+    fluidLabel(data.oil_warning, 'oil', t),
   ].filter(Boolean) as string[]
   const capKw = data.charging_power_watts != null ? (data.charging_power_watts / 1000).toFixed(1) : null
   const capA  = data.charging_current_amps
@@ -138,7 +144,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
               color: 'var(--color-muted)',
               lineHeight: 1,
             }}>
-              bereik
+              {t.range}
             </span>
           </div>
         )}
@@ -175,7 +181,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
           fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
           lineHeight: 1,
         }}>
-          {chargingLabel(data.charging_status, data.charging_connection_status)}
+          {chargingLabel(data.charging_status, data.charging_connection_status, t)}
         </span>
         {isCharging && (capKw || capA) && (
           <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', marginLeft: '0.2rem' }}>
@@ -188,7 +194,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
             fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
             marginLeft: 'auto',
           }}>
-            vol over {Math.floor(data.charging_time_min / 60)}u{data.charging_time_min % 60 > 0 ? `${data.charging_time_min % 60}m` : ''}
+            {t.fullIn(Math.floor(data.charging_time_min / 60), data.charging_time_min % 60)}
           </span>
         )}
       </div>
@@ -206,7 +212,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
             <span>{data.avg_consumption_kwh_per_100km.toFixed(1)} kWh/100km</span>
           )}
           {data.avg_speed_kmh != null && (
-            <span>gem. {data.avg_speed_kmh} km/u</span>
+            <span>{t.avg} {data.avg_speed_kmh} km/u</span>
           )}
         </div>
       )}
@@ -221,10 +227,10 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
           fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
         }}>
           {data.trip_auto_km != null && (
-            <span>rit A: {data.trip_auto_km.toFixed(1)} km</span>
+            <span>{t.tripA}: {data.trip_auto_km.toFixed(1)} km</span>
           )}
           {data.trip_manual_km != null && (
-            <span>rit B: {data.trip_manual_km.toFixed(1)} km</span>
+            <span>{t.tripB}: {data.trip_manual_km.toFixed(1)} km</span>
           )}
         </div>
       )}
