@@ -31,6 +31,8 @@ widgets:
         show_daily: true
     - type: calendar
       config: {}
+    - type: traffic
+      config: {}
 - id: bottom-left-rotator
   type: rotate
   col: 1

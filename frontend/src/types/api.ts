@@ -106,6 +106,26 @@ export interface CalendarData {
   today_label: string
 }
 
+export interface TrafficJam {
+  road: string
+  from: string
+  to: string
+  distance_km: number
+  delay_min: number
+  type: string
+}
+
+export interface TrafficTravel {
+  duration_min: number
+  delay_min: number
+  distance_km: number
+}
+
+export interface TrafficData {
+  jams: TrafficJam[]
+  travel: TrafficTravel | null
+}
+
 export interface SunData {
   sunrise: string
   sunset: string

@@ -26,5 +26,8 @@ class Settings(BaseSettings):
     google_sa_key_file: str = "/config/google-sa.json"
     calendar_cache_ttl: int = 600   # 10 minutes
 
+    tomtom_api_key: str = ""
+    traffic_cache_ttl: int = 300    # 5 minutes
+
 
 settings = Settings()
