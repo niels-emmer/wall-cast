@@ -108,6 +108,14 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Event `color` field maps colorId (1–11) to hex; `null` when no colour set → widget falls back to `rgba(255,255,255,0.3)` dot
 - `docker-compose.dev.yml` has `env_file` block so `GOOGLE_CALENDAR_ID` and `GOOGLE_SA_KEY_FILE` are available in dev
 
+### Traffic widget
+- ANWB incidents API structure: `roads[] → segments[] → jams[]` — jams are nested two levels under roads (NOT at segment level directly)
+- Jam fields: `road`, `from`, `to`, `distance` (meters), `delay` (seconds), `incidentType`
+- Valid `incidentType` values seen: `stationary-traffic`, `queuing-traffic`, `slow-traffic`, `road-closed`, `radar`
+- Home/work addresses geocoded via TomTom Search API on first request, cached forever in `_coords` dict; fallback to hardcoded coords if geocoding fails
+- Travel time displayed as `H:MM` (e.g. `3:13`), delay as `+H:MM`; uses `fmtDuration()` in TrafficWidget.tsx
+- `TOMTOM_API_KEY` is in `.env` (gitignored) — must be added manually on each server
+
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
 - Config (`GARBAGE_POSTCODE`, `GARBAGE_HUISNUMMER`) read from env vars / `.env` — not in YAML
@@ -145,6 +153,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - ntfy: browser connects directly, no backend proxy
 - Traffic jams: `api.anwb.nl/routing/v1/incidents/incidents-desktop` — no key, 5 min TTL
 - Travel time: TomTom Routing API — free key (`TOMTOM_API_KEY`), 5 min TTL, traffic-aware
+- TomTom Geocoding: `api.tomtom.com/search/2/geocode/{query}.json` — resolves home/work addresses to coords on first request, cached for process lifetime
 
 ## Open Items
 
