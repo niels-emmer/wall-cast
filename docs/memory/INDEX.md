@@ -39,7 +39,9 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | garbage | /api/garbage | GarbageWidget.tsx | ✅ production |
 | polestar | /api/polestar | PolestarWidget.tsx | ✅ production |
 | calendar | /api/calendar | CalendarWidget.tsx | ✅ production |
+| traffic | /api/traffic | TrafficWidget.tsx | ✅ production |
 | rotate | n/a (container) | RotatorWidget.tsx | ✅ production |
+| info | n/a (static) | InfoWidget.tsx | ✅ production |
 
 ## Feature Status
 
@@ -110,7 +112,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
 - Config (`GARBAGE_POSTCODE`, `GARBAGE_HUISNUMMER`) read from env vars / `.env` — not in YAML
 - `days_ahead` is configurable per-widget in YAML (default 7); backend accepts `?days_ahead=N` (1–365); cache is keyed per days_ahead value
-- JSON path: `raw["data"]["ophaaldaten"]["data"]` — do NOT include `afvaldata` param (breaks the response)
+- JSON path: `raw["data"]["ophaaldagen"]["data"]` — do NOT include `afvaldata` param (breaks the response)
 - Status check: `raw.get("response") != "OK"` (not `"status"`)
 - Fit-to-box: `ResizeObserver` on the list container measures first card height and slices `collections` to only show complete cards
 
@@ -141,8 +143,11 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Polestar: `pypolestar` → Polestar cloud API — 5 min TTL, uses cached data on error
 - Calendar: Google Calendar API v3 (service account) — 10 min TTL
 - ntfy: browser connects directly, no backend proxy
+- Traffic jams: `api.anwb.nl/routing/v1/incidents/incidents-desktop` — no key, 5 min TTL
+- Travel time: TomTom Routing API — free key (`TOMTOM_API_KEY`), 5 min TTL, traffic-aware
 
 ## Open Items
 
+- [ ] Push repo to GitHub
 - [ ] Consider ENTSO-E energy price widget (free API, no key)
 - [ ] Consider NS train departures widget (requires NS API key)

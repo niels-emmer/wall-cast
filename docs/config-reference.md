@@ -18,6 +18,7 @@ The display is controlled by two things:
 | `POLESTAR_PASSWORD` | `polestar` | — | Password for your Polestar account. |
 | `GOOGLE_CALENDAR_ID` | `calendar` | — | Calendar ID from Google Calendar settings (e.g. `xxxxx@group.calendar.google.com`). |
 | `GOOGLE_SA_KEY_FILE` | `calendar` | `/config/google-sa.json` | Path inside the container to the service account JSON key file. Leave at the default and place your JSON at `config/google-sa.json` in the repo root — it is gitignored and never committed. |
+| `TOMTOM_API_KEY` | `traffic` | — | API key for the TomTom Routing API (travel time). Free — see [API keys](#api-keys) below. |
 
 See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
 
@@ -315,6 +316,38 @@ GOOGLE_SA_KEY_FILE=/config/google-sa.json
 
 ---
 
+### `traffic`
+
+Current Dutch highway traffic jams and live travel time from home to work. Two data sources:
+
+- **Traffic jams** — [ANWB](https://www.anwb.nl/verkeer) incidents API. No API key required. Covers all Dutch rijkswegen (A- and N-roads).
+- **Travel time** — [TomTom Routing API](https://developer.tomtom.com/routing-api). Requires a free API key (see [API keys](#api-keys)). Traffic-aware: shows real-time delay on top of the base travel time.
+
+Home coordinates and the work destination (`Lekkerbeetjesstraat 8, 5211AL Den Bosch`) are hardcoded in the backend. Modify `HOME_LAT/LON` and `WORK_LAT/LON` in `backend/app/routers/traffic.py` if you want a different route.
+
+```yaml
+- id: traffic
+  type: traffic
+  col: 5
+  row: 1
+  col_span: 8
+  row_span: 7
+  config: {}   # no configuration options currently
+```
+
+**Environment variables (`.env`):**
+```
+TOMTOM_API_KEY=your_key_here
+```
+
+**Display:** Title. Travel time card at the top showing total journey time, distance, and delay (green = no delay, orange = delayed). Below: a list of current traffic jams sorted by delay, each showing a colour-coded road badge (A-roads blue, N-roads grey), from → to, distance in km, and delay in minutes. Jam rows are colour-coded by severity: yellow < 10 min, orange 10–30 min, red ≥ 30 min. Shows "Geen files" / "No jams" when the roads are clear.
+
+The widget still renders (showing only the jam list) if `TOMTOM_API_KEY` is not set.
+
+**Backend cache:** 5 min.
+
+---
+
 ### `rotate`
 
 Cycles through a list of child widgets, showing one at a time. Used to display multiple widgets in a single grid cell.
@@ -373,7 +406,7 @@ Changes are saved back to `config/wall-cast.yaml` and take effect on the display
 ```
 Col:  1   2   3   4   5   6   7   8   9  10  11  12
 Row 1 ├── clock (4×3) ──┤├──── main rotator (8×7) ───────────────────┤
-Row 2 │                 ││  weather ↔ calendar (30s interval)         │
+Row 2 │                 ││  weather ↔ calendar ↔ traffic (30s)        │
 Row 3 │                 ││                                            │
 Row 4 ├─ rotator (4×4) ─┤│                                            │
 Row 5 │ rain/garbage/   ││                                            │
@@ -398,5 +431,55 @@ All data sources refresh automatically — the display never needs a manual relo
 | Garbage | Every 1 hour |
 | Polestar | Every 5 minutes |
 | Calendar | Every 10 minutes |
+| Traffic | Every 5 minutes |
 | Config (YAML) | Instant (SSE push on file save) |
 | Breaking news (ntfy) | Instant (persistent SSE connection) |
+
+---
+
+## API keys
+
+Most data sources used by wall-cast are fully public and require no authentication. The table below lists every external service, whether a key is needed, and how to get one.
+
+| Service | Widget | Key required | Cost | How to get |
+|---------|--------|-------------|------|-----------|
+| [open-meteo.com](https://open-meteo.com) | `weather` | No | Free | — |
+| [sunrise-sunset.org](https://sunrise-sunset.org/api) | `weather` | No | Free | — |
+| [buienalarm.nl](https://buienalarm.nl) | `rain` | No | Free | — |
+| [mijnafvalwijzer.nl](https://www.mijnafvalwijzer.nl) | `garbage` | No (public key baked in) | Free | — |
+| RSS feeds | `news` | No | Free | — |
+| [ANWB incidents](https://www.anwb.nl/verkeer) | `traffic` (jam list) | No | Free | — |
+| [TomTom Routing API](https://developer.tomtom.com/routing-api) | `traffic` (travel time) | **Yes** | Free tier: 2,500 req/day | See below |
+| [Google Calendar API](https://developers.google.com/calendar) | `calendar` | **Yes** (service account) | Free | See below |
+| [Polestar cloud](https://www.polestar.com) | `polestar` | **Yes** (your account) | Free | Your Polestar login |
+
+### TomTom API key
+
+Used for live traffic-aware travel time in the `traffic` widget. The jam list works without it.
+
+1. Go to [developer.tomtom.com](https://developer.tomtom.com) and create a free account — **no credit card required**.
+2. In the dashboard, create a new app (any name).
+3. Copy the generated API key.
+4. Add it to your `.env`:
+   ```
+   TOMTOM_API_KEY=your_key_here
+   ```
+5. Restart the containers: `docker compose up -d`
+
+**Free tier limits:** 2,500 non-tile requests/day. At a 5-minute polling interval the traffic widget makes ~288 requests/day — well within the limit.
+
+### Google Calendar service account
+
+Used by the `calendar` widget. A service account lets wall-cast read your calendar without OAuth tokens that expire.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → create (or select) a project.
+2. **APIs & Services → Enable APIs** → search **Google Calendar API** → Enable.
+3. **APIs & Services → Credentials → Create Credentials → Service Account**. Give it any name. Click Done.
+4. Click the service account → **Keys** tab → Add Key → Create new key → **JSON**. Save the downloaded file as `config/google-sa.json` in the repo root. (`config/*.json` is gitignored.)
+5. Open **Google Calendar → Settings → your calendar → Share with specific people**. Add the service account email (ends in `@...iam.gserviceaccount.com`). Permission: "See all event details".
+6. Go to **Integrate calendar** and copy the **Calendar ID**.
+7. Add to your `.env`:
+   ```
+   GOOGLE_CALENDAR_ID=xxxxx@group.calendar.google.com
+   GOOGLE_SA_KEY_FILE=/config/google-sa.json
+   ```
