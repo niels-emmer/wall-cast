@@ -116,6 +116,7 @@ async def get_traffic() -> dict:
 
     # Parse jams
     jams: list[dict] = []
+    anwb_ok = False
     anwb_resp = responses[0]
     if isinstance(anwb_resp, Exception):
         logger.error("ANWB incidents fetch failed: %s", anwb_resp)
@@ -123,11 +124,13 @@ async def get_traffic() -> dict:
         try:
             anwb_resp.raise_for_status()
             jams = _parse_jams(anwb_resp.json())
+            anwb_ok = True
         except Exception as exc:
             logger.error("ANWB incidents parse error: %s", exc)
 
     # Parse travel time
     travel: dict | None = None
+    tomtom_ok = not api_key  # no key → skip is fine, not an error
     if api_key and len(responses) > 1:
         tomtom_resp = responses[1]
         if isinstance(tomtom_resp, Exception):
@@ -136,19 +139,17 @@ async def get_traffic() -> dict:
             try:
                 tomtom_resp.raise_for_status()
                 travel = _parse_travel(tomtom_resp.json())
+                tomtom_ok = True
             except Exception as exc:
                 logger.error("TomTom parse error: %s", exc)
 
-    result: dict = {"jams": jams, "travel": travel}
-
-    # Only cache if we got at least some data
-    if jams or travel:
-        _cache = result
-        _cache_ts = time.monotonic()
-    elif _cache:
-        return _cache
-
-    if not jams and travel is None:
+    # At least one source must have succeeded
+    if not anwb_ok and not tomtom_ok:
+        if _cache:
+            return _cache
         raise HTTPException(status_code=502, detail="Traffic data unavailable")
 
+    result: dict = {"jams": jams, "travel": travel}
+    _cache = result
+    _cache_ts = time.monotonic()
     return result
