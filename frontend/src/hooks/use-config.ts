@@ -26,6 +26,7 @@ export function useConfig() {
 
     source.addEventListener('config-updated', () => {
       queryClient.invalidateQueries({ queryKey: ['config'] })
+      queryClient.invalidateQueries({ queryKey: ['news'] })
     })
 
     source.onerror = () => {

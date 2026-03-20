@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 _config: dict[str, Any] = {}
 _subscribers: list[asyncio.Queue] = []
+_change_callbacks: list = []  # callables invoked synchronously on every config reload
+
+
+def on_config_change(fn) -> None:
+    """Register a zero-argument callable to be called whenever the config reloads."""
+    _change_callbacks.append(fn)
 
 # Unique ID for this backend process. Changes on every container restart.
 # Clients use this to detect a restart and reload the page.
@@ -79,6 +85,11 @@ async def watch_config() -> None:
             try:
                 _config = load_config()
                 logger.info("Config reloaded")
+                for fn in list(_change_callbacks):
+                    try:
+                        fn()
+                    except Exception as exc:
+                        logger.warning("Config change callback failed: %s", exc)
                 _broadcast()
             except yaml.YAMLError as exc:
                 logger.error("Config reload failed (YAML error): %s", exc)

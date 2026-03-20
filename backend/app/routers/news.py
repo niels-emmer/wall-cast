@@ -19,6 +19,15 @@ router = APIRouter(tags=["news"])
 _cache: list[dict] = []
 _cache_ts: float = 0.0
 
+
+def _invalidate_cache() -> None:
+    global _cache_ts
+    _cache_ts = 0.0
+
+
+# Clear the news cache whenever the config changes (e.g. feed URLs updated)
+wall_config.on_config_change(_invalidate_cache)
+
 DEFAULT_FEEDS = [
     {"url": "https://feeds.nos.nl/nosnieuwsalgemeen", "label": "NOS"},
     {"url": "https://www.nu.nl/rss/Algemeen", "label": "NU.nl"},
