@@ -42,6 +42,7 @@ cd frontend && npm install && npm run dev
 ## Memory System
 
 See `docs/memory/INDEX.md` for project state, decisions, and context.
+Decision log: `docs/memory/records/decision-log.md`.
 Always read `docs/memory/INDEX.md` at the start of each session on this project.
 
 ## Architecture
@@ -91,7 +92,7 @@ CSS variables and `clamp()` for font sizing work fine. Only layout utilities are
 ## Security Notes
 
 - Backend is NOT exposed on the host — nginx is the only public port
-- Config directory is mounted read-only into backend
+- Config directory is mounted **read-write** (admin panel writes back to wall-cast.yaml)
 - nginx: `server_tokens off`, security headers set
 - No auth by design (local network only); add nginx `allow/deny` if VPS is internet-facing
 - No secrets in the app — all external APIs are public/unauthenticated
@@ -100,6 +101,7 @@ CSS variables and `clamp()` for font sizing work fine. Only layout utilities are
 
 | File | Purpose |
 |------|---------|
+| `docs/memory/records/decision-log.md` | Architectural decision log with rationale |
 | `config/wall-cast.yaml` | User widget configuration — hot-reloads on save |
 | `backend/app/wall_config.py` | YAML loader + file watcher + SSE broadcaster |
 | `backend/app/routers/weather.py` | open-meteo proxy, 15 min cache |

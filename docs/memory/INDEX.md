@@ -57,6 +57,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Garbage widget | ✅ | mijnafvalwijzer.nl, configurable days-ahead window, fit-to-box, accent for today/tomorrow |
 | Polestar widget | ✅ | pypolestar, SOC/range/charging/stats; amber service tag + red fluid warning tags |
 | Calendar widget | ✅ | Google Calendar via service account; card layout, event colours |
+| Traffic widget | ✅ | ANWB jam list + TomTom travel time; H:MM format; addresses via env vars |
 | Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval |
 | Visual harmony | ✅ | All widgets share title style (weight 300, uppercase, 0.25em tracking, white) |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
@@ -157,6 +158,5 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 
 ## Open Items
 
-- [ ] Push repo to GitHub
 - [ ] Consider ENTSO-E energy price widget (free API, no key)
 - [ ] Consider NS train departures widget (requires NS API key)
