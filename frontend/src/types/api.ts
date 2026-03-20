@@ -113,6 +113,7 @@ export interface TrafficJam {
   distance_km: number
   delay_min: number
   type: string
+  on_route: boolean
 }
 
 export interface TrafficTravel {

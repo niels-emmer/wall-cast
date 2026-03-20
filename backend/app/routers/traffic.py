@@ -59,6 +59,14 @@ JAM_TYPES = {
 }
 
 
+def _route_roads() -> frozenset[str]:
+    """Return the set of road numbers that make up the configured commute route."""
+    raw = settings.traffic_route_roads
+    if not raw:
+        return frozenset()
+    return frozenset(r.strip().upper() for r in raw.split(",") if r.strip())
+
+
 async def _geocode(client: httpx.AsyncClient, address: str, key: str) -> tuple[float, float] | None:
     """Return (lat, lon) for address using TomTom Geocoding API, or None on error."""
     try:
@@ -96,11 +104,15 @@ async def _ensure_coords(client: httpx.AsyncClient, api_key: str, home: str, wor
 
 
 def _parse_jams(raw: dict) -> list[dict]:
-    """Extract jams from ANWB incidents response, sorted by delay desc.
+    """Extract jams from ANWB incidents response.
 
     Structure: roads[] → segments[] → jams[]
     Jam objects carry: road, from, to, distance (m), delay (s), incidentType.
+
+    Sorted: on-route jams first (per TRAFFIC_ROUTE_ROADS), then by delay desc
+    within each group. Capped at 12 rows.
     """
+    route = _route_roads()
     jams: list[dict] = []
     for road_obj in raw.get("roads", []):
         road = road_obj.get("road", "")
@@ -111,16 +123,18 @@ def _parse_jams(raw: dict) -> list[dict]:
                 incident_type = jam.get("incidentType", "")
                 if delay_s < 60 and incident_type not in JAM_TYPES:
                     continue
+                road_final = (jam.get("road") or road).upper()
                 jams.append({
-                    "road": jam.get("road") or road,
+                    "road": road_final,
                     "from": jam.get("from", ""),
                     "to": jam.get("to", ""),
                     "distance_km": round(distance_m / 1000, 1),
                     "delay_min": max(1, round(delay_s / 60)),
                     "type": incident_type,
+                    "on_route": road_final in route,
                 })
-    # Sort by delay descending, cap at 12 rows
-    jams.sort(key=lambda j: j["delay_min"], reverse=True)
+    # On-route jams first, then sort by delay desc within each group
+    jams.sort(key=lambda j: (0 if j["on_route"] else 1, -j["delay_min"]))
     return jams[:12]
 
 

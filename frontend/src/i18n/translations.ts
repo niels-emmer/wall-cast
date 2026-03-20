@@ -72,6 +72,7 @@ export interface Translations {
   noDelay: string
   trafficJams: string
   noJams: string
+  onRoute: string
   km: string
   min: string
 
@@ -176,6 +177,7 @@ export const nl: Translations = {
   noDelay: 'geen vertraging',
   trafficJams: 'Files',
   noJams: 'Geen files',
+  onRoute: 'op route',
   km: 'km',
   min: 'min',
 
@@ -279,6 +281,7 @@ export const en: Translations = {
   noDelay: 'no delay',
   trafficJams: 'Traffic jams',
   noJams: 'No jams',
+  onRoute: 'on route',
   km: 'km',
   min: 'min',
 

@@ -10,9 +10,11 @@ function fmtDuration(min: number): string {
   return `${h}:${String(m).padStart(2, '0')}`
 }
 
-const CARD_BG     = 'rgba(255,255,255,0.05)'
-const CARD_BORDER = 'rgba(255,255,255,0.09)'
-const DIVIDER     = 'rgba(255,255,255,0.07)'
+const CARD_BG          = 'rgba(255,255,255,0.05)'
+const CARD_BORDER      = 'rgba(255,255,255,0.09)'
+const CARD_BG_ROUTE    = 'rgba(234,179,8,0.07)'
+const CARD_BORDER_ROUTE = 'rgba(234,179,8,0.35)'
+const DIVIDER          = 'rgba(255,255,255,0.07)'
 
 // Accent colours per jam severity (by delay)
 function jamAccent(delayMin: number): string {
@@ -101,34 +103,51 @@ function TravelCard({ travel, t }: { travel: TrafficTravel; t: ReturnType<typeof
 function JamRow({ jam, t }: { jam: TrafficJam; t: ReturnType<typeof useLang> }) {
   const accent = jamAccent(jam.delay_min)
   const badge  = roadColor(jam.road)
+  const isRoute = jam.on_route
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       gap: '0.65rem',
-      background: CARD_BG,
-      border: `1px solid ${CARD_BORDER}`,
-      borderLeft: `3px solid ${accent}`,
+      background: isRoute ? CARD_BG_ROUTE : CARD_BG,
+      border: `1px solid ${isRoute ? CARD_BORDER_ROUTE : CARD_BORDER}`,
+      borderLeft: `4px solid ${isRoute ? '#eab308' : accent}`,
       borderRadius: 6,
       padding: '0.4rem 0.7rem',
       flexShrink: 0,
       minWidth: 0,
     }}>
       {/* Road badge */}
-      <div style={{
-        background: badge,
-        color: '#fff',
-        fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
-        fontWeight: 700,
-        borderRadius: 4,
-        padding: '0.1rem 0.4rem',
-        flexShrink: 0,
-        minWidth: '2.6rem',
-        textAlign: 'center',
-        letterSpacing: '0.03em',
-      }}>
-        {jam.road}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem', flexShrink: 0 }}>
+        <div style={{
+          background: badge,
+          color: '#fff',
+          fontSize: 'clamp(0.75rem, 1.3vw, 1rem)',
+          fontWeight: 700,
+          borderRadius: 4,
+          padding: '0.1rem 0.4rem',
+          minWidth: '2.6rem',
+          textAlign: 'center',
+          letterSpacing: '0.03em',
+        }}>
+          {jam.road}
+        </div>
+        {isRoute && (
+          <div style={{
+            background: 'rgba(234,179,8,0.2)',
+            color: '#eab308',
+            fontSize: 'clamp(0.55rem, 0.9vw, 0.7rem)',
+            fontWeight: 700,
+            borderRadius: 3,
+            padding: '0.05rem 0.3rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            whiteSpace: 'nowrap',
+          }}>
+            {t.onRoute}
+          </div>
+        )}
       </div>
 
       {/* From → To */}

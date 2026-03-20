@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     traffic_cache_ttl: int = 300    # 5 minutes
     traffic_home_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
     traffic_work_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
+    traffic_route_roads: str = ""   # comma-separated road numbers on your commute, e.g. "A28,N50,A2"
 
 
 settings = Settings()
