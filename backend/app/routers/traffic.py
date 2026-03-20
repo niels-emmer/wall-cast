@@ -6,6 +6,9 @@ Two data sources:
   2. TomTom Routing API (key via TOMTOM_API_KEY env var) — live travel time
      from home (Smilde) to work (Lekkerbeetjesstraat 8, Den Bosch)
 
+Addresses are geocoded via TomTom Search API on first request and cached
+for the lifetime of the process, so routing always uses exact coordinates.
+
 Cache TTL: traffic_cache_ttl seconds (default 5 minutes).
 """
 
@@ -25,13 +28,21 @@ router = APIRouter(tags=["traffic"])
 _cache: dict[str, Any] = {}
 _cache_ts: float = 0.0
 
-# Home: Smilde, NL
-HOME_LAT = 52.5257
-HOME_LON = 6.4510
+# Human-readable addresses — geocoded to exact lat/lon at first request
+HOME_ADDRESS = "Carry van Bruggenstraat 5, 9422KM Smilde, NL"
+WORK_ADDRESS = "Lekkerbeetjesstraat 8, 5211AL Den Bosch, NL"
 
-# Work: Lekkerbeetjesstraat 8, 5211AL Den Bosch
-WORK_LAT = 51.6895
-WORK_LON = 5.3007
+# Fallback coordinates (used if geocoding fails)
+_HOME_FALLBACK = (52.5257, 6.4510)
+_WORK_FALLBACK = (51.6895, 5.3007)
+
+# Cached geocoded coords — populated lazily on first successful geocode
+_coords: dict[str, tuple[float, float]] = {}
+
+TOMTOM_GEOCODE_URL = (
+    "https://api.tomtom.com/search/2/geocode/{query}.json"
+    "?key={key}&limit=1&countrySet=NL"
+)
 
 ANWB_INCIDENTS_URL = (
     "https://api.anwb.nl/routing/v1/incidents/incidents-desktop"
@@ -39,7 +50,7 @@ ANWB_INCIDENTS_URL = (
 
 TOMTOM_ROUTE_URL = (
     "https://api.tomtom.com/routing/1/calculateRoute"
-    f"/{HOME_LAT},{HOME_LON}:{WORK_LAT},{WORK_LON}/json"
+    "/{olat},{olon}:{dlat},{dlon}/json"
     "?traffic=true&travelMode=car&key={key}"
 )
 
@@ -49,6 +60,42 @@ JAM_TYPES = {
     "queuing-traffic",
     "slow-traffic",
 }
+
+
+async def _geocode(client: httpx.AsyncClient, address: str, key: str) -> tuple[float, float] | None:
+    """Return (lat, lon) for address using TomTom Geocoding API, or None on error."""
+    try:
+        url = TOMTOM_GEOCODE_URL.format(query=address, key=key)
+        resp = await client.get(url)
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if not results:
+            logger.error("Geocoding returned no results for: %s", address)
+            return None
+        pos = results[0]["position"]
+        lat, lon = pos["lat"], pos["lon"]
+        logger.info("Geocoded '%s' → %.6f, %.6f", address, lat, lon)
+        return (lat, lon)
+    except Exception as exc:
+        logger.error("Geocoding failed for '%s': %s", address, exc)
+        return None
+
+
+async def _ensure_coords(client: httpx.AsyncClient, api_key: str) -> None:
+    """Geocode home and work addresses if not yet cached."""
+    missing = [a for a in (HOME_ADDRESS, WORK_ADDRESS) if a not in _coords]
+    if not missing:
+        return
+
+    results = await asyncio.gather(
+        *[_geocode(client, a, api_key) for a in missing],
+        return_exceptions=True,
+    )
+    for addr, result in zip(missing, results):
+        if isinstance(result, tuple):
+            _coords[addr] = result
+        else:
+            logger.warning("Using fallback coords for '%s'", addr)
 
 
 def _parse_jams(raw: dict) -> list[dict]:
@@ -99,12 +146,22 @@ async def get_traffic() -> dict:
     api_key = settings.tomtom_api_key
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        # Fire both requests concurrently
-        tasks = [
-            client.get(ANWB_INCIDENTS_URL),
-        ]
+        # Geocode addresses if needed (no-op after first successful call)
         if api_key:
-            tasks.append(client.get(TOMTOM_ROUTE_URL.format(key=api_key)))
+            await _ensure_coords(client, api_key)
+
+        home = _coords.get(HOME_ADDRESS, _HOME_FALLBACK)
+        work = _coords.get(WORK_ADDRESS, _WORK_FALLBACK)
+
+        # Fire ANWB and TomTom routing concurrently
+        tasks: list = [client.get(ANWB_INCIDENTS_URL)]
+        if api_key:
+            route_url = TOMTOM_ROUTE_URL.format(
+                olat=home[0], olon=home[1],
+                dlat=work[0], dlon=work[1],
+                key=api_key,
+            )
+            tasks.append(client.get(route_url))
 
         try:
             responses = await asyncio.gather(*tasks, return_exceptions=True)

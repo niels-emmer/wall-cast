@@ -4,6 +4,12 @@ import { useLang } from '../../i18n/use-lang'
 import type { TrafficJam, TrafficTravel } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
 
+function fmtDuration(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `${h}:${String(m).padStart(2, '0')}`
+}
+
 const CARD_BG     = 'rgba(255,255,255,0.05)'
 const CARD_BORDER = 'rgba(255,255,255,0.09)'
 const DIVIDER     = 'rgba(255,255,255,0.07)'
@@ -66,14 +72,9 @@ function TravelCard({ travel, t }: { travel: TrafficTravel; t: ReturnType<typeof
           fontWeight: 600,
           color: 'var(--color-text)',
           lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
         }}>
-          {travel.duration_min}
-        </span>
-        <span style={{
-          fontSize: 'clamp(0.85rem, 1.5vw, 1.15rem)',
-          color: 'var(--color-muted)',
-        }}>
-          {t.min}
+          {fmtDuration(travel.duration_min)}
         </span>
         {hasDelay ? (
           <span style={{
@@ -81,7 +82,7 @@ function TravelCard({ travel, t }: { travel: TrafficTravel; t: ReturnType<typeof
             color: '#f97316',
             marginLeft: '0.2rem',
           }}>
-            +{travel.delay_min} {t.min} {t.trafficDelay}
+            +{fmtDuration(travel.delay_min)} {t.trafficDelay}
           </span>
         ) : (
           <span style={{
