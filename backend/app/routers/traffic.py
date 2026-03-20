@@ -59,6 +59,7 @@ JAM_TYPES = {
     "stationary-traffic",
     "queuing-traffic",
     "slow-traffic",
+    "road-closed",
 }
 
 
@@ -99,25 +100,29 @@ async def _ensure_coords(client: httpx.AsyncClient, api_key: str) -> None:
 
 
 def _parse_jams(raw: dict) -> list[dict]:
-    """Extract jams from ANWB incidents response, sorted by delay desc."""
+    """Extract jams from ANWB incidents response, sorted by delay desc.
+
+    Structure: roads[] → segments[] → jams[]
+    Jam objects carry: road, from, to, distance (m), delay (s), incidentType.
+    """
     jams: list[dict] = []
     for road_obj in raw.get("roads", []):
         road = road_obj.get("road", "")
         for seg in road_obj.get("segments", []):
-            delay_s = seg.get("delay", 0) or 0
-            distance_m = seg.get("distance", 0) or 0
-            incident_type = seg.get("incidentType", "")
-            # Only include actual traffic jams with meaningful delay
-            if delay_s < 60 and incident_type not in JAM_TYPES:
-                continue
-            jams.append({
-                "road": road or seg.get("road", ""),
-                "from": seg.get("from", ""),
-                "to": seg.get("to", ""),
-                "distance_km": round(distance_m / 1000, 1),
-                "delay_min": max(1, round(delay_s / 60)),
-                "type": incident_type,
-            })
+            for jam in seg.get("jams", []):
+                delay_s = jam.get("delay", 0) or 0
+                distance_m = jam.get("distance", 0) or 0
+                incident_type = jam.get("incidentType", "")
+                if delay_s < 60 and incident_type not in JAM_TYPES:
+                    continue
+                jams.append({
+                    "road": jam.get("road") or road,
+                    "from": jam.get("from", ""),
+                    "to": jam.get("to", ""),
+                    "distance_km": round(distance_m / 1000, 1),
+                    "delay_min": max(1, round(delay_s / 60)),
+                    "type": incident_type,
+                })
     # Sort by delay descending, cap at 12 rows
     jams.sort(key=lambda j: j["delay_min"], reverse=True)
     return jams[:12]
