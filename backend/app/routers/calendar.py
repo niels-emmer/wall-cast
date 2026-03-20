@@ -59,6 +59,16 @@ def _fetch_events() -> dict:
     )
     service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
+    # Fetch the calendar's own background color as a fallback for events
+    # that have no individual colorId (they inherit the calendar color in the UI).
+    calendar_color: str | None = None
+    try:
+        cal_meta = service.calendars().get(calendarId=settings.google_calendar_id).execute()
+        calendar_color = cal_meta.get("backgroundColor")
+        logger.debug("Calendar background color: %s", calendar_color)
+    except Exception as exc:
+        logger.warning("Could not fetch calendar metadata: %s", exc)
+
     result = service.events().list(
         calendarId=settings.google_calendar_id,
         timeMin=start_of_today.isoformat(),
@@ -76,7 +86,9 @@ def _fetch_events() -> dict:
         all_day   = "dateTime" not in start_raw
 
         color_id = item.get("colorId")
-        color    = _COLOR_MAP.get(color_id) if color_id else None
+        logger.debug("Event %r colorId=%r", item.get("summary", "?"), color_id)
+        # Prefer the event's own colorId; fall back to the calendar's background color.
+        color = _COLOR_MAP.get(str(color_id)) if color_id else calendar_color
 
         if all_day:
             date_str   = start_raw["date"]
