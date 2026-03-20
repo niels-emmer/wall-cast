@@ -112,7 +112,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - ANWB incidents API structure: `roads[] → segments[] → jams[]` — jams are nested two levels under roads (NOT at segment level directly)
 - Jam fields: `road`, `from`, `to`, `distance` (meters), `delay` (seconds), `incidentType`
 - Valid `incidentType` values seen: `stationary-traffic`, `queuing-traffic`, `slow-traffic`, `road-closed`, `radar`
-- Home/work addresses geocoded via TomTom Search API on first request, cached forever in `_coords` dict; fallback to hardcoded coords if geocoding fails
+- Home/work addresses read from `TRAFFIC_HOME_ADDRESS` / `TRAFFIC_WORK_ADDRESS` env vars (gitignored), geocoded via TomTom Search API on first request, cached forever in `_coords` dict; fallback to Amsterdam centre if not set
 - Travel time displayed as `H:MM` (e.g. `3:13`), delay as `+H:MM`; uses `fmtDuration()` in TrafficWidget.tsx
 - `TOMTOM_API_KEY` is in `.env` (gitignored) — must be added manually on each server
 

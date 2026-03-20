@@ -18,7 +18,9 @@ The display is controlled by two things:
 | `POLESTAR_PASSWORD` | `polestar` | — | Password for your Polestar account. |
 | `GOOGLE_CALENDAR_ID` | `calendar` | — | Calendar ID from Google Calendar settings (e.g. `xxxxx@group.calendar.google.com`). |
 | `GOOGLE_SA_KEY_FILE` | `calendar` | `/config/google-sa.json` | Path inside the container to the service account JSON key file. Leave at the default and place your JSON at `config/google-sa.json` in the repo root — it is gitignored and never committed. |
-| `TOMTOM_API_KEY` | `traffic` | — | API key for the TomTom Routing API (travel time). Free — see [API keys](#api-keys) below. |
+| `TOMTOM_API_KEY` | `traffic` | — | API key for the TomTom Routing API (travel time + geocoding). Free — see [API keys](#api-keys) below. |
+| `TRAFFIC_HOME_ADDRESS` | `traffic` | — | Origin address for travel time, e.g. `Your Street 1, 1234AB Your City, NL`. Geocoded on first request. |
+| `TRAFFIC_WORK_ADDRESS` | `traffic` | — | Destination address for travel time. Same format as above. |
 
 See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
 
@@ -323,7 +325,7 @@ Current Dutch highway traffic jams and live travel time from home to work. Two d
 - **Traffic jams** — [ANWB](https://www.anwb.nl/verkeer) incidents API. No API key required. Covers all Dutch rijkswegen (A- and N-roads).
 - **Travel time** — [TomTom Routing API](https://developer.tomtom.com/routing-api). Requires a free API key (see [API keys](#api-keys)). Traffic-aware: shows real-time delay on top of the base travel time.
 
-Home and work addresses are defined as strings in `backend/app/routers/traffic.py` (`HOME_ADDRESS` / `WORK_ADDRESS`) and geocoded to exact coordinates via the TomTom Search API on first request. The resolved coordinates are cached for the lifetime of the process. Change the address strings there if you want a different route.
+Home and work addresses are set via environment variables and geocoded to exact coordinates via the TomTom Search API on first request. The resolved coordinates are cached for the lifetime of the process.
 
 ```yaml
 - id: traffic
@@ -338,6 +340,8 @@ Home and work addresses are defined as strings in `backend/app/routers/traffic.p
 **Environment variables (`.env`):**
 ```
 TOMTOM_API_KEY=your_key_here
+TRAFFIC_HOME_ADDRESS=Your Street 1, 1234AB Your City, NL
+TRAFFIC_WORK_ADDRESS=Work Street 1, 5678CD Work City, NL
 ```
 
 **Display:** Title. Travel time card at the top showing journey time as `H:MM`, distance, and delay (green = no delay, orange = delayed with `+H:MM` indicator). Below: a list of current traffic jams sorted by delay, each showing a colour-coded road badge (A-roads blue, N-roads grey), from → to, distance in km, and delay in minutes. Jam rows are colour-coded by severity: yellow < 10 min, orange 10–30 min, red ≥ 30 min. Shows "Geen files" / "No jams" when the roads are clear.

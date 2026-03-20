@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     tomtom_api_key: str = ""
     traffic_cache_ttl: int = 300    # 5 minutes
+    traffic_home_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
+    traffic_work_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
 
 
 settings = Settings()

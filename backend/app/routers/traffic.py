@@ -28,13 +28,9 @@ router = APIRouter(tags=["traffic"])
 _cache: dict[str, Any] = {}
 _cache_ts: float = 0.0
 
-# Human-readable addresses — geocoded to exact lat/lon at first request
-HOME_ADDRESS = "Carry van Bruggenstraat 5, 9422KM Smilde, NL"
-WORK_ADDRESS = "Lekkerbeetjesstraat 8, 5211AL Den Bosch, NL"
-
-# Fallback coordinates (used if geocoding fails)
-_HOME_FALLBACK = (52.5257, 6.4510)
-_WORK_FALLBACK = (51.6895, 5.3007)
+# Fallback coordinates (used if geocoding fails or addresses not configured)
+_HOME_FALLBACK = (52.3676, 4.9041)   # Amsterdam centre — override via TRAFFIC_HOME_ADDRESS
+_WORK_FALLBACK = (52.3676, 4.9041)
 
 # Cached geocoded coords — populated lazily on first successful geocode
 _coords: dict[str, tuple[float, float]] = {}
@@ -82,9 +78,9 @@ async def _geocode(client: httpx.AsyncClient, address: str, key: str) -> tuple[f
         return None
 
 
-async def _ensure_coords(client: httpx.AsyncClient, api_key: str) -> None:
+async def _ensure_coords(client: httpx.AsyncClient, api_key: str, home: str, work: str) -> None:
     """Geocode home and work addresses if not yet cached."""
-    missing = [a for a in (HOME_ADDRESS, WORK_ADDRESS) if a not in _coords]
+    missing = [a for a in (home, work) if a and a not in _coords]
     if not missing:
         return
 
@@ -149,14 +145,16 @@ async def get_traffic() -> dict:
         return _cache
 
     api_key = settings.tomtom_api_key
+    home_addr = settings.traffic_home_address
+    work_addr = settings.traffic_work_address
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         # Geocode addresses if needed (no-op after first successful call)
-        if api_key:
-            await _ensure_coords(client, api_key)
+        if api_key and home_addr and work_addr:
+            await _ensure_coords(client, api_key, home_addr, work_addr)
 
-        home = _coords.get(HOME_ADDRESS, _HOME_FALLBACK)
-        work = _coords.get(WORK_ADDRESS, _WORK_FALLBACK)
+        home = _coords.get(home_addr, _HOME_FALLBACK) if home_addr else _HOME_FALLBACK
+        work = _coords.get(work_addr, _WORK_FALLBACK) if work_addr else _WORK_FALLBACK
 
         # Fire ANWB and TomTom routing concurrently
         tasks: list = [client.get(ANWB_INCIDENTS_URL)]
