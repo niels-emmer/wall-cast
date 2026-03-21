@@ -1,0 +1,111 @@
+# wall-cast configuration — multi-screen format
+#
+# shared:   applies to every screen (news ticker, location, language)
+# screens:  one entry per physical display
+#
+# After editing, the display hot-reloads within ~1 second.
+# Admin panel: http://<host>/#admin
+
+# ── Shared: applies to every screen ──────────────────────────────────────────
+shared:
+  location:
+    lat: 52
+    lon: 5
+    name: My City
+  language: en
+  people: []
+    # Example:
+    # - id: alice
+    #   name: Alice
+    #   family: true        # shows on all screens (e.g. shared family calendar)
+    #   calendar_ids:
+    #     - family@group.calendar.google.com
+    # - id: bob
+    #   name: Bob
+    #   calendar_ids:
+    #     - bob@gmail.com
+  widgets:
+    - id: news
+      type: news
+      col: 1
+      row: 8
+      col_span: 12
+      row_span: 1
+      config:
+        feeds:
+          - url: https://www.dutchnews.nl/rss
+            label: DutchNews
+          - url: https://news.ycombinator.com/rss
+            label: HackerNews
+          - url: http://reddit.com/r/worldnews.rss
+            label: /r/worldnews
+        scroll_speed_px_per_sec: 80
+        ntfy_url: https://ntfy.example.com
+        ntfy_topic: wall-cast
+
+# ── Screens: one entry per physical display ───────────────────────────────────
+screens:
+  - id: office
+    name: Office
+    chromecast_ip: ""      # e.g. "192.168.1.42" — find with: catt scan
+    people: []             # person IDs from shared.people to show on this screen
+    layout:
+      columns: 12
+      rows: 8
+    widgets:
+      - id: clock
+        type: clock
+        col: 1
+        row: 1
+        col_span: 4
+        row_span: 3
+        config:
+          show_seconds: true
+          show_date: true
+
+      - id: main-rotator
+        type: rotate
+        col: 5
+        row: 1
+        col_span: 8
+        row_span: 7
+        config:
+          interval_sec: 15
+          widgets:
+            - type: weather
+              config:
+                show_hourly: true
+                show_daily: true
+            - type: calendar
+              config:
+                calendar_ids: []       # e.g. ["family@group.calendar.google.com"]
+            - type: traffic
+              config:
+                home_address: ""       # e.g. "Streetname 1, 1234AB City, NL"
+                work_address: ""       # e.g. "Streetname 2, 5678CD City, NL"
+                route_roads: ""        # e.g. "A28,N50,A2"
+            - type: warnings
+              config: {}
+
+      - id: bottom-left-rotator
+        type: rotate
+        col: 1
+        row: 4
+        col_span: 4
+        row_span: 4
+        config:
+          interval_sec: 15
+          widgets:
+            - type: rain
+              config: {}
+            - type: garbage
+              config:
+                days_ahead: 31
+                postcode: ""           # e.g. "1234AB"
+                huisnummer: ""         # e.g. "1"
+            - type: polestar
+              config: {}
+            - type: bus
+              config:
+                stop_city: ""          # e.g. "Amsterdam"
+                stop_name: ""          # e.g. "Leidseplein"

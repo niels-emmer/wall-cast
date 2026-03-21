@@ -1,0 +1,85 @@
+name: wall-cast
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Run as the host user so config files are owned by you, not root.
+    # Add UID and GID to your .env file:  UID=1000  GID=1000
+    # (find yours with: id -u && id -g)
+    user: "${UID:-1000}:${GID:-1000}"
+    # Allows the backend to reach the scanner sidecar on the host network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config:/config
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WALL_CONFIG_PATH: /config/wall-cast.yaml
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Auto-caster: reads chromecast_ip from each screen in wall-cast.yaml and
+  # casts /?screen=<id> to the corresponding Chromecast. Monitors all sessions
+  # and re-casts on drop. Re-reads config on every check cycle — adding or
+  # removing a screen's chromecast_ip takes effect without restarting.
+  #
+  # Setup (one-time):
+  #   1. Find Chromecast IPs:
+  #        docker run --rm --network=host python:3.12-slim \
+  #          sh -c 'pip install -q catt && catt scan'
+  #   2. Add chromecast_ip to each screen in wall-cast.yaml (or via /#admin → Screens)
+  #   3. Set SERVER_URL in your .env file to this machine's LAN IP
+  #      e.g. SERVER_URL=http://192.168.1.10
+  #      ⚠ Do NOT use http://localhost/ — the TV resolves localhost as itself
+  #   4. Set DHCP reservations for all IPs so they never change
+  #
+  # Chromecast scanner sidecar — runs `catt scan` on demand via GET /scan on
+  # port 8765. Needs host networking for mDNS discovery. The backend proxies
+  # admin scan requests to it via host.docker.internal:8765.
+  #
+  scanner:
+    build:
+      context: ./caster
+    network_mode: host
+    restart: unless-stopped
+    stop_grace_period: 0s   # SIGKILL immediately — prevents orphaned host-network processes
+    command: ["python", "/scanner.py"]
+
+  # network_mode: host is required to reach Chromecasts via mDNS on the LAN.
+  #
+  caster:
+    build:
+      context: ./caster
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./config:/config
+    environment:
+      WALL_CONFIG_PATH: /config/wall-cast.yaml
+      SERVER_URL: "${SERVER_URL:-http://localhost}"
+      CHECK_INTERVAL: "60"
+    depends_on:
+      frontend:
+        condition: service_started
