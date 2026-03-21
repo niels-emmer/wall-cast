@@ -961,17 +961,21 @@ function ScreensTab({
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Screens</SectionTitle>
         <Group gap="xs" wrap="wrap">
-          {multiDraft.screens.map(s => (
-            <Button
-              key={s.id}
-              size="sm"
-              variant={selectedId === s.id ? 'filled' : 'subtle'}
-              color={selectedId === s.id ? 'cyan' : 'gray'}
-              onClick={() => selectScreen(s.id)}
-            >
-              {s.name || s.id}
-            </Button>
-          ))}
+          {multiDraft.screens.map(s => {
+            const isDisabled = s.enabled === false
+            return (
+              <Button
+                key={s.id}
+                size="sm"
+                variant={selectedId === s.id ? 'filled' : 'subtle'}
+                color={selectedId === s.id ? (isDisabled ? 'gray' : 'cyan') : 'gray'}
+                onClick={() => selectScreen(s.id)}
+                style={{ opacity: isDisabled ? 0.45 : 1 }}
+              >
+                {s.name || s.id}
+              </Button>
+            )
+          })}
           <Button size="sm" variant="subtle" color="gray" onClick={handleAddScreen}>
             + Add
           </Button>
@@ -1091,15 +1095,31 @@ function ScreensTab({
               </Stack>
 
               <Divider />
-              <Button
-                variant="subtle"
-                color="red"
-                size="sm"
-                onClick={() => handleDeleteScreen(currentScreen.id)}
-                style={{ alignSelf: 'flex-start' }}
-              >
-                Delete screen
-              </Button>
+              <Group gap="sm">
+                <Button
+                  variant="subtle"
+                  color={currentScreen.enabled === false ? 'green' : 'orange'}
+                  size="sm"
+                  onClick={() => {
+                    const screens = multiDraft.screens.map(s =>
+                      s.id === currentScreen.id
+                        ? { ...s, enabled: s.enabled === false ? true : false }
+                        : s
+                    )
+                    onChange({ ...multiDraft, screens })
+                  }}
+                >
+                  {currentScreen.enabled === false ? 'Enable screen' : 'Disable screen'}
+                </Button>
+                <Button
+                  variant="subtle"
+                  color="red"
+                  size="sm"
+                  onClick={() => handleDeleteScreen(currentScreen.id)}
+                >
+                  Delete screen
+                </Button>
+              </Group>
             </Stack>
           </Paper>
 
