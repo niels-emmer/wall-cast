@@ -54,6 +54,18 @@
 **Decision**: `useLang()` calls `useQuery(['config'], ...)` directly instead of calling `useConfig()`.
 **Rationale**: `useConfig()` sets up a new `EventSource` SSE connection per call via `useEffect`. Every widget calls `useLang()`, so calling `useConfig()` inside it would create 5–6 extra SSE connections on each page load. Using `useQuery` directly with the identical `['config']` key lets TanStack Query deduplicate the fetch — only `App.tsx`'s call to `useConfig()` sets up the SSE connection.
 
+---
+
+## 2026-03-21 — KNMI warnings widget
+
+### RotatorWidget: onSkip mechanism for conditional slots
+**Decision**: Added optional `onSkip?: () => void` to `WidgetProps`. The RotatorWidget passes a stable callback (via `useRef`) to each slot. When a widget has no content to show, it calls `onSkip()`. The rotator tracks a `skipSet: Set<number>` and skips those indices when cycling.
+**Rationale**: The warnings widget should be invisible during calm weather — no blank slot, no user configuration needed. A data-driven approach (querying data in the rotator) would couple the rotator to specific widget types. The callback pattern keeps the rotator generic: any future widget can opt out of rotation when empty.
+
+### KNMI warnings: CDN XML endpoint, no API key
+**Decision**: Use `cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml` (public, no key). Parse with stdlib `xml.etree.ElementTree`. Group warnings by (level, phenomenon, description) and aggregate regions.
+**Rationale**: The KNMI Open Data API requires registration. The CDN XML endpoint is stable, has been used by Dutch weather apps for years, and requires zero credentials. Backend returns empty list on error rather than 502 — the display should remain stable during brief API outages.
+
 ### Garbage widget: configurable days_ahead, fit-to-box
 **Decision**: `days_ahead` is a per-widget YAML config key (default 7). The backend `?days_ahead=N` query param is validated (1–365) and cached per value. The widget measures its container with `ResizeObserver` and slices the collections list to show only complete cards.
 **Rationale**: The hardcoded 7-day window was not always right — fewer or more days may be useful depending on widget size. Fit-to-box via ResizeObserver is more robust than guessing a fixed max based on row_span, since the actual rendered height depends on the grid and font scaling.
