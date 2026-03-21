@@ -2,7 +2,7 @@
 Proxy to mijnafvalwijzer.nl for garbage collection dates.
 Returns upcoming GFT / PMD / Restafval dates within the next N days.
 
-Config: postcode / huisnummer per widget config (or GARBAGE_POSTCODE / GARBAGE_HUISNUMMER env fallback)
+Config: postcode / huisnummer per widget config (set via admin panel or wall-cast.yaml).
 Cache keyed by "postcode:huisnummer:days_ahead".
 """
 
@@ -51,13 +51,13 @@ async def get_garbage(
 ) -> dict:
     global _cache, _cache_ts
 
-    pc = (postcode or settings.garbage_postcode).replace(" ", "")
-    hn = huisnummer or settings.garbage_huisnummer
+    pc = (postcode or "").replace(" ", "")
+    hn = huisnummer or ""
 
     if not pc or not hn:
         raise HTTPException(
             status_code=400,
-            detail="postcode and huisnummer must be provided (via widget config or GARBAGE_POSTCODE/GARBAGE_HUISNUMMER env vars)",
+            detail="postcode and huisnummer must be configured — set them in the admin panel",
         )
 
     cache_key = f"{pc}:{hn}:{days_ahead}"

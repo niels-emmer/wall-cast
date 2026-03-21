@@ -5,7 +5,7 @@ Two data sources:
   1. ANWB incidents API (no key) — current highway traffic jams in NL
   2. TomTom Routing API (key via TOMTOM_API_KEY env var) — live travel time
 
-Per-widget config (all optional, fall back to env vars):
+Per-widget config (set via admin panel or wall-cast.yaml):
   home_address  — origin address for travel time
   work_address  — destination address for travel time
   route_roads   — comma-separated road numbers to highlight as on-route
@@ -157,9 +157,9 @@ async def get_traffic(
 ) -> dict:
     global _cache, _cache_ts
 
-    home_addr = home or settings.traffic_home_address
-    work_addr = work or settings.traffic_work_address
-    route_str = route_roads if route_roads is not None else settings.traffic_route_roads
+    home_addr = home or ""
+    work_addr = work or ""
+    route_str = route_roads or ""
 
     cache_key = f"{home_addr}:{work_addr}:{route_str}"
 

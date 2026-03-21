@@ -12,17 +12,14 @@ The display is controlled by two things:
 | Variable | Required for | Default | Description |
 |----------|-------------|---------|-------------|
 | `TIMEZONE` | `calendar` | `UTC` | IANA timezone name, e.g. `Europe/Amsterdam`. Controls date/time display in the calendar widget. See [tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). |
-| `GARBAGE_POSTCODE` | `garbage` | — | Dutch postcode (e.g. `1234AB`). Find yours on [mijnafvalwijzer.nl](https://www.mijnafvalwijzer.nl). |
-| `GARBAGE_HUISNUMMER` | `garbage` | — | House number for the garbage collection lookup. |
 | `POLESTAR_USERNAME` | `polestar` | — | Email address for your Polestar account. |
 | `POLESTAR_PASSWORD` | `polestar` | — | Password for your Polestar account. |
 | `GOOGLE_CALENDAR_ID` | `calendar` | — | Calendar ID from Google Calendar settings (e.g. `xxxxx@group.calendar.google.com`). |
 | `GOOGLE_SA_KEY_FILE` | `calendar` | `/config/google-sa.json` | Path inside the container to the service account JSON key file. Leave at the default and place your JSON at `config/google-sa.json` in the repo root — it is gitignored and never committed. |
 | `TOMTOM_API_KEY` | `traffic` | — | API key for the TomTom Routing API (travel time + geocoding). Free — see [API keys](#api-keys) below. |
-| `TRAFFIC_HOME_ADDRESS` | `traffic` | — | Origin address for travel time, e.g. `Your Street 1, 1234AB Your City, NL`. Geocoded on first request. |
-| `TRAFFIC_WORK_ADDRESS` | `traffic` | — | Destination address for travel time. Same format as above. |
+| `VERTREKTIJD_API_KEY` | `bus` | — | API key for vertrektijd.info. Free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). |
 
-See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
+All widget-specific settings (addresses, stop names, postcodes, etc.) are configured in the **admin panel** at `/#admin` — not in `.env`. See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
 
 ---
 
@@ -272,7 +269,7 @@ curl -H "Title: Headline" -d "Message text" https://ntfy.example.com/wall-cast
 
 Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows the next collection per type (GFT, PMD, Restafval) as horizontal cards.
 
-Address is configured **per widget** in YAML (preferred for multi-screen). Falls back to `GARBAGE_POSTCODE` / `GARBAGE_HUISNUMMER` env vars when not set in config.
+Address is configured per widget in the **admin panel** or directly in YAML.
 
 ```yaml
 - id: garbage
@@ -282,7 +279,7 @@ Address is configured **per widget** in YAML (preferred for multi-screen). Falls
   col_span: 4
   row_span: 4
   config:
-    postcode: "1234AB"   # Dutch postcode — leave empty to use env var fallback
+    postcode: "1234AB"   # Dutch postcode
     huisnummer: "1"      # house number
     days_ahead: 7        # look-ahead window in days (default: 7, range: 1–365)
 ```
@@ -325,7 +322,7 @@ POLESTAR_PASSWORD=yourpassword
 
 Google Calendar events via a service account. Shows today's events and the next few days. Supports multiple calendar IDs per widget — events are merged and deduplicated, each inheriting its calendar's background colour.
 
-Calendar IDs are configured **per widget** in YAML (preferred for multi-screen). Falls back to `GOOGLE_CALENDAR_ID` env var when `calendar_ids` is empty.
+Calendar IDs are configured per widget in the **admin panel** or directly in YAML. Falls back to `GOOGLE_CALENDAR_ID` env var when `calendar_ids` is empty.
 
 ```yaml
 - id: calendar
@@ -344,7 +341,7 @@ Calendar IDs are configured **per widget** in YAML (preferred for multi-screen).
 **Environment variables (`.env`) — secrets only:**
 ```
 TIMEZONE=Europe/Amsterdam
-GOOGLE_CALENDAR_ID=xxxxx@group.calendar.google.com   # fallback when calendar_ids not set
+GOOGLE_CALENDAR_ID=xxxxx@group.calendar.google.com   # fallback when calendar_ids not set in widget config
 GOOGLE_SA_KEY_FILE=/config/google-sa.json
 ```
 
@@ -369,7 +366,7 @@ Current Dutch highway traffic jams and live travel time from home to work. Two d
 - **Traffic jams** — [ANWB](https://www.anwb.nl/verkeer) incidents API. No API key required. Covers all Dutch rijkswegen (A- and N-roads).
 - **Travel time** — [TomTom Routing API](https://developer.tomtom.com/routing-api). Requires a free API key (see [API keys](#api-keys)). Traffic-aware: shows real-time delay on top of the base travel time.
 
-Home and work addresses are configured **per widget** in YAML (preferred for multi-screen). Falls back to `TRAFFIC_HOME_ADDRESS` / `TRAFFIC_WORK_ADDRESS` env vars when not set in config. Addresses are geocoded to exact coordinates on first request and cached for the process lifetime.
+Home and work addresses are configured per widget in the **admin panel** or directly in YAML. Addresses are geocoded to exact coordinates on first request and cached for the process lifetime.
 
 ```yaml
 - id: traffic
@@ -384,11 +381,9 @@ Home and work addresses are configured **per widget** in YAML (preferred for mul
     route_roads: "A28,N50,A2"   # comma-separated — jams on these roads get an 'on route' badge
 ```
 
-**Environment variables (`.env`) — secrets and fallbacks:**
+**Environment variables (`.env`) — API key only:**
 ```
 TOMTOM_API_KEY=your_key_here
-TRAFFIC_HOME_ADDRESS=Your Street 1, 1234AB Your City, NL   # fallback when not in widget config
-TRAFFIC_WORK_ADDRESS=Work Street 1, 5678CD Work City, NL
 ```
 
 **Display:** Title. Travel time card at the top showing journey time as `H:MM`, distance, and delay (green = no delay, orange = delayed with `+H:MM` indicator). Below: a list of current traffic jams sorted by delay, each showing a colour-coded road badge (A-roads blue, N-roads grey), from → to, distance in km, and delay in minutes. Jam rows are colour-coded by severity: yellow < 10 min, orange 10–30 min, red ≥ 30 min. Shows "Geen files" / "No jams" when the roads are clear.
@@ -403,7 +398,7 @@ The widget still renders (showing only the jam list) if `TOMTOM_API_KEY` is not 
 
 Shows upcoming bus departures from a configured stop, sourced from [vertrektijd.info](https://vertrektijd.info).
 
-Stop identity is configured **per widget** in YAML (preferred for multi-screen). Falls back to `BUSSTOP_CITY` / `BUSSTOP_NAME` env vars when not set in config.
+Stop identity is configured per widget in the **admin panel** or directly in YAML.
 
 ```yaml
 - id: bus
@@ -462,11 +457,24 @@ In **multi-screen** mode a screen selector appears at the top — choose **Share
 
 From the admin panel you can:
 
-- **Enable / disable** individual rotation slots without editing the YAML directly
-- **Change the rotation interval** (seconds per slot)
-- **Add or remove RSS feeds** for the news ticker
-- **Set the display language** (Dutch or English) — in shared section or flat config
-- **Set the garbage look-ahead window** (days ahead to check for collections)
+**General tab**
+- Set the **home location** (lat/lon/name) with a Geolocate button
+- Set the **display language** (Dutch or English)
+- Configure **news ticker** feeds, scroll speed, ntfy URL and topic
+
+**Screens tab** (per screen)
+- Add, rename, and delete screens; set Chromecast IP (with network scan)
+- Toggle **clock** show-seconds / show-date
+- Configure **rotator** interval and enable/disable individual slots
+- Set **traffic** home address, work address, and route roads
+- Set **bus** city and stop name
+- Set **garbage** postcode, house number, and days-ahead window
+- Toggle **weather** hourly / daily forecast rows
+- Manage **calendar** extra calendar IDs per slot
+
+**People tab** (multi-screen only)
+- Add people with calendar IDs; mark as family (appears on all screens)
+- Assign people to individual screens
 
 Changes are saved back to `config/wall-cast.yaml` and take effect on the display immediately via hot-reload.
 
