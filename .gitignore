@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+.pnp
+.pnp.js
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# Secrets — service account keys must never be committed
+config/*.json
+
+# Live config — user-specific, written by the backend container.
+# The backend creates this automatically on first run from built-in defaults.
+# See config/wall-cast.example.yaml for the full annotated template.
+config/wall-cast.yaml

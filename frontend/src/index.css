@@ -1,0 +1,37 @@
+/* Base reset and dark theme */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #000000;
+  --color-surface: #111111;
+  --color-panel: #1a1a1a;
+  --color-border: #2a2a2a;
+  --color-accent: #00d4ff;
+  --color-text: #f0f0f0;
+  --color-muted: #888888;
+  --font-base: 18px; /* Scale this for resolution tuning */
+}
+
+html {
+  font-size: var(--font-base);
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* Kiosk — no scrollbars */
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
