@@ -32,11 +32,31 @@ wall-cast supports two formats. The **multi-screen format** is recommended:
 shared:
   location:   { lat, lon, name }
   language:   nl              # display language: nl (default) or en
+  garbage:    { postcode, huisnummer }
+  people:
+    - id: alice
+      name: Alice
+      family: true
+      calendar_ids:
+        - alice@gmail.com
+    - id: bob
+      name: Bob
+      family: false
+      calendar_ids:
+        - bob@gmail.com
+      traffic:
+        home_address: "Home Street 1, 1234AB City, NL"
+        work_address: "Work Street 1, 5678CD City, NL"
+        route_roads: "A10,A2"     # jams on these roads get an 'on route' badge
+      bus:
+        stop_city: Amsterdam
+        stop_name: Leidseplein
   widgets:    [ ... ]         # widgets shown on every screen (e.g. news ticker)
 
 screens:
   - id: living-room
     name: Living Room
+    enabled: true             # false = keep the entry but stop casting (default: true)
     layout: { columns: 12, rows: 8 }
     widgets: [ ... ]          # widgets specific to this screen
 
@@ -269,7 +289,7 @@ curl -H "Title: Headline" -d "Message text" https://ntfy.example.com/wall-cast
 
 Upcoming waste collection dates from [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl). Shows the next collection per type (GFT, PMD, Restafval) as horizontal cards.
 
-Address is configured per widget in the **admin panel** or directly in YAML.
+Postcode and house number are set in the **General** tab of the admin panel (shared across all screens) or in `shared.garbage` in the YAML. Only `days_ahead` is widget-level config.
 
 ```yaml
 - id: garbage
@@ -279,14 +299,12 @@ Address is configured per widget in the **admin panel** or directly in YAML.
   col_span: 4
   row_span: 4
   config:
-    postcode: "1234AB"   # Dutch postcode
-    huisnummer: "1"      # house number
     days_ahead: 7        # look-ahead window in days (default: 7, range: 1–365)
 ```
 
 `days_ahead` controls how far ahead to look for upcoming collections. Only collections due within this window are shown. The widget automatically shows only as many cards as fit in the available space — no scrolling, no cut-off cards.
 
-**Display:** Title. One horizontal card per upcoming collection, sorted by proximity. Cards for today or tomorrow have an accent background. Each card shows a colour-coded left border, large emoji icon (🌿 GFT / ♻️ PMD / 🗑️ Restafval), container name, and relative day label + date on the right.
+**Display:** Title. One horizontal card per upcoming collection, sorted by proximity. Cards for today or tomorrow have an accent background. Each card shows a colour-coded left border, colour-coded SVG icon (leaf / recycling / bin), container name, and relative day label + date on the right.
 
 **Backend cache:** 1 hour (results are cached per `days_ahead` value).
 
@@ -366,7 +384,7 @@ Current Dutch highway traffic jams and live travel time from home to work. Two d
 - **Traffic jams** — [ANWB](https://www.anwb.nl/verkeer) incidents API. No API key required. Covers all Dutch rijkswegen (A- and N-roads).
 - **Travel time** — [TomTom Routing API](https://developer.tomtom.com/routing-api). Requires a free API key (see [API keys](#api-keys)). Traffic-aware: shows real-time delay on top of the base travel time.
 
-Home and work addresses are configured per widget in the **admin panel** or directly in YAML. Addresses are geocoded to exact coordinates on first request and cached for the process lifetime.
+Home address, work address, and route roads are configured **per person** in the **People** tab of the admin panel (or under `people[].traffic` in the YAML). The widget config itself is empty — values are injected at serve time from the first person assigned to the screen.
 
 ```yaml
 - id: traffic
@@ -375,10 +393,7 @@ Home and work addresses are configured per widget in the **admin panel** or dire
   row: 1
   col_span: 8
   row_span: 7
-  config:
-    home_address: "Your Street 1, 1234AB Your City, NL"
-    work_address: "Work Street 1, 5678CD Work City, NL"
-    route_roads: "A28,N50,A2"   # comma-separated — jams on these roads get an 'on route' badge
+  config: {}    # home/work address and route roads come from the person assigned to this screen
 ```
 
 **Environment variables (`.env`) — API key only:**
@@ -398,7 +413,7 @@ The widget still renders (showing only the jam list) if `TOMTOM_API_KEY` is not 
 
 Shows upcoming bus departures from a configured stop, sourced from [vertrektijd.info](https://vertrektijd.info).
 
-Stop identity is configured per widget in the **admin panel** or directly in YAML.
+Stop city and name are configured **per person** in the **People** tab of the admin panel (or under `people[].bus` in the YAML). The widget config itself is empty — values are injected at serve time from the first person assigned to the screen.
 
 ```yaml
 - id: bus
@@ -407,9 +422,7 @@ Stop identity is configured per widget in the **admin panel** or directly in YAM
   row: 4
   col_span: 4
   row_span: 4
-  config:
-    stop_city: "Amsterdam"
-    stop_name: "Leidseplein"
+  config: {}    # stop city and name come from the person assigned to this screen
 ```
 
 **Display:** Title with stop name. Lists upcoming departures showing line number, destination, and departure time. Cancelled departures are shown with a strikethrough. Lookahead window: 90 minutes.
@@ -459,22 +472,23 @@ From the admin panel you can:
 
 **General tab**
 - Set the **home location** (lat/lon/name) with a Geolocate button
+- Set the **garbage collection** address (postcode and house number — Netherlands; shared across all screens)
 - Set the **display language** (Dutch or English)
 - Configure **news ticker** feeds, scroll speed, ntfy URL and topic
 
 **Screens tab** (per screen)
-- Add, rename, and delete screens; set Chromecast IP (with network scan)
+- Add, rename, delete, **enable/disable** screens; set Chromecast IP (with network scan)
 - Toggle **clock** show-seconds / show-date
 - Configure **rotator** interval and enable/disable individual slots
-- Set **traffic** home address, work address, and route roads
-- Set **bus** city and stop name
-- Set **garbage** postcode, house number, and days-ahead window
 - Toggle **weather** hourly / daily forecast rows
-- Manage **calendar** extra calendar IDs per slot
+- Manage **calendar** extra calendar IDs per rotator slot
+- Assign which **people** appear on this screen (controls whose calendar/commute/bus are shown)
 
 **People tab** (multi-screen only)
-- Add people with calendar IDs; mark as family (appears on all screens)
-- Assign people to individual screens
+- Add people with name and optional **family** flag (family members appear on all screens automatically)
+- Add **Google Calendar IDs** per person; the admin panel shows the service account email to share with
+- Set **commute** (home address, work address, route roads) with TomTom address autocomplete and a **Lookup** button that auto-detects highway numbers along the route
+- Set **bus stop** (city and stop name) per person
 
 Changes are saved back to `config/wall-cast.yaml` and take effect on the display immediately via hot-reload.
 

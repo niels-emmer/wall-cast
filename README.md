@@ -132,9 +132,9 @@ Full reference: [docs/config-reference.md](docs/config-reference.md)
 
 Open **`http://<host-ip>/#admin`** to use the point-and-click admin panel. It has three tabs:
 
-- **General** — display language, location, and news feed URLs
-- **Screens** — add/rename/delete screens; set Chromecast IP (use the **Scan network** button to discover devices); edit the screen ID used in the cast URL; assign people; configure rotation slots and intervals
-- **People** — add household members with their Google Calendar IDs; mark family members whose calendars should appear on every screen
+- **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, and news feed URLs
+- **Screens** — add/rename/delete/enable/disable screens; set Chromecast IP (use the **Scan network** button to discover devices); set screen ID, layout, clock options, rotator intervals; assign people to the screen; configure weather and calendar options per slot
+- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus stop — used on any screen the person is assigned to
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
@@ -144,86 +144,23 @@ The config uses a `shared + screens[]` schema. Settings in `shared` apply to eve
 
 ```yaml
 shared:
-  location:
-    lat: 52.37         # latitude for weather and rain
-    lon: 4.90          # longitude
-    name: Amsterdam    # display name (cosmetic only)
-
-  language: en         # en (English) or nl (Dutch)
-
-  people:
-    - id: alice
-      name: Alice
-      family: true     # family members' calendars show on every screen
-      calendar_ids:
-        - alice@gmail.com
-        - shared-family-cal@group.calendar.google.com
-    - id: bob
-      name: Bob
-      family: false    # only appears on screens where bob is listed
-      calendar_ids:
-        - bob@gmail.com
-
-  widgets:
-    - id: news
-      type: news
-      col: 1
-      row: 8
-      col_span: 12
-      row_span: 1
-      config:
-        feeds:
-          - url: https://feeds.nos.nl/nosnieuwsalgemeen
-            label: NOS
-        scroll_speed_px_per_sec: 80
-        ntfy_url: https://ntfy.example.com
-        ntfy_topic: wall-cast
+  location: { lat, lon, name }  # weather, rain, sunrise/sunset
+  language: en                  # en or nl
+  garbage: { postcode, huisnummer }
+  people: [ ... ]               # household members with calendar IDs, commute, bus stop
+  widgets: [ ... ]              # widgets on every screen (e.g. news ticker)
 
 screens:
   - id: living-room
     name: Living Room
+    enabled: true               # set to false to stop casting without deleting the entry
     chromecast_ip: "192.168.1.42"
-    people: [alice, bob]
-    layout:
-      columns: 12
-      rows: 8
-    widgets:
-      - id: clock
-        type: clock
-        col: 1
-        row: 1
-        col_span: 4
-        row_span: 3
-        config:
-          show_seconds: true
-          show_date: true
-
-      - id: weather
-        type: weather
-        col: 5
-        row: 1
-        col_span: 8
-        row_span: 7
-
-      - id: rotator
-        type: rotate
-        col: 1
-        row: 4
-        col_span: 4
-        row_span: 4
-        config:
-          interval_sec: 20
-          widgets:
-            - type: rain
-              config: {}
-            - type: calendar
-              config: {}
-            - type: garbage
-              config:
-                postcode: "1234AB"
-                huisnummer: "1"
-                days_ahead: 7
+    people: [alice, bob]        # which people's calendars/commute/bus appear here
+    layout: { columns: 12, rows: 8 }
+    widgets: [ ... ]            # screen-specific widgets
 ```
+
+See [`config/wall-cast.example.yaml`](config/wall-cast.example.yaml) for a full annotated template and [`docs/config-reference.md`](docs/config-reference.md) for the complete field reference.
 
 Each screen is accessible at `/?screen=<id>`. The caster service opens this URL on the Chromecast automatically.
 
