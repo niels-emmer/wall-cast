@@ -614,6 +614,7 @@ function LocationSection({
             value={lat}
             onChange={v => updateLoc({ lat: Number(v) })}
             decimalScale={4}
+            fixedDecimalScale
             step={0.0001}
             min={-90}
             max={90}
@@ -625,6 +626,7 @@ function LocationSection({
             value={lon}
             onChange={v => updateLoc({ lon: Number(v) })}
             decimalScale={4}
+            fixedDecimalScale
             step={0.0001}
             min={-180}
             max={180}
