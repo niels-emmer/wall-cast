@@ -15,6 +15,8 @@ import { LANGUAGE_LABELS, type Lang } from '../i18n/translations'
 import type {
   AdminConfig,
   MultiScreenConfig,
+  FlatConfig,
+  Location,
   Person,
   ScreenSection,
   WidgetConfig,
@@ -119,6 +121,16 @@ function getLanguage(draft: AdminConfig): string {
 function setLanguageInDraft(draft: AdminConfig, lang: string): AdminConfig {
   if (!isMultiScreen(draft)) return { ...draft, language: lang }
   return { ...draft, shared: { ...draft.shared, language: lang } }
+}
+
+function getLocation(draft: AdminConfig): Location | undefined {
+  if (!isMultiScreen(draft)) return (draft as FlatConfig).location
+  return draft.shared.location
+}
+
+function setLocationInDraft(draft: AdminConfig, loc: Location): AdminConfig {
+  if (!isMultiScreen(draft)) return { ...draft, location: loc }
+  return { ...draft, shared: { ...draft.shared, location: loc } }
 }
 
 function getPeople(draft: AdminConfig): Person[] {
@@ -328,6 +340,124 @@ function NewsSection({
 }
 
 // ---------------------------------------------------------------------------
+// LocationSection
+// ---------------------------------------------------------------------------
+
+function LocationSection({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const loc = getLocation(draft)
+  const [geoState, setGeoState] = useState<'idle' | 'locating' | 'error'>('idle')
+  const [geoError, setGeoError] = useState('')
+
+  const lat = loc?.lat ?? 0
+  const lon = loc?.lon ?? 0
+  const name = loc?.name ?? ''
+
+  function updateLoc(patch: Partial<Location>) {
+    onChange(setLocationInDraft(draft, { lat, lon, name, ...patch }))
+  }
+
+  async function handleGeolocate() {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation is not supported by this browser.')
+      setGeoState('error')
+      return
+    }
+    setGeoState('locating')
+    setGeoError('')
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const newLat = Math.round(pos.coords.latitude * 10000) / 10000
+        const newLon = Math.round(pos.coords.longitude * 10000) / 10000
+        let newName = name
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLon}`,
+            { headers: { 'Accept-Language': 'en' } },
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const addr = data.address ?? {}
+            newName = addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? data.display_name ?? name
+          }
+        } catch {
+          // name stays as-is if reverse geocoding fails
+        }
+        onChange(setLocationInDraft(draft, { lat: newLat, lon: newLon, name: newName }))
+        setGeoState('idle')
+      },
+      err => {
+        setGeoError(err.message)
+        setGeoState('error')
+      },
+      { timeout: 10000 },
+    )
+  }
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>Home location</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        Used by weather, sunrise/sunset, and other location-aware widgets.
+      </Text>
+      <Stack gap="sm">
+        <Group gap="md" align="flex-end" wrap="wrap">
+          <NumberInput
+            label="Latitude"
+            value={lat}
+            onChange={v => updateLoc({ lat: Number(v) })}
+            decimalScale={4}
+            step={0.0001}
+            min={-90}
+            max={90}
+            size="sm"
+            w={130}
+          />
+          <NumberInput
+            label="Longitude"
+            value={lon}
+            onChange={v => updateLoc({ lon: Number(v) })}
+            decimalScale={4}
+            step={0.0001}
+            min={-180}
+            max={180}
+            size="sm"
+            w={130}
+          />
+          <TextInput
+            label="Display name"
+            placeholder="Amsterdam"
+            value={name}
+            onChange={e => updateLoc({ name: e.target.value })}
+            size="sm"
+            w={180}
+          />
+          <Button
+            variant="subtle"
+            color="cyan"
+            size="sm"
+            onClick={handleGeolocate}
+            loading={geoState === 'locating'}
+            style={{ marginBottom: 1 }}
+          >
+            📍 Geolocate
+          </Button>
+        </Group>
+        {geoState === 'error' && (
+          <Alert color="red" variant="light" p="xs" radius="sm">
+            {geoError || 'Could not determine location.'}
+          </Alert>
+        )}
+      </Stack>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab: General
 // ---------------------------------------------------------------------------
 
@@ -355,6 +485,8 @@ function GeneralTab({
 
   return (
     <Stack gap="md">
+      <LocationSection draft={draft} onChange={onChange} />
+
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Display language</SectionTitle>
         <SegmentedControl
