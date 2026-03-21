@@ -565,6 +565,11 @@ function LocationSection({
   }
 
   async function handleGeolocate() {
+    if (!window.isSecureContext) {
+      setGeoError('Geolocation requires HTTPS. Open the admin panel via https:// or find your coordinates at latlong.net.')
+      setGeoState('error')
+      return
+    }
     if (!navigator.geolocation) {
       setGeoError('Geolocation is not supported by this browser.')
       setGeoState('error')
@@ -654,7 +659,12 @@ function LocationSection({
         </Group>
         {geoState === 'error' && (
           <Alert color="red" variant="light" p="xs" radius="sm">
-            {geoError || 'Could not determine location.'}
+            {geoError || 'Could not determine location.'}{' '}
+            {!window.isSecureContext && (
+              <Anchor href="https://www.latlong.net" target="_blank" size="sm">
+                Find coordinates →
+              </Anchor>
+            )}
           </Alert>
         )}
       </Stack>
