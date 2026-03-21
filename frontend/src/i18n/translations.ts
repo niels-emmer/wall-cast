@@ -80,6 +80,8 @@ export interface Translations {
   warningsTitle: string
   warningsValidUntil: string
   warningsCodeLabel: (level: string) => string
+  /** Map English CAP phenomenon names (from MeteoAlarm) to display label. */
+  warningsPhenomenon: (phenomenon: string) => string
 
   // Shared
   unavailable: string
@@ -192,6 +194,16 @@ export const nl: Translations = {
     const map: Record<string, string> = { geel: 'Code Geel', oranje: 'Code Oranje', rood: 'Code Rood' }
     return map[level] ?? level
   },
+  warningsPhenomenon: (p) => {
+    const map: Record<string, string> = {
+      'Fog': 'Mist', 'Snow/ice': 'Sneeuw/ijzel', 'Snow': 'Sneeuw',
+      'Ice': 'IJzel', 'Rain': 'Regen', 'Wind': 'Wind',
+      'Thunderstorm': 'Onweer', 'Storm': 'Storm', 'Heat': 'Hitte',
+      'Cold': 'Kou', 'Coastal event': 'Kustgevaar', 'Tornado': 'Tornado',
+      'Forest fire': 'Bosbrand', 'Avalanche': 'Lawine', 'Flood': 'Overstroming',
+    }
+    return map[p] ?? p
+  },
 
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
@@ -303,6 +315,7 @@ export const en: Translations = {
     const map: Record<string, string> = { geel: 'Code Yellow', oranje: 'Code Orange', rood: 'Code Red' }
     return map[level] ?? level
   },
+  warningsPhenomenon: (p) => p, // MeteoAlarm already supplies English
 
   unavailable: 'Unavailable',
   loading: 'Loading...',

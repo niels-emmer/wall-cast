@@ -20,7 +20,7 @@ When in the desktop environment: commit and push freely. When in the web IDE: ru
 
 - Repo: `/Users/nemmer/repositories/wall-cast` (desktop) or `/home/coder/project/docker/wall-cast` (server)
 - Stack: FastAPI 0.115 backend + React 18 / Vite / Tailwind frontend, Docker Compose
-- Casting: `caster` Docker service uses `catt cast_site` → DashCast receiver on Google TV (192.168.101.77). `DISPLAY_URL` must be the host's LAN IP (192.168.101.184), NOT `localhost` — the TV resolves localhost as itself
+- Casting: `caster` Docker service uses `catt cast_site` → DashCast receiver on Google TV (192.168.101.77). `DISPLAY_URL` must be the host's LAN IP (192.168.101.252), NOT `localhost` — the TV resolves localhost as itself
 - Config: `config/wall-cast.yaml` hot-reloads via SSE without container restart
 - Layout: 12 × 8 CSS grid, all widget layout uses **inline `style` only** (Tailwind classes unreliable in prod build)
 

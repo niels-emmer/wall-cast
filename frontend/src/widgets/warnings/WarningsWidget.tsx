@@ -94,7 +94,7 @@ function WarningCard({
           textTransform: 'capitalize',
           lineHeight: 1.1,
         }}>
-          {warning.phenomenon}
+          {t.warningsPhenomenon(warning.phenomenon)}
         </span>
         <div style={{
           background: `${color}22`,
