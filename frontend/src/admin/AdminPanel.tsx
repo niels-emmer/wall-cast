@@ -1108,6 +1108,10 @@ function PeopleTab({
   }
 
   const people = getPeople(draft)
+  const [selectedId, setSelectedId] = useState<string | null>(() => people[0]?.id ?? null)
+
+  const currentIdx = people.findIndex(p => p.id === selectedId)
+  const currentPerson = currentIdx >= 0 ? people[currentIdx] : null
 
   function updatePeople(updated: Person[]) {
     onChange(setPeopleInDraft(draft, updated))
@@ -1121,85 +1125,112 @@ function PeopleTab({
       calendar_ids: [],
     }
     updatePeople([...people, newPerson])
+    setSelectedId(newPerson.id)
   }
 
-  function removePerson(idx: number) {
-    updatePeople(people.filter((_, i) => i !== idx))
+  function removePerson() {
+    if (!currentPerson) return
+    if (!window.confirm(`Remove ${currentPerson.name || currentPerson.id}? This cannot be undone.`)) return
+    const remaining = people.filter(p => p.id !== currentPerson.id)
+    updatePeople(remaining)
+    setSelectedId(remaining[0]?.id ?? null)
   }
 
-  function updatePerson(idx: number, updates: Partial<Person>) {
-    updatePeople(people.map((p, i) => i === idx ? { ...p, ...updates } : p))
+  function updatePerson(updates: Partial<Person>) {
+    if (!currentPerson) return
+    updatePeople(people.map(p => p.id === currentPerson.id ? { ...p, ...updates } : p))
   }
 
-  function addCalendarId(idx: number) {
-    updatePerson(idx, { calendar_ids: [...(people[idx].calendar_ids ?? []), ''] })
+  function addCalendarId() {
+    updatePerson({ calendar_ids: [...(currentPerson?.calendar_ids ?? []), ''] })
   }
 
-  function updateCalendarId(personIdx: number, calIdx: number, value: string) {
-    const ids = (people[personIdx].calendar_ids ?? []).map((id, i) => i === calIdx ? value : id)
-    updatePerson(personIdx, { calendar_ids: ids })
+  function updateCalendarId(calIdx: number, value: string) {
+    const ids = (currentPerson?.calendar_ids ?? []).map((id, i) => i === calIdx ? value : id)
+    updatePerson({ calendar_ids: ids })
   }
 
-  function removeCalendarId(personIdx: number, calIdx: number) {
-    const ids = (people[personIdx].calendar_ids ?? []).filter((_, i) => i !== calIdx)
-    updatePerson(personIdx, { calendar_ids: ids })
+  function removeCalendarId(calIdx: number) {
+    const ids = (currentPerson?.calendar_ids ?? []).filter((_, i) => i !== calIdx)
+    updatePerson({ calendar_ids: ids })
   }
 
-  function updateTraffic(idx: number, patch: Partial<PersonTraffic>) {
-    updatePerson(idx, { traffic: { ...people[idx].traffic, ...patch } })
+  function updateTraffic(patch: Partial<PersonTraffic>) {
+    updatePerson({ traffic: { ...currentPerson?.traffic, ...patch } })
   }
 
-  function updateBus(idx: number, patch: Partial<PersonBus>) {
-    updatePerson(idx, { bus: { ...people[idx].bus, ...patch } })
+  function updateBus(patch: Partial<PersonBus>) {
+    updatePerson({ bus: { ...currentPerson?.bus, ...patch } })
   }
 
   return (
-    <Paper p="md" radius="sm" withBorder>
-      <SectionTitle>People</SectionTitle>
-      <Text size="sm" c="dimmed" mb="lg">
-        Each person carries their own calendar IDs, commute (traffic), and bus stop. Assign people to screens — their settings are injected automatically. Family members appear on every screen.
-      </Text>
+    <Stack gap="md">
+      {/* Person selector */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>People</SectionTitle>
+        <Group gap="xs" wrap="wrap">
+          {people.map(p => (
+            <Button
+              key={p.id}
+              size="sm"
+              variant={selectedId === p.id ? 'filled' : 'subtle'}
+              color={selectedId === p.id ? 'cyan' : 'gray'}
+              onClick={() => setSelectedId(p.id)}
+            >
+              {p.name || p.id}{p.family ? ' ★' : ''}
+            </Button>
+          ))}
+          <Button size="sm" variant="subtle" color="gray" onClick={addPerson}>
+            + Add
+          </Button>
+        </Group>
+      </Paper>
 
-      <Stack gap="lg">
-        {people.map((person, idx) => (
-          <Stack key={person.id} gap="sm">
-            {idx > 0 && <Divider />}
-            <Group gap="md" align="flex-end" wrap="wrap">
-              <TextInput
-                label="Name"
-                placeholder="Name"
-                value={person.name}
-                onChange={e => updatePerson(idx, { name: e.target.value })}
-                size="sm"
-                w={160}
-              />
-              <Checkbox
-                label="Family (all screens)"
-                checked={!!person.family}
-                onChange={e => updatePerson(idx, { family: e.currentTarget.checked })}
-                size="sm"
-                mb={4}
-              />
+      {/* Selected person details */}
+      {currentPerson && (
+        <>
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Person settings</SectionTitle>
+            <Stack gap="md">
+              <Group gap="md" align="flex-end" wrap="wrap">
+                <TextInput
+                  label="Name"
+                  placeholder="Name"
+                  value={currentPerson.name}
+                  onChange={e => updatePerson({ name: e.target.value })}
+                  size="sm"
+                  w={200}
+                />
+                <Checkbox
+                  label="Family (all screens)"
+                  checked={!!currentPerson.family}
+                  onChange={e => updatePerson({ family: e.currentTarget.checked })}
+                  size="sm"
+                  mb={4}
+                />
+              </Group>
+              <Divider />
               <Button
                 variant="subtle"
                 color="red"
-                size="xs"
-                onClick={() => removePerson(idx)}
-                style={{ marginLeft: 'auto' }}
-                mb={4}
+                size="sm"
+                onClick={removePerson}
+                style={{ alignSelf: 'flex-start' }}
               >
-                Remove
+                Remove person
               </Button>
-            </Group>
+            </Stack>
+          </Paper>
 
-            <Stack gap="xs" pl="xs">
-              <Text size="xs" c="dimmed" fw={500}>Google Calendar IDs</Text>
-              {(person.calendar_ids ?? []).map((calId, calIdx) => (
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Google Calendar IDs</SectionTitle>
+            <Stack gap="xs">
+              {(currentPerson.calendar_ids ?? []).map((calId, calIdx) => (
                 <Group key={calIdx} gap="xs" wrap="nowrap">
                   <TextInput
                     placeholder="xxxx@group.calendar.google.com"
                     value={calId}
-                    onChange={e => updateCalendarId(idx, calIdx, e.target.value)}
+                    onChange={e => updateCalendarId(calIdx, e.target.value)}
                     size="sm"
                     style={{ flex: 1, minWidth: 0 }}
                     ff="monospace"
@@ -1208,7 +1239,7 @@ function PeopleTab({
                     variant="subtle"
                     color="red"
                     size="sm"
-                    onClick={() => removeCalendarId(idx, calIdx)}
+                    onClick={() => removeCalendarId(calIdx)}
                     style={{ flexShrink: 0 }}
                   >
                     ✕
@@ -1219,73 +1250,64 @@ function PeopleTab({
                 variant="subtle"
                 color="gray"
                 size="xs"
-                onClick={() => addCalendarId(idx)}
+                onClick={addCalendarId}
                 style={{ alignSelf: 'flex-start' }}
               >
                 + Add calendar
               </Button>
             </Stack>
+          </Paper>
 
-            <Stack gap="xs" pl="xs">
-              <Text size="xs" c="dimmed" fw={500}>Traffic (commute)</Text>
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Traffic (commute)</SectionTitle>
+            <Stack gap="sm">
               <TextInput
                 label="Home address"
                 placeholder="Streetname 1, 1234AB City, NL"
-                value={person.traffic?.home_address ?? ''}
-                onChange={e => updateTraffic(idx, { home_address: e.target.value })}
-                size="xs"
+                value={currentPerson.traffic?.home_address ?? ''}
+                onChange={e => updateTraffic({ home_address: e.target.value })}
+                size="sm"
               />
               <TextInput
                 label="Work address"
                 placeholder="Streetname 2, 5678CD City, NL"
-                value={person.traffic?.work_address ?? ''}
-                onChange={e => updateTraffic(idx, { work_address: e.target.value })}
-                size="xs"
+                value={currentPerson.traffic?.work_address ?? ''}
+                onChange={e => updateTraffic({ work_address: e.target.value })}
+                size="sm"
               />
               <TextInput
                 label="Route roads"
                 placeholder="A10,A2,N14"
                 description="Comma-separated — jams on these roads float to the top"
-                value={person.traffic?.route_roads ?? ''}
-                onChange={e => updateTraffic(idx, { route_roads: e.target.value })}
-                size="xs"
+                value={currentPerson.traffic?.route_roads ?? ''}
+                onChange={e => updateTraffic({ route_roads: e.target.value })}
+                size="sm"
               />
             </Stack>
+          </Paper>
 
-            <Stack gap="xs" pl="xs">
-              <Text size="xs" c="dimmed" fw={500}>Bus stop</Text>
-              <Group gap="sm" wrap="wrap" align="flex-start">
-                <TextInput
-                  label="City"
-                  value={person.bus?.stop_city ?? ''}
-                  onChange={e => updateBus(idx, { stop_city: e.target.value })}
-                  size="xs"
-                  w={140}
-                />
-                <TextInput
-                  label="Stop name"
-                  value={person.bus?.stop_name ?? ''}
-                  onChange={e => updateBus(idx, { stop_name: e.target.value })}
-                  size="xs"
-                  w={180}
-                />
-              </Group>
-            </Stack>
-          </Stack>
-        ))}
-      </Stack>
-
-      {people.length > 0 && <Divider mt="lg" />}
-      <Button
-        variant="subtle"
-        color="gray"
-        size="sm"
-        onClick={addPerson}
-        mt={people.length > 0 ? 'md' : undefined}
-      >
-        + Add person
-      </Button>
-    </Paper>
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Bus stop</SectionTitle>
+            <Group gap="sm" wrap="wrap" align="flex-start">
+              <TextInput
+                label="City"
+                value={currentPerson.bus?.stop_city ?? ''}
+                onChange={e => updateBus({ stop_city: e.target.value })}
+                size="sm"
+                w={160}
+              />
+              <TextInput
+                label="Stop name"
+                value={currentPerson.bus?.stop_name ?? ''}
+                onChange={e => updateBus({ stop_name: e.target.value })}
+                size="sm"
+                w={200}
+              />
+            </Group>
+          </Paper>
+        </>
+      )}
+    </Stack>
   )
 }
 
