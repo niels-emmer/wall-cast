@@ -64,18 +64,39 @@ It is fully AI-coded and designed to be extended. Fork it, tell Claude what you 
 ### 1. Clone
 
 ```bash
-git clone https://github.com/yourname/wall-cast
+git clone https://github.com/niels-emmer/wall-cast
 cd wall-cast
 ```
 
-### 2. Set file ownership
+### 2. Create your `.env`
 
-Create a `.env` file with your host user's UID and GID so config files are owned by you, not root:
+Copy the example and fill in your values:
 
 ```bash
-echo "UID=$(id -u)" >> .env
-echo "GID=$(id -g)" >> .env
+cp .env.example .env
 ```
+
+Then edit `.env`:
+
+**`UID` / `GID`** — file ownership for config files written by the backend. Run `id -u && id -g` on the host to get your values. Default `1000` is fine on most Linux installs.
+
+**`SERVER_URL`** — the LAN address of this Docker host, as seen from the Chromecasts. Use `ip addr` (Linux) or `ipconfig` (Windows) to find it. Must be an IP, not `localhost` — the TV resolves localhost as itself.
+
+```bash
+SERVER_URL=http://192.168.1.10
+```
+
+**`TIMEZONE`** — IANA timezone name, e.g. `Europe/Amsterdam`. Used for calendar event times. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+
+The remaining settings are **optional** — only fill in the ones for widgets you plan to use:
+
+**`GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID`** *(calendar widget)* — requires a Google service account. Create one at [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials, enable the Calendar API, download the JSON key to `config/google-sa.json`, and share your calendar with the service account email. The Calendar ID is found under Settings → your calendar → *Integrate calendar*.
+
+**`TOMTOM_API_KEY` / `TRAFFIC_*`** *(traffic widget)* — free key from [developer.tomtom.com](https://developer.tomtom.com) (no credit card). Set your home and work address as full street addresses including postcode and country (`NL`). List the road numbers of your commute route in `TRAFFIC_ROUTE_ROADS` — jams on those roads are highlighted.
+
+**`VERTREKTIJD_API_KEY` / `BUSSTOP_*`** *(bus widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Find the exact stop name and city spelling at [9292.nl](https://9292.nl).
+
+**`POLESTAR_USERNAME` / `POLESTAR_PASSWORD`** *(Polestar widget)* — the credentials you use to log in to the Polestar app or [my.polestar.com](https://my.polestar.com).
 
 ### 3. Run
 
@@ -91,17 +112,9 @@ Open **`http://<host-ip>/#admin`** in a browser. At minimum, set your location i
 
 ### 5. Enable casting
 
-**Set the display URL.** Add `SERVER_URL` to your `.env` file pointing to this machine's LAN IP:
+In the admin panel, go to **Screens** → select a screen → **Screen settings**. Click **Scan network** to discover Chromecast devices on your LAN, then click a device row to pre-fill the IP. Hit **Save**.
 
-```bash
-SERVER_URL=http://192.168.1.10   # this machine's LAN IP — must be reachable from the TV
-```
-
-> Use the LAN IP, not `http://localhost/`. The TV resolves `localhost` as itself, which results in a blank page and the session closing immediately.
-
-**Set the Chromecast IP.** In the admin panel, go to **Screens** → select a screen → **Screen settings**. Click **Scan network** to discover Chromecast devices on your LAN, then click a device row to pre-fill the IP. Hit **Save**.
-
-**Tip:** Set DHCP reservations for the host machine and all Chromecast devices in your router so their IPs never change across reboots.
+> **Tip:** Set DHCP reservations for the host machine and all Chromecast devices in your router so their IPs never change across reboots.
 
 The display is cast to the TV within ~15 seconds of startup and re-casts automatically if the session drops.
 
