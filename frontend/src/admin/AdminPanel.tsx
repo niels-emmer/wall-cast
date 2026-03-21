@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   MantineProvider, createTheme,
   Box, Container, Stack, Group, Paper,
   Text, Code, Title,
-  TextInput, NumberInput,
+  TextInput, NumberInput, Autocomplete,
   Checkbox,
   Button, ActionIcon,
   Tabs, SegmentedControl,
@@ -499,6 +499,49 @@ function NewsSection({
         </Group>
       </Stack>
     </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// AddressInput — TextInput with debounced TomTom address autocomplete
+// ---------------------------------------------------------------------------
+
+function AddressInput({
+  label, placeholder, value, onChange, size = 'sm', description,
+}: {
+  label: string
+  placeholder?: string
+  value: string
+  onChange: (v: string) => void
+  size?: string
+  description?: string
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleChange(val: string) {
+    onChange(val)
+    if (timer.current) clearTimeout(timer.current)
+    if (val.trim().length < 4) { setSuggestions([]); return }
+    timer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/address-search?q=${encodeURIComponent(val.trim())}`)
+        if (res.ok) setSuggestions((await res.json()).results ?? [])
+      } catch { /* ignore */ }
+    }, 350)
+  }
+
+  return (
+    <Autocomplete
+      label={label}
+      placeholder={placeholder}
+      description={description}
+      value={value}
+      onChange={handleChange}
+      data={suggestions}
+      size={size as 'sm' | 'xs'}
+      comboboxProps={{ withinPortal: false }}
+    />
   )
 }
 
@@ -1109,6 +1152,16 @@ function PeopleTab({
 
   const people = getPeople(draft)
   const [selectedId, setSelectedId] = useState<string | null>(() => people[0]?.id ?? null)
+  const [saEmail, setSaEmail] = useState<string | null>(null)
+  const [lookingUpRoads, setLookingUpRoads] = useState(false)
+  const [roadsError, setRoadsError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/google-sa-email')
+      .then(r => r.json())
+      .then(d => setSaEmail(d.email ?? null))
+      .catch(() => {})
+  }, [])
 
   const currentIdx = people.findIndex(p => p.id === selectedId)
   const currentPerson = currentIdx >= 0 ? people[currentIdx] : null
@@ -1161,6 +1214,30 @@ function PeopleTab({
 
   function updateBus(patch: Partial<PersonBus>) {
     updatePerson({ bus: { ...currentPerson?.bus, ...patch } })
+  }
+
+  async function handleLookupRoads() {
+    const home = currentPerson?.traffic?.home_address ?? ''
+    const work = currentPerson?.traffic?.work_address ?? ''
+    if (!home || !work) return
+    setLookingUpRoads(true)
+    setRoadsError('')
+    try {
+      const params = new URLSearchParams({ home, work })
+      const res = await fetch(`/api/admin/route-roads?${params}`)
+      const data = await res.json()
+      if (data.error) {
+        setRoadsError(data.error)
+      } else if (data.roads?.length) {
+        updateTraffic({ route_roads: data.roads.join(',') })
+      } else {
+        setRoadsError('No highway numbers found on this route.')
+      }
+    } catch {
+      setRoadsError('Lookup failed.')
+    } finally {
+      setLookingUpRoads(false)
+    }
   }
 
   return (
@@ -1255,34 +1332,58 @@ function PeopleTab({
               >
                 + Add calendar
               </Button>
+              {saEmail && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Share each calendar with{' '}
+                  <Code fz="xs" style={{ userSelect: 'all' }}>{saEmail}</Code>
+                  {' '}(Google Calendar → Settings → Share with specific people).
+                </Text>
+              )}
             </Stack>
           </Paper>
 
           <Paper p="md" radius="sm" withBorder>
             <SectionTitle>Traffic (commute)</SectionTitle>
             <Stack gap="sm">
-              <TextInput
+              <AddressInput
                 label="Home address"
                 placeholder="Streetname 1, 1234AB City, NL"
                 value={currentPerson.traffic?.home_address ?? ''}
-                onChange={e => updateTraffic({ home_address: e.target.value })}
-                size="sm"
+                onChange={v => updateTraffic({ home_address: v })}
               />
-              <TextInput
+              <AddressInput
                 label="Work address"
                 placeholder="Streetname 2, 5678CD City, NL"
                 value={currentPerson.traffic?.work_address ?? ''}
-                onChange={e => updateTraffic({ work_address: e.target.value })}
-                size="sm"
+                onChange={v => updateTraffic({ work_address: v })}
               />
-              <TextInput
-                label="Route roads"
-                placeholder="A10,A2,N14"
-                description="Comma-separated — jams on these roads float to the top"
-                value={currentPerson.traffic?.route_roads ?? ''}
-                onChange={e => updateTraffic({ route_roads: e.target.value })}
-                size="sm"
-              />
+              <Stack gap={4}>
+                <Group gap="xs" align="flex-end" wrap="nowrap">
+                  <TextInput
+                    label="Route roads"
+                    placeholder="A10,A2,N14"
+                    description="Comma-separated — jams on these roads float to the top"
+                    value={currentPerson.traffic?.route_roads ?? ''}
+                    onChange={e => updateTraffic({ route_roads: e.target.value })}
+                    size="sm"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    variant="subtle"
+                    color="cyan"
+                    size="sm"
+                    onClick={handleLookupRoads}
+                    loading={lookingUpRoads}
+                    disabled={!currentPerson.traffic?.home_address || !currentPerson.traffic?.work_address}
+                    style={{ marginBottom: 2 }}
+                  >
+                    Lookup
+                  </Button>
+                </Group>
+                {roadsError && (
+                  <Text size="xs" c="red">{roadsError}</Text>
+                )}
+              </Stack>
             </Stack>
           </Paper>
 
