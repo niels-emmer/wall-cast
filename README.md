@@ -92,9 +92,9 @@ The remaining settings are **optional** — only fill in the ones for widgets yo
 
 **`GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID`** *(calendar widget)* — requires a Google service account. Create one at [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials, enable the Calendar API, download the JSON key to `config/google-sa.json`, and share your calendar with the service account email. The Calendar ID is found under Settings → your calendar → *Integrate calendar*.
 
-**`TOMTOM_API_KEY` / `TRAFFIC_*`** *(traffic widget)* — free key from [developer.tomtom.com](https://developer.tomtom.com) (no credit card). Set your home and work address as full street addresses including postcode and country (`NL`). List the road numbers of your commute route in `TRAFFIC_ROUTE_ROADS` — jams on those roads are highlighted.
+**`TOMTOM_API_KEY`** *(traffic widget)* — free key from [developer.tomtom.com](https://developer.tomtom.com) (no credit card). Home/work address and route roads are set in the admin panel.
 
-**`VERTREKTIJD_API_KEY` / `BUSSTOP_*`** *(bus widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Find the exact stop name and city spelling at [9292.nl](https://9292.nl).
+**`VERTREKTIJD_API_KEY`** *(bus widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Stop city and name are set in the admin panel.
 
 **`POLESTAR_USERNAME` / `POLESTAR_PASSWORD`** *(Polestar widget)* — the credentials you use to log in to the Polestar app or [my.polestar.com](https://my.polestar.com).
 

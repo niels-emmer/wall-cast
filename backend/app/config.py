@@ -15,10 +15,6 @@ class Settings(BaseSettings):
     # Defaults to UTC if not set. Also used by the TZ env var if set.
     timezone: str = "UTC"
 
-    # Garbage collection address (mijnafvalwijzer.nl)
-    garbage_postcode: str = ""
-    garbage_huisnummer: str = ""
-
     polestar_username: str = ""
     polestar_password: str = ""
 
@@ -28,13 +24,8 @@ class Settings(BaseSettings):
 
     tomtom_api_key: str = ""
     traffic_cache_ttl: int = 300    # 5 minutes
-    traffic_home_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
-    traffic_work_address: str = ""  # e.g. "Streetname 1, 1234AB City, NL"
-    traffic_route_roads: str = ""   # comma-separated road numbers on your commute, e.g. "A28,N50,A2"
 
     # Bus departures (vertrektijd.info)
-    busstop_city: str = ""          # e.g. "Amsterdam"
-    busstop_name: str = ""          # e.g. "Leidseplein"
     vertrektijd_api_key: str = ""
     bus_cache_ttl: int = 30         # 30 seconds (real-time data)
     bus_lookahead_min: int = 90     # show departures within this many minutes

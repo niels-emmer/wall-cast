@@ -4,7 +4,7 @@ Returns upcoming departures for a configured bus stop within the lookahead windo
 
 API: https://api.vertrektijd.info/departures/_nametown/{city}/{stop}/
 Auth: X-Vertrektijd-Client-Api-Key header
-Config: stop_city / stop_name per widget config (or BUSSTOP_CITY / BUSSTOP_NAME env fallback)
+Config: stop_city / stop_name per widget config (set via admin panel or wall-cast.yaml)
 Cache TTL: 30 seconds (real-time data), keyed by stop
 
 Response structure:
@@ -117,11 +117,11 @@ async def get_bus(
     if not settings.vertrektijd_api_key:
         raise HTTPException(status_code=503, detail="Bus: VERTREKTIJD_API_KEY not configured")
 
-    city = stop_city or settings.busstop_city
-    stop = stop_name or settings.busstop_name
+    city = stop_city or ""
+    stop = stop_name or ""
 
     if not city or not stop:
-        raise HTTPException(status_code=503, detail="Bus: stop_city / stop_name not configured")
+        raise HTTPException(status_code=503, detail="Bus: stop_city / stop_name not configured — set them in the admin panel")
 
     cache_key = f"{city}:{stop}"
 
