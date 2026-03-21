@@ -2,7 +2,9 @@ import asyncio
 import json
 import logging
 import os
+import re
 import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -102,3 +104,122 @@ async def update_config(body: dict[str, Any]) -> None:
             raise
     except OSError as exc:
         raise HTTPException(status_code=500, detail=f"Cannot write config: {exc}")
+
+
+@router.get("/admin/google-sa-email")
+async def get_google_sa_email() -> JSONResponse:
+    """Return the service account email from the Google SA key file, or null if not configured."""
+    path = Path(settings.google_sa_key_file)
+    if not path.exists():
+        return JSONResponse(content={"email": None})
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return JSONResponse(content={"email": data.get("client_email")})
+    except Exception:
+        return JSONResponse(content={"email": None})
+
+
+_TOMTOM_SEARCH_URL = "https://api.tomtom.com/search/2/search/{query}.json"
+_TOMTOM_ROUTE_URL = (
+    "https://api.tomtom.com/routing/1/calculateRoute"
+    "/{olat},{olon}:{dlat},{dlon}/json"
+    "?traffic=false&travelMode=car&instructionsType=text&key={key}"
+)
+_TOMTOM_GEOCODE_URL = (
+    "https://api.tomtom.com/search/2/geocode/{query}.json"
+    "?key={key}&limit=1&countrySet=NL,BE,DE"
+)
+_ROAD_PATTERN = re.compile(r"^[ANEN]\d+[a-z]?$", re.IGNORECASE)
+
+
+@router.get("/admin/address-search")
+async def address_search(q: str = Query(default="")) -> JSONResponse:
+    """Return TomTom address autocomplete suggestions for the given query string."""
+    if not q.strip() or not settings.tomtom_api_key:
+        return JSONResponse(content={"results": []})
+    url = _TOMTOM_SEARCH_URL.format(query=urllib.parse.quote(q.strip()))
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={
+                "key": settings.tomtom_api_key,
+                "limit": 6,
+                "typeahead": "true",
+            })
+            resp.raise_for_status()
+        results = resp.json().get("results", [])
+        addresses = [
+            r["address"]["freeformAddress"]
+            for r in results
+            if r.get("address", {}).get("freeformAddress")
+        ]
+        return JSONResponse(content={"results": addresses})
+    except Exception as exc:
+        logger.warning("Address search failed: %s", exc)
+        return JSONResponse(content={"results": []})
+
+
+async def _geocode_address(
+    client: httpx.AsyncClient, address: str, key: str
+) -> tuple[float, float] | None:
+    """Geocode a single address string via TomTom. Returns (lat, lon) or None."""
+    try:
+        url = _TOMTOM_GEOCODE_URL.format(query=urllib.parse.quote(address), key=key)
+        resp = await client.get(url)
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if not results:
+            return None
+        pos = results[0]["position"]
+        return (pos["lat"], pos["lon"])
+    except Exception as exc:
+        logger.warning("Geocoding failed for '%s': %s", address, exc)
+        return None
+
+
+@router.get("/admin/route-roads")
+async def get_route_roads(
+    home: str = Query(default=""),
+    work: str = Query(default=""),
+) -> JSONResponse:
+    """Given home and work addresses, return the A/N road numbers along the TomTom route."""
+    if not home.strip() or not work.strip() or not settings.tomtom_api_key:
+        return JSONResponse(content={"roads": [], "error": None})
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        home_coords, work_coords = await asyncio.gather(
+            _geocode_address(client, home.strip(), settings.tomtom_api_key),
+            _geocode_address(client, work.strip(), settings.tomtom_api_key),
+        )
+
+    if not home_coords or not work_coords:
+        return JSONResponse(content={
+            "roads": [],
+            "error": "Could not geocode one or both addresses — check them in the Traffic section.",
+        })
+
+    try:
+        url = _TOMTOM_ROUTE_URL.format(
+            olat=home_coords[0], olon=home_coords[1],
+            dlat=work_coords[0], dlon=work_coords[1],
+            key=settings.tomtom_api_key,
+        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        data = resp.json()
+    except Exception as exc:
+        logger.warning("Route roads fetch failed: %s", exc)
+        return JSONResponse(content={"roads": [], "error": "TomTom routing request failed."})
+
+    roads: set[str] = set()
+    instructions = (
+        data.get("routes", [{}])[0]
+            .get("guidance", {})
+            .get("instructions", [])
+    )
+    for instr in instructions:
+        for road in instr.get("roadNumbers", []):
+            if road and _ROAD_PATTERN.match(road):
+                roads.add(road.upper())
+
+    return JSONResponse(content={"roads": sorted(roads), "error": None})
