@@ -1,6 +1,6 @@
 # wall-cast configuration — multi-screen format
 #
-# shared:   applies to every screen (news ticker, location, language)
+# shared:   applies to every screen (news ticker, location, language, garbage)
 # screens:  one entry per physical display
 #
 # After editing, the display hot-reloads within ~1 second.
@@ -13,6 +13,12 @@ shared:
     lon: 5
     name: My City
   language: en
+
+  # Garbage collection address (mijnafvalwijzer.nl — Netherlands only)
+  garbage:
+    postcode: "1234AB"
+    huisnummer: "1"
+
   people: []
     # Example:
     # - id: alice
@@ -24,6 +30,14 @@ shared:
     #   name: Bob
     #   calendar_ids:
     #     - bob@gmail.com
+    #   traffic:            # commute — used on any screen Bob is assigned to
+    #     home_address: "Home Street 1, 1234AB City, NL"
+    #     work_address: "Work Street 1, 5678CD City, NL"
+    #     route_roads: "A10,A2"   # comma-separated — jams on these float to the top
+    #   bus:                # bus stop — used on any screen Bob is assigned to
+    #     stop_city: Amsterdam
+    #     stop_name: Leidseplein
+
   widgets:
     - id: news
       type: news
@@ -77,13 +91,9 @@ screens:
                 show_hourly: true
                 show_daily: true
             - type: calendar
-              config:
-                calendar_ids: []       # e.g. ["family@group.calendar.google.com"]
+              config: {}
             - type: traffic
-              config:
-                home_address: ""       # e.g. "Streetname 1, 1234AB City, NL"
-                work_address: ""       # e.g. "Streetname 2, 5678CD City, NL"
-                route_roads: ""        # e.g. "A28,N50,A2"
+              config: {}    # home/work/roads come from the person assigned to this screen
             - type: warnings
               config: {}
 
@@ -100,12 +110,8 @@ screens:
               config: {}
             - type: garbage
               config:
-                days_ahead: 31
-                postcode: ""           # e.g. "1234AB"
-                huisnummer: ""         # e.g. "1"
+                days_ahead: 31  # postcode/huisnummer come from shared.garbage
             - type: polestar
               config: {}
             - type: bus
-              config:
-                stop_city: ""          # e.g. "Amsterdam"
-                stop_name: ""          # e.g. "Leidseplein"
+              config: {}        # stop city/name come from the person assigned to this screen
