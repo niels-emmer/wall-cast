@@ -17,7 +17,10 @@ import type {
   MultiScreenConfig,
   FlatConfig,
   Location,
+  GarbageConfig,
   Person,
+  PersonTraffic,
+  PersonBus,
   ScreenSection,
   WidgetConfig,
 } from '../types/config'
@@ -133,6 +136,16 @@ function setLocationInDraft(draft: AdminConfig, loc: Location): AdminConfig {
   return { ...draft, shared: { ...draft.shared, location: loc } }
 }
 
+function getGarbage(draft: AdminConfig): GarbageConfig {
+  if (!isMultiScreen(draft)) return (draft as FlatConfig).garbage ?? {}
+  return draft.shared.garbage ?? {}
+}
+
+function setGarbageInDraft(draft: AdminConfig, gc: GarbageConfig): AdminConfig {
+  if (!isMultiScreen(draft)) return { ...draft, garbage: gc }
+  return { ...draft, shared: { ...draft.shared, garbage: gc } }
+}
+
 function getPeople(draft: AdminConfig): Person[] {
   if (!isMultiScreen(draft)) return []
   return (draft.shared.people ?? []) as Person[]
@@ -245,73 +258,23 @@ function SlotConfig({
 
   if (slot.type === 'traffic') {
     return (
-      <Stack gap="xs" pl="xl" pt={4}>
-        <TextInput
-          label="Home address"
-          placeholder="Streetname 1, 1234AB City, NL"
-          value={(cfg.home_address as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, home_address: e.target.value } })}
-          size="xs"
-        />
-        <TextInput
-          label="Work address"
-          placeholder="Streetname 2, 5678CD City, NL"
-          value={(cfg.work_address as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, work_address: e.target.value } })}
-          size="xs"
-        />
-        <TextInput
-          label="Route roads"
-          placeholder="A10,A2,N14"
-          description="Comma-separated — jams on these roads float to the top"
-          value={(cfg.route_roads as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, route_roads: e.target.value } })}
-          size="xs"
-        />
-      </Stack>
+      <Text size="xs" c="dimmed" pl="xl" pt={4}>
+        Configured per person in the <Text span fw={600} c="cyan">People</Text> tab.
+      </Text>
     )
   }
 
   if (slot.type === 'bus') {
     return (
-      <Group gap="sm" pl="xl" pt={4} wrap="wrap" align="flex-start">
-        <TextInput
-          label="City"
-          value={(cfg.stop_city as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, stop_city: e.target.value } })}
-          size="xs"
-          w={140}
-        />
-        <TextInput
-          label="Stop name"
-          value={(cfg.stop_name as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, stop_name: e.target.value } })}
-          size="xs"
-          w={180}
-        />
-      </Group>
+      <Text size="xs" c="dimmed" pl="xl" pt={4}>
+        Configured per person in the <Text span fw={600} c="cyan">People</Text> tab.
+      </Text>
     )
   }
 
   if (slot.type === 'garbage') {
     return (
       <Group gap="sm" pl="xl" pt={4} wrap="wrap" align="flex-start">
-        <TextInput
-          label="Postcode"
-          placeholder="1234AB"
-          value={(cfg.postcode as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, postcode: e.target.value } })}
-          size="xs"
-          w={100}
-        />
-        <TextInput
-          label="House number"
-          placeholder="1"
-          value={(cfg.huisnummer as string) ?? ''}
-          onChange={e => onChange({ ...slot, config: { ...cfg, huisnummer: e.target.value } })}
-          size="xs"
-          w={110}
-        />
         <NumberInput
           label="Days ahead"
           value={(cfg.days_ahead as number) ?? 7}
@@ -540,6 +503,46 @@ function NewsSection({
 }
 
 // ---------------------------------------------------------------------------
+// GarbageSection
+// ---------------------------------------------------------------------------
+
+function GarbageSection({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const gc = getGarbage(draft)
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>Garbage collection</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        Dutch address for mijnafvalwijzer.nl — used by the garbage widget on all screens.
+      </Text>
+      <Group gap="sm" wrap="wrap" align="flex-start">
+        <TextInput
+          label="Postcode"
+          placeholder="1234AB"
+          value={gc.postcode ?? ''}
+          onChange={e => onChange(setGarbageInDraft(draft, { ...gc, postcode: e.target.value }))}
+          size="sm"
+          w={110}
+        />
+        <TextInput
+          label="House number"
+          placeholder="1"
+          value={gc.huisnummer ?? ''}
+          onChange={e => onChange(setGarbageInDraft(draft, { ...gc, huisnummer: e.target.value }))}
+          size="sm"
+          w={110}
+        />
+      </Group>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // LocationSection
 // ---------------------------------------------------------------------------
 
@@ -686,6 +689,7 @@ function GeneralTab({
   return (
     <Stack gap="md">
       <LocationSection draft={draft} onChange={onChange} />
+      <GarbageSection draft={draft} onChange={onChange} />
 
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Display language</SectionTitle>
@@ -1129,11 +1133,19 @@ function PeopleTab({
     updatePerson(personIdx, { calendar_ids: ids })
   }
 
+  function updateTraffic(idx: number, patch: Partial<PersonTraffic>) {
+    updatePerson(idx, { traffic: { ...people[idx].traffic, ...patch } })
+  }
+
+  function updateBus(idx: number, patch: Partial<PersonBus>) {
+    updatePerson(idx, { bus: { ...people[idx].bus, ...patch } })
+  }
+
   return (
     <Paper p="md" radius="sm" withBorder>
       <SectionTitle>People</SectionTitle>
       <Text size="sm" c="dimmed" mb="lg">
-        Assign people to screens to include their calendars. Family members appear on every screen automatically.
+        Each person carries their own calendar IDs, commute (traffic), and bus stop. Assign people to screens — their settings are injected automatically. Family members appear on every screen.
       </Text>
 
       <Stack gap="lg">
@@ -1200,6 +1212,52 @@ function PeopleTab({
               >
                 + Add calendar
               </Button>
+            </Stack>
+
+            <Stack gap="xs" pl="xs">
+              <Text size="xs" c="dimmed" fw={500}>Traffic (commute)</Text>
+              <TextInput
+                label="Home address"
+                placeholder="Streetname 1, 1234AB City, NL"
+                value={person.traffic?.home_address ?? ''}
+                onChange={e => updateTraffic(idx, { home_address: e.target.value })}
+                size="xs"
+              />
+              <TextInput
+                label="Work address"
+                placeholder="Streetname 2, 5678CD City, NL"
+                value={person.traffic?.work_address ?? ''}
+                onChange={e => updateTraffic(idx, { work_address: e.target.value })}
+                size="xs"
+              />
+              <TextInput
+                label="Route roads"
+                placeholder="A10,A2,N14"
+                description="Comma-separated — jams on these roads float to the top"
+                value={person.traffic?.route_roads ?? ''}
+                onChange={e => updateTraffic(idx, { route_roads: e.target.value })}
+                size="xs"
+              />
+            </Stack>
+
+            <Stack gap="xs" pl="xs">
+              <Text size="xs" c="dimmed" fw={500}>Bus stop</Text>
+              <Group gap="sm" wrap="wrap" align="flex-start">
+                <TextInput
+                  label="City"
+                  value={person.bus?.stop_city ?? ''}
+                  onChange={e => updateBus(idx, { stop_city: e.target.value })}
+                  size="xs"
+                  w={140}
+                />
+                <TextInput
+                  label="Stop name"
+                  value={person.bus?.stop_name ?? ''}
+                  onChange={e => updateBus(idx, { stop_name: e.target.value })}
+                  size="xs"
+                  w={180}
+                />
+              </Group>
             </Stack>
           </Stack>
         ))}

@@ -28,11 +28,29 @@ export interface WallConfig {
 
 // ── Admin config (raw unmerged, returned by GET /api/admin/config) ───────────
 
+export interface PersonTraffic {
+  home_address?: string
+  work_address?: string
+  route_roads?: string
+}
+
+export interface PersonBus {
+  stop_city?: string
+  stop_name?: string
+}
+
 export interface Person {
   id: string
   name: string
   family?: boolean
   calendar_ids?: string[]
+  traffic?: PersonTraffic
+  bus?: PersonBus
+}
+
+export interface GarbageConfig {
+  postcode?: string
+  huisnummer?: string
 }
 
 export interface SharedSection {
@@ -41,6 +59,7 @@ export interface SharedSection {
   layout?: { columns: number; rows: number }
   widgets?: WidgetConfig[]
   people?: Person[]
+  garbage?: GarbageConfig
 }
 
 export interface ScreenSection {
@@ -66,6 +85,7 @@ export interface FlatConfig {
   language?: string
   layout?: { columns: number; rows: number }
   widgets?: WidgetConfig[]
+  garbage?: GarbageConfig
 }
 
 export type AdminConfig = MultiScreenConfig | FlatConfig

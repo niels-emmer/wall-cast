@@ -192,6 +192,84 @@ def _is_multi_screen(raw: dict[str, Any]) -> bool:
     return "screens" in raw
 
 
+def _inject_people_commute(
+    widgets: list[dict[str, Any]],
+    screen_people_ids: list[str] | None,
+    all_people: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Inject traffic and bus config from the first matching person on this screen.
+
+    Mirrors _inject_people_calendars: includes family people plus those explicitly
+    assigned to the screen. Uses the first person that has the relevant config set.
+    Slot-level config takes priority — only fills in missing (empty/absent) keys.
+    """
+    if screen_people_ids is None:
+        return widgets
+
+    traffic_cfg: dict[str, Any] | None = None
+    bus_cfg: dict[str, Any] | None = None
+
+    for person in all_people:
+        if not (person.get("family") or person.get("id") in screen_people_ids):
+            continue
+        if traffic_cfg is None and person.get("traffic"):
+            traffic_cfg = person["traffic"]
+        if bus_cfg is None and person.get("bus"):
+            bus_cfg = person["bus"]
+        if traffic_cfg and bus_cfg:
+            break
+
+    def _inject(wlist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        result = []
+        for w in wlist:
+            wtype = w.get("type")
+            if wtype == "traffic" and traffic_cfg:
+                cfg = dict(w.get("config") or {})
+                for key in ("home_address", "work_address", "route_roads"):
+                    if not cfg.get(key):
+                        cfg[key] = traffic_cfg.get(key, "")
+                w = {**w, "config": cfg}
+            elif wtype == "bus" and bus_cfg:
+                cfg = dict(w.get("config") or {})
+                for key in ("stop_city", "stop_name"):
+                    if not cfg.get(key):
+                        cfg[key] = bus_cfg.get(key, "")
+                w = {**w, "config": cfg}
+            elif wtype == "rotate":
+                inner = _inject(w.get("config", {}).get("widgets") or [])
+                w = {**w, "config": {**w.get("config", {}), "widgets": inner}}
+            result.append(w)
+        return result
+
+    return _inject(widgets)
+
+
+def _inject_garbage(
+    widgets: list[dict[str, Any]],
+    garbage_config: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Inject shared garbage postcode/huisnummer into garbage slots that have none."""
+    if not garbage_config:
+        return widgets
+
+    def _inject(wlist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        result = []
+        for w in wlist:
+            if w.get("type") == "garbage":
+                cfg = dict(w.get("config") or {})
+                for key in ("postcode", "huisnummer"):
+                    if not cfg.get(key):
+                        cfg[key] = garbage_config.get(key, "")
+                w = {**w, "config": cfg}
+            elif w.get("type") == "rotate":
+                inner = _inject(w.get("config", {}).get("widgets") or [])
+                w = {**w, "config": {**w.get("config", {}), "widgets": inner}}
+            result.append(w)
+        return result
+
+    return _inject(widgets)
+
+
 def _inject_people_calendars(
     widgets: list[dict[str, Any]],
     screen_people_ids: list[str] | None,
@@ -265,10 +343,12 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
     # Merge: screen overrides shared for location/language/layout
     merged_widgets = list(target.get("widgets", [])) + list(shared.get("widgets", []))
 
-    # Inject people's calendar_ids into calendar widgets
+    # Inject person-specific config into widgets
     all_people = shared.get("people") or []
     screen_people_ids = target.get("people")  # None = field absent, [] = explicitly empty
     merged_widgets = _inject_people_calendars(merged_widgets, screen_people_ids, all_people)
+    merged_widgets = _inject_people_commute(merged_widgets, screen_people_ids, all_people)
+    merged_widgets = _inject_garbage(merged_widgets, shared.get("garbage"))
 
     merged: dict[str, Any] = {
         "location": target.get("location") or shared.get("location", {}),
