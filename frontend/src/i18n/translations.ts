@@ -76,6 +76,11 @@ export interface Translations {
   km: string
   min: string
 
+  // KNMI Warnings
+  warningsTitle: string
+  warningsValidUntil: string
+  warningsCodeLabel: (level: string) => string
+
   // Shared
   unavailable: string
   loading: string
@@ -181,6 +186,13 @@ export const nl: Translations = {
   km: 'km',
   min: 'min',
 
+  warningsTitle: 'Waarschuwingen',
+  warningsValidUntil: 'geldig t/m',
+  warningsCodeLabel: (level) => {
+    const map: Record<string, string> = { geel: 'Code Geel', oranje: 'Code Oranje', rood: 'Code Rood' }
+    return map[level] ?? level
+  },
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -284,6 +296,13 @@ export const en: Translations = {
   onRoute: 'on route',
   km: 'km',
   min: 'min',
+
+  warningsTitle: 'Warnings',
+  warningsValidUntil: 'valid until',
+  warningsCodeLabel: (level) => {
+    const map: Record<string, string> = { geel: 'Code Yellow', oranje: 'Code Orange', rood: 'Code Red' }
+    return map[level] ?? level
+  },
 
   unavailable: 'Unavailable',
   loading: 'Loading...',

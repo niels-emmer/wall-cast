@@ -42,6 +42,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | traffic | /api/traffic | TrafficWidget.tsx | ✅ production |
 | rotate | n/a (container) | RotatorWidget.tsx | ✅ production |
 | info | n/a (static) | InfoWidget.tsx | ✅ production |
+| warnings | /api/warnings | WarningsWidget.tsx | ✅ production |
 
 ## Feature Status
 
@@ -58,7 +59,8 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Polestar widget | ✅ | pypolestar, SOC/range/charging/stats; amber service tag + red fluid warning tags |
 | Calendar widget | ✅ | Google Calendar via service account; card layout, event colours |
 | Traffic widget | ✅ | ANWB jam list + TomTom travel time; H:MM format; addresses via env vars |
-| Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval |
+| KNMI warnings widget | ✅ | cdn.knmi.nl XML; geel/oranje/rood; auto-skipped from rotation when no active warnings |
+| Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval; skips slots that call onSkip() |
 | Visual harmony | ✅ | All widgets share title style (weight 300, uppercase, 0.25em tracking, white) |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
 | Docker prod build | ✅ | `docker compose up --build -d` |
@@ -125,6 +127,15 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Status check: `raw.get("response") != "OK"` (not `"status"`)
 - Fit-to-box: `ResizeObserver` on the list container measures first card height and slices `collections` to only show complete cards
 
+### KNMI warnings widget
+- API: `cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml` — public, no key, 15 min TTL
+- XML structure: `<waarschuwingen> → <regio naam="..."> → <waarschuwing>` — warnings are nested under regions
+- Fields: `kleur` (geel/oranje/rood), `verschijnsel` (phenomenon), `geldend_van` / `geldend_tot`, `omschrijving`
+- Parser groups by (level + phenomenon + description) and aggregates regions; sorted rood → oranje → geel
+- Returns empty list (never 502) when no warnings — stale cache served on fetch error
+- **RotatorWidget skip mechanism**: `WidgetProps` has optional `onSkip?: () => void`; WarningsWidget calls it when no warnings after load; RotatorWidget tracks `skipSet` and advances past empty slots automatically
+- No YAML config keys needed — zero-configuration, just add `type: warnings` to a rotator slot
+
 ### Admin panel
 - Route: `/#admin` — hash-based, no React Router dependency, works with nginx static serving
 - `PUT /api/admin/config` — receives full WallConfig JSON, serialises to YAML atomically (tmpfile + `os.replace()`); existing `watchfiles` watcher detects the rename and broadcasts SSE to the display
@@ -158,5 +169,12 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 
 ## Open Items
 
-- [ ] Consider ENTSO-E energy price widget (free API, no key)
-- [ ] Consider NS train departures widget (requires NS API key)
+See `records/future-ideas.md` for the full backlog with detailed notes on each.
+
+Planned widgets (all considered relevant, to be implemented):
+- [ ] Energy prices (ENTSO-E, no key)
+- [ ] Countdown to events (YAML config, no backend)
+- [ ] Photo slideshow (local directory)
+- [x] KNMI weather warnings (no key) — done, branch weather-warnings
+- [ ] NS train departures (free NS API key needed)
+- [ ] Home Assistant sensors (HA long-lived token needed)

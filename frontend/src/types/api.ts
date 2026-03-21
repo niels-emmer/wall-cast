@@ -127,6 +127,19 @@ export interface TrafficData {
   travel: TrafficTravel | null
 }
 
+export interface KnmiWarning {
+  level: 'geel' | 'oranje' | 'rood'
+  phenomenon: string
+  regions: string[]
+  valid_from: string
+  valid_until: string
+  description: string
+}
+
+export interface WarningsData {
+  warnings: KnmiWarning[]
+}
+
 export interface SunData {
   sunrise: string
   sunset: string

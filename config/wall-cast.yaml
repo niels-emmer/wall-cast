@@ -33,6 +33,8 @@ widgets:
       config: {}
     - type: traffic
       config: {}
+    - type: warnings
+      config: {}
 - id: bottom-left-rotator
   type: rotate
   col: 1
