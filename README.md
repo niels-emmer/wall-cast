@@ -53,6 +53,8 @@ A self-hosted wall display for Chromecast-connected screens. Dark-themed, widget
 | **Garbage** | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — upcoming collection schedule, configurable window | 1 h |
 | **Polestar** | [pypolestar](https://github.com/pypolestar/pypolestar) — SOC, range, charging, service | 5 min |
 | **Calendar** | Google Calendar (service account) | 10 min |
+| **Traffic** | ANWB (jams) + TomTom (travel time) | 5 min |
+| **KNMI warnings** | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; auto-hidden when none active | 15 min |
 | **Rotate** | Container — cycles child widgets in one grid cell | n/a |
 
 ## Requirements
@@ -273,7 +275,9 @@ Host (Docker)
 │              ├── GET  /api/sun             sunrise-sunset.org proxy, 6 h cache
 │              ├── GET  /api/garbage         mijnafvalwijzer.nl proxy, 1 h cache
 │              ├── GET  /api/polestar        pypolestar → Polestar cloud, 5 min cache
-│              └── GET  /api/calendar        Google Calendar API, 10 min cache
+│              ├── GET  /api/calendar        Google Calendar API, 10 min cache
+│              ├── GET  /api/traffic         ANWB + TomTom proxy, 5 min cache
+│              └── GET  /api/warnings        MeteoAlarm (KNMI) proxy, 15 min cache
 │
 └── caster     python:3.12-slim (network_mode: host)
                catt cast_site → Chromecast via DashCast receiver
