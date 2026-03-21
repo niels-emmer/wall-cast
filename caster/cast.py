@@ -29,6 +29,8 @@ def load_screens() -> list[dict]:
         return []
     result = []
     for screen in cfg.get("screens", []):
+        if screen.get("enabled", True) is False:
+            continue
         ip = (screen.get("chromecast_ip") or "").strip()
         if not ip:
             continue

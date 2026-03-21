@@ -65,6 +65,7 @@ export interface SharedSection {
 export interface ScreenSection {
   id: string
   name?: string
+  enabled?: boolean   // undefined / true = active; false = disabled (no casting)
   chromecast_ip?: string
   layout?: { columns: number; rows: number }
   location?: Location
