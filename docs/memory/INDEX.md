@@ -128,9 +128,9 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Fit-to-box: `ResizeObserver` on the list container measures first card height and slices `collections` to only show complete cards
 
 ### KNMI warnings widget
-- API: `cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml` — public, no key, 15 min TTL
-- XML structure: `<waarschuwingen> → <regio naam="..."> → <waarschuwing>` — warnings are nested under regions
-- Fields: `kleur` (geel/oranje/rood), `verschijnsel` (phenomenon), `geldend_van` / `geldend_tot`, `omschrijving`
+- API: `feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands` — public Atom/CAP feed, no key, 15 min TTL
+- The KNMI CDN XML (`cdn.knmi.nl/.../waarschuwingen_actueel.xml`) returns 403 to non-browser requests — do not use
+- XML: Atom namespace + CAP 1.2 namespace (`urn:oasis:names:tc:emergency:cap:1.2`); entries have `cap:severity`, `cap:areaDesc`, `cap:event`, `cap:onset`, `cap:expires`, `cap:status`, `cap:message_type`
 - Parser groups by (level + phenomenon + description) and aggregates regions; sorted rood → oranje → geel
 - Returns empty list (never 502) when no warnings — stale cache served on fetch error
 - **RotatorWidget skip mechanism**: `WidgetProps` has optional `onSkip?: () => void`; WarningsWidget calls it when no warnings after load; RotatorWidget tracks `skipSet` and advances past empty slots automatically

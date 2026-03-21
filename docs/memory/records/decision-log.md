@@ -62,9 +62,13 @@
 **Decision**: Added optional `onSkip?: () => void` to `WidgetProps`. The RotatorWidget passes a stable callback (via `useRef`) to each slot. When a widget has no content to show, it calls `onSkip()`. The rotator tracks a `skipSet: Set<number>` and skips those indices when cycling.
 **Rationale**: The warnings widget should be invisible during calm weather — no blank slot, no user configuration needed. A data-driven approach (querying data in the rotator) would couple the rotator to specific widget types. The callback pattern keeps the rotator generic: any future widget can opt out of rotation when empty.
 
-### KNMI warnings: CDN XML endpoint, no API key
-**Decision**: Use `cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml` (public, no key). Parse with stdlib `xml.etree.ElementTree`. Group warnings by (level, phenomenon, description) and aggregate regions.
-**Rationale**: The KNMI Open Data API requires registration. The CDN XML endpoint is stable, has been used by Dutch weather apps for years, and requires zero credentials. Backend returns empty list on error rather than 502 — the display should remain stable during brief API outages.
+### KNMI warnings: MeteoAlarm Atom/CAP feed, no API key
+**Decision**: Use `feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands` (public Atom + CAP 1.2 XML). Parse with stdlib `xml.etree.ElementTree` using namespaced tag lookup. Group by (level, event) and aggregate regions. Filter to currently-active entries (status=Actual, message_type=Alert, now within [onset, expires]).
+**Rationale**: The KNMI CDN XML (`cdn.knmi.nl/.../waarschuwingen_actueel.xml`) returns 403 to server-side HTTP requests — it is browser-only. MeteoAlarm is the official European meteorological alarm service that KNMI feeds into; it is properly public, stable, and requires no credentials. CAP severity maps cleanly to geel/oranje/rood.
+
+### RotatorWidget: skipSet must be a ref, not state
+**Decision**: `skipSet` is stored in `skipSetRef` (a `useRef`) rather than `useState`. A version counter (`skipVersion`) triggers re-renders when the ref changes.
+**Rationale**: Having `skipSet` in `useState` caused it to appear in the `setInterval` effect's dependency array. Every time a widget called `onSkip()`, the interval was cleared and restarted, giving the currently-visible slot a fresh full rotation period — effectively doubling its display time. Moving it to a ref means the interval effect only recreates on `slots.length` or `intervalSec` changes, while the callback still reads the latest skip set via the ref.
 
 ### Garbage widget: configurable days_ahead, fit-to-box
 **Decision**: `days_ahead` is a per-widget YAML config key (default 7). The backend `?days_ahead=N` query param is validated (1–365) and cached per value. The widget measures its container with `ResizeObserver` and slices the collections list to show only complete cards.

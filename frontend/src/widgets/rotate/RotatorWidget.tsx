@@ -22,47 +22,53 @@ export function RotatorWidget({ config }: WidgetProps) {
   const slots = allSlots.filter(s => s.enabled !== false)
   const intervalSec = (config.interval_sec as number) ?? 30
   const [activeIdx, setActiveIdx] = useState(0)
-  const [skipSet, setSkipSet] = useState<Set<number>>(new Set())
 
-  // Stable skip callbacks per slot index, memoised to avoid re-renders
+  // skipSet is a ref so the setInterval effect never depends on it —
+  // adding a skip does NOT reset the running timer.
+  const skipSetRef = useRef<Set<number>>(new Set())
+  // skipVersion triggers re-renders when skipSetRef changes.
+  const [skipVersion, setSkipVersion] = useState(0)
+
+  // Stable skip callbacks per slot index
   const skipCallbacks = useRef<Map<number, () => void>>(new Map())
   const getSkipCallback = useCallback((idx: number) => {
     if (!skipCallbacks.current.has(idx)) {
       skipCallbacks.current.set(idx, () => {
-        setSkipSet(prev => {
-          if (prev.has(idx)) return prev
-          const next = new Set(prev)
-          next.add(idx)
-          return next
-        })
+        if (skipSetRef.current.has(idx)) return
+        const next = new Set(skipSetRef.current)
+        next.add(idx)
+        skipSetRef.current = next
+        setSkipVersion(v => v + 1)
       })
     }
     return skipCallbacks.current.get(idx)!
   }, [])
 
-  // If the currently active slot gets skipped, advance immediately
+  // If the currently active slot has been skipped, advance immediately.
+  // Depends on skipVersion (not skipSetRef) so it re-runs on skip changes.
   useEffect(() => {
-    if (skipSet.has(activeIdx) && slots.length > 0) {
-      setActiveIdx(i => nextAvailable(i, slots.length, skipSet))
+    if (skipSetRef.current.has(activeIdx) && slots.length > 0) {
+      setActiveIdx(i => nextAvailable(i, slots.length, skipSetRef.current))
     }
-  }, [skipSet, activeIdx, slots.length])
+  }, [skipVersion, activeIdx, slots.length])
 
   // Reset when slot count changes (e.g. config hot-reload)
   useEffect(() => {
     setActiveIdx(0)
-    setSkipSet(new Set())
+    skipSetRef.current = new Set()
     skipCallbacks.current.clear()
+    setSkipVersion(0)
   }, [slots.length])
 
-  // Rotate on interval, skipping empty slots
+  // Rotate on interval. Does NOT depend on skipSet — interval never resets
+  // when a slot reports empty; instead the callback reads the ref directly.
   useEffect(() => {
-    const available = slots.length - skipSet.size
-    if (available < 2) return
+    if (slots.length < 2) return
     const id = setInterval(() => {
-      setActiveIdx(i => nextAvailable(i, slots.length, skipSet))
+      setActiveIdx(i => nextAvailable(i, slots.length, skipSetRef.current))
     }, intervalSec * 1000)
     return () => clearInterval(id)
-  }, [slots.length, intervalSec, skipSet])
+  }, [slots.length, intervalSec])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

@@ -1,15 +1,23 @@
 """
 KNMI weather warnings backend.
 
-Fetches active warnings from the KNMI CDN XML feed:
-  https://cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml
+Uses the MeteoAlarm Atom/CAP feed for the Netherlands — the official
+European meteorological alarm service that KNMI feeds into. Fully public,
+no API key required.
 
-XML structure: <waarschuwingen> → <regio naam="..."> → <waarschuwing>
-Each warning has: kleur (geel/oranje/rood), verschijnsel (phenomenon),
-geldend_van / geldend_tot (validity window), omschrijving (description).
+Feed URL: https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands
 
-Warnings with the same level + phenomenon + description are grouped and
-their regions are aggregated. Sorted by severity: rood → oranje → geel.
+CAP severity → level mapping:
+  Minor    → geel
+  Moderate → oranje
+  Severe   → rood
+  Extreme  → rood
+
+Only entries with status=Actual, message_type=Alert, and where the current
+time falls within [onset, expires] are included.
+
+Entries with the same (level, event) are grouped and their regions aggregated.
+Sorted by severity: rood → oranje → geel.
 
 Returns empty list when no warnings are active — never raises 502.
 Cache TTL: 15 minutes.
@@ -18,6 +26,7 @@ Cache TTL: 15 minutes.
 import logging
 import time
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter
@@ -29,100 +38,111 @@ _cache: list[dict] = []
 _cache_ts: float = 0.0
 _CACHE_TTL = 15 * 60  # 15 minutes
 
-KNMI_WARNINGS_URL = (
-    "https://cdn.knmi.nl/knmi/map/page/weer/actueel-weer/waarschuwingen_actueel.xml"
+METEOALARM_URL = (
+    "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands"
 )
+
+ATOM_NS = "http://www.w3.org/2005/Atom"
+CAP_NS  = "urn:oasis:names:tc:emergency:cap:1.2"
+
+_SEVERITY_TO_LEVEL = {
+    "minor":    "geel",
+    "moderate": "oranje",
+    "severe":   "rood",
+    "extreme":  "rood",
+}
 
 _LEVEL_ORDER = {"rood": 0, "oranje": 1, "geel": 2}
 
-
-def _text(el: ET.Element, *tags: str) -> str:
-    """Return first non-empty text value found in element children or attributes."""
-    for tag in tags:
-        child = el.find(tag)
-        if child is not None and child.text:
-            return child.text.strip()
-    for tag in tags:
-        val = el.get(tag, "")
-        if val:
-            return val.strip()
-    return ""
+# Words to strip from cap:event to get a clean phenomenon label
+_SEVERITY_PREFIXES = ("minor ", "moderate ", "severe ", "extreme ")
 
 
-def _extract_warning(el: ET.Element, region_name: str) -> dict:
-    """Extract fields from a <waarschuwing> element."""
-    level = _text(el, "kleur", "color", "code", "kleurcode").lower()
-    phenomenon = _text(el, "verschijnsel", "phenomenon", "type")
-    valid_from = _text(el, "geldend_van", "geldig_van", "van", "validFrom")
-    valid_until = _text(el, "geldend_tot", "geldig_tot", "tot", "validTo")
-    description = _text(el, "omschrijving", "tekst", "description", "samenvatting")
+def _cap(tag: str) -> str:
+    return f"{{{CAP_NS}}}{tag}"
 
-    return {
-        "level": level,
-        "phenomenon": phenomenon,
-        "region": region_name,
-        "valid_from": valid_from,
-        "valid_until": valid_until,
-        "description": description,
-    }
+
+def _atom(tag: str) -> str:
+    return f"{{{ATOM_NS}}}{tag}"
+
+
+def _clean_phenomenon(event: str) -> str:
+    """Strip severity prefix and ' warning' suffix from CAP event string."""
+    text = event.lower()
+    for prefix in _SEVERITY_PREFIXES:
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+            break
+    if text.endswith(" warning"):
+        text = text[: -len(" warning")]
+    return text.strip().capitalize()
+
+
+def _parse_dt(iso: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except Exception:
+        return None
 
 
 def _parse_warnings(xml_text: str) -> list[dict]:
-    """Parse KNMI warnings XML into a structured, deduplicated list.
-
-    Handles the standard nested structure:
-      <waarschuwingen>
-        <regio naam="Groningen">
-          <waarschuwing>...</waarschuwing>
-        </regio>
-        ...
-      </waarschuwingen>
-
-    Groups warnings by (level, phenomenon, description) and aggregates regions.
-    Sorted by severity: rood → oranje → geel.
-    """
+    """Parse MeteoAlarm Atom/CAP XML into a structured, deduplicated list."""
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as exc:
-        logger.error("KNMI XML parse error: %s", exc)
+        logger.error("MeteoAlarm XML parse error: %s", exc)
         return []
 
+    now = datetime.now(timezone.utc)
     raw: list[dict] = []
 
-    # Standard nested structure: root → <regio naam="..."> → <waarschuwing>
-    for regio_el in root.findall(".//regio"):
-        region_name = regio_el.get("naam", regio_el.get("name", ""))
-        for warn_el in regio_el.findall("waarschuwing"):
-            raw.append(_extract_warning(warn_el, region_name))
+    for entry in root.findall(_atom("entry")):
+        # Filter: only real, active alerts
+        status       = entry.findtext(_cap("status"), "")
+        message_type = entry.findtext(_cap("message_type"), "")
+        if status.lower() != "actual" or message_type.lower() != "alert":
+            continue
 
-    # Flat fallback: root → <waarschuwing regio="..."> (some older formats)
+        # Time window check
+        onset_str   = entry.findtext(_cap("onset"),   "")
+        expires_str = entry.findtext(_cap("expires"),  "")
+        onset   = _parse_dt(onset_str)
+        expires = _parse_dt(expires_str)
+        if expires and now > expires:
+            continue  # already expired
+
+        severity   = entry.findtext(_cap("severity"), "").lower()
+        level      = _SEVERITY_TO_LEVEL.get(severity, "")
+        if not level:
+            continue
+
+        event      = entry.findtext(_cap("event"), "")
+        area_desc  = entry.findtext(_cap("areaDesc"), "")
+        phenomenon = _clean_phenomenon(event)
+
+        raw.append({
+            "level":       level,
+            "phenomenon":  phenomenon,
+            "region":      area_desc,
+            "valid_from":  onset_str,
+            "valid_until": expires_str,
+            "description": "",  # CAP feed has no free-text description in this format
+        })
+
     if not raw:
-        for warn_el in root.findall("waarschuwing"):
-            region_name = (
-                warn_el.get("regio", "")
-                or warn_el.get("region", "")
-                or (_text(warn_el, "regio") or "")
-            )
-            raw.append(_extract_warning(warn_el, region_name))
-
-    # Filter out entries with no recognised level (e.g. "geen" / empty)
-    valid_levels = {"geel", "oranje", "rood"}
-    raw = [w for w in raw if w["level"] in valid_levels]
-
-    if not raw:
-        logger.info("KNMI warnings: no active warnings")
+        logger.info("MeteoAlarm NL: no active warnings")
         return []
 
-    # Group by (level, phenomenon, description) → aggregate regions
+    # Group by (level, phenomenon) → aggregate regions
     groups: dict[tuple, dict] = {}
     for w in raw:
-        key = (w["level"], w["phenomenon"], w["description"])
+        key = (w["level"], w["phenomenon"])
         if key not in groups:
             groups[key] = {
-                "level": w["level"],
-                "phenomenon": w["phenomenon"],
-                "regions": [],
-                "valid_from": w["valid_from"],
+                "level":       w["level"],
+                "phenomenon":  w["phenomenon"],
+                "regions":     [],
+                "valid_from":  w["valid_from"],
                 "valid_until": w["valid_until"],
                 "description": w["description"],
             }
@@ -131,7 +151,7 @@ def _parse_warnings(xml_text: str) -> list[dict]:
 
     result = list(groups.values())
     result.sort(key=lambda w: _LEVEL_ORDER.get(w["level"], 9))
-    logger.info("KNMI warnings: %d active warning(s)", len(result))
+    logger.info("MeteoAlarm NL: %d active warning(s)", len(result))
     return result
 
 
@@ -144,12 +164,11 @@ async def get_warnings() -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(KNMI_WARNINGS_URL)
+            resp = await client.get(METEOALARM_URL)
             resp.raise_for_status()
             warnings = _parse_warnings(resp.text)
     except Exception as exc:
-        logger.error("KNMI warnings fetch error: %s", exc)
-        # Serve stale cache rather than erroring — display should stay stable
+        logger.error("MeteoAlarm fetch error: %s", exc)
         return {"warnings": _cache}
 
     _cache = warnings
