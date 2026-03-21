@@ -235,6 +235,160 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 interface RotateSlot { type: string; config: Record<string, unknown>; enabled?: boolean }
 
+function SlotConfig({
+  slot, onChange,
+}: {
+  slot: RotateSlot
+  onChange: (slot: RotateSlot) => void
+}) {
+  const cfg = slot.config
+
+  if (slot.type === 'traffic') {
+    return (
+      <Stack gap="xs" pl="xl" pt={4}>
+        <TextInput
+          label="Home address"
+          placeholder="Streetname 1, 1234AB City, NL"
+          value={(cfg.home_address as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, home_address: e.target.value } })}
+          size="xs"
+        />
+        <TextInput
+          label="Work address"
+          placeholder="Streetname 2, 5678CD City, NL"
+          value={(cfg.work_address as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, work_address: e.target.value } })}
+          size="xs"
+        />
+        <TextInput
+          label="Route roads"
+          placeholder="A10,A2,N14"
+          description="Comma-separated — jams on these roads float to the top"
+          value={(cfg.route_roads as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, route_roads: e.target.value } })}
+          size="xs"
+        />
+      </Stack>
+    )
+  }
+
+  if (slot.type === 'bus') {
+    return (
+      <Group gap="sm" pl="xl" pt={4} wrap="wrap" align="flex-start">
+        <TextInput
+          label="City"
+          value={(cfg.stop_city as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, stop_city: e.target.value } })}
+          size="xs"
+          w={140}
+        />
+        <TextInput
+          label="Stop name"
+          value={(cfg.stop_name as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, stop_name: e.target.value } })}
+          size="xs"
+          w={180}
+        />
+      </Group>
+    )
+  }
+
+  if (slot.type === 'garbage') {
+    return (
+      <Group gap="sm" pl="xl" pt={4} wrap="wrap" align="flex-start">
+        <TextInput
+          label="Postcode"
+          placeholder="1234AB"
+          value={(cfg.postcode as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, postcode: e.target.value } })}
+          size="xs"
+          w={100}
+        />
+        <TextInput
+          label="House number"
+          placeholder="1"
+          value={(cfg.huisnummer as string) ?? ''}
+          onChange={e => onChange({ ...slot, config: { ...cfg, huisnummer: e.target.value } })}
+          size="xs"
+          w={110}
+        />
+        <NumberInput
+          label="Days ahead"
+          value={(cfg.days_ahead as number) ?? 7}
+          onChange={v => onChange({ ...slot, config: { ...cfg, days_ahead: Number(v) } })}
+          min={1}
+          max={60}
+          size="xs"
+          w={100}
+        />
+      </Group>
+    )
+  }
+
+  if (slot.type === 'weather') {
+    return (
+      <Group gap="md" pl="xl" pt={4}>
+        <Checkbox
+          label="Show hourly"
+          checked={cfg.show_hourly !== false}
+          onChange={e => onChange({ ...slot, config: { ...cfg, show_hourly: e.currentTarget.checked } })}
+          size="xs"
+        />
+        <Checkbox
+          label="Show daily"
+          checked={cfg.show_daily !== false}
+          onChange={e => onChange({ ...slot, config: { ...cfg, show_daily: e.currentTarget.checked } })}
+          size="xs"
+        />
+      </Group>
+    )
+  }
+
+  if (slot.type === 'calendar') {
+    const ids = (cfg.calendar_ids as string[]) ?? []
+    return (
+      <Stack gap="xs" pl="xl" pt={4}>
+        <Text size="xs" c="dimmed" fw={500}>Extra calendar IDs</Text>
+        {ids.map((id, i) => (
+          <Group key={i} gap="xs" wrap="nowrap">
+            <TextInput
+              placeholder="xxxx@group.calendar.google.com"
+              value={id}
+              onChange={e => {
+                const next = ids.map((x, j) => j === i ? e.target.value : x)
+                onChange({ ...slot, config: { ...cfg, calendar_ids: next } })
+              }}
+              size="xs"
+              style={{ flex: 1, minWidth: 0 }}
+              ff="monospace"
+            />
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="xs"
+              onClick={() => onChange({ ...slot, config: { ...cfg, calendar_ids: ids.filter((_, j) => j !== i) } })}
+              style={{ flexShrink: 0 }}
+            >
+              ✕
+            </ActionIcon>
+          </Group>
+        ))}
+        <Button
+          variant="subtle"
+          color="gray"
+          size="xs"
+          onClick={() => onChange({ ...slot, config: { ...cfg, calendar_ids: [...ids, ''] } })}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          + Add calendar
+        </Button>
+      </Stack>
+    )
+  }
+
+  return null
+}
+
 function RotatorSection({
   widgetId, rotateConfig, onChange,
 }: {
@@ -258,19 +412,27 @@ function RotatorSection({
           size="sm"
           w={130}
         />
-        <Stack gap={6}>
+        <Stack gap="md">
           <Text size="xs" c="dimmed" fw={500}>Slots</Text>
           {slots.map((slot, idx) => (
-            <Checkbox
-              key={idx}
-              checked={slot.enabled !== false}
-              onChange={() => {
-                const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
-                onChange({ ...rotateConfig, widgets: next })
-              }}
-              label={<Code fz="xs">{slot.type}</Code>}
-              size="sm"
-            />
+            <Stack key={idx} gap={6}>
+              <Checkbox
+                checked={slot.enabled !== false}
+                onChange={() => {
+                  const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
+                  onChange({ ...rotateConfig, widgets: next })
+                }}
+                label={<Code fz="xs">{slot.type}</Code>}
+                size="sm"
+              />
+              <SlotConfig
+                slot={slot}
+                onChange={updated => {
+                  const next = slots.map((s, i) => i === idx ? updated : s)
+                  onChange({ ...rotateConfig, widgets: next })
+                }}
+              />
+            </Stack>
           ))}
         </Stack>
       </Stack>
@@ -287,9 +449,13 @@ function NewsSection({
   onChange: (cfg: Record<string, unknown>) => void
 }) {
   const feeds = (newsConfig.feeds as NewsFeed[]) ?? []
+  const scrollSpeed = (newsConfig.scroll_speed_px_per_sec as number) ?? 80
+  const ntfyUrl = (newsConfig.ntfy_url as string) ?? ''
+  const ntfyTopic = (newsConfig.ntfy_topic as string) ?? ''
+
   return (
     <Paper p="md" radius="sm" withBorder mb="md">
-      <SectionTitle>News feeds</SectionTitle>
+      <SectionTitle>News ticker</SectionTitle>
       <Stack gap="xs">
         {feeds.map((feed, idx) => (
           <Group key={idx} gap="xs" wrap="nowrap">
@@ -334,6 +500,40 @@ function NewsSection({
         >
           + Add feed
         </Button>
+
+        <Divider mt="xs" />
+
+        <NumberInput
+          label="Scroll speed (px/s)"
+          value={scrollSpeed}
+          onChange={v => onChange({ ...newsConfig, scroll_speed_px_per_sec: Number(v) })}
+          min={10}
+          max={500}
+          size="sm"
+          w={160}
+        />
+
+        <Divider mt="xs" />
+
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.07em' }}>Breaking news (ntfy)</Text>
+        <Group gap="sm" wrap="wrap" align="flex-start">
+          <TextInput
+            label="ntfy server URL"
+            placeholder="https://ntfy.sh"
+            value={ntfyUrl}
+            onChange={e => onChange({ ...newsConfig, ntfy_url: e.target.value })}
+            size="sm"
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <TextInput
+            label="Topic"
+            placeholder="wall-cast"
+            value={ntfyTopic}
+            onChange={e => onChange({ ...newsConfig, ntfy_topic: e.target.value })}
+            size="sm"
+            w={160}
+          />
+        </Group>
       </Stack>
     </Paper>
   )
@@ -508,34 +708,37 @@ function GeneralTab({
 // Tab: Screens
 // ---------------------------------------------------------------------------
 
-function GarbageDaysSection({
+function ClockSection({
   widgets, onChange,
 }: {
   widgets: WidgetConfig[]
-  onChange: (days: number) => void
+  onChange: (widgets: WidgetConfig[]) => void
 }) {
-  const garbageSlot = widgets
-    .flatMap(w => w.type === 'rotate'
-      ? (w.config.widgets as Array<{ type: string; config: Record<string, unknown> }> ?? [])
-      : []
-    )
-    .find(s => s.type === 'garbage')
+  const clockWidget = widgets.find(w => w.type === 'clock')
+  if (!clockWidget) return null
+  const cfg = clockWidget.config
 
-  if (!garbageSlot) return null
-  const days = (garbageSlot.config.days_ahead as number) ?? 7
+  function updateClock(patch: Record<string, unknown>) {
+    onChange(widgets.map(w => w.type === 'clock' ? { ...w, config: { ...cfg, ...patch } } : w))
+  }
 
   return (
     <Paper p="md" radius="sm" withBorder mb="md">
-      <SectionTitle>Garbage — days ahead</SectionTitle>
-      <NumberInput
-        label="Days"
-        value={days}
-        onChange={v => onChange(Number(v))}
-        min={1}
-        max={60}
-        size="sm"
-        w={100}
-      />
+      <SectionTitle>Clock</SectionTitle>
+      <Group gap="md">
+        <Checkbox
+          label="Show seconds"
+          checked={cfg.show_seconds !== false}
+          onChange={e => updateClock({ show_seconds: e.currentTarget.checked })}
+          size="sm"
+        />
+        <Checkbox
+          label="Show date"
+          checked={cfg.show_date !== false}
+          onChange={e => updateClock({ show_date: e.currentTarget.checked })}
+          size="sm"
+        />
+      </Group>
     </Paper>
   )
 }
@@ -648,6 +851,10 @@ function ScreensTab({
     const rotators = widgets.filter(w => w.type === 'rotate')
     return (
       <Stack gap="md">
+        <ClockSection
+          widgets={widgets}
+          onChange={updated => onChange({ ...draft, widgets: updated })}
+        />
         {rotators.map(w => (
           <RotatorSection
             key={w.id}
@@ -656,18 +863,6 @@ function ScreensTab({
             onChange={cfg => onChange({ ...draft, widgets: widgets.map(x => x.id === w.id ? { ...x, config: cfg } : x) })}
           />
         ))}
-        <GarbageDaysSection
-          widgets={widgets}
-          onChange={days => {
-            const updated = widgets.map(w => {
-              if (w.type !== 'rotate') return w
-              const slots = (w.config.widgets as Array<{ type: string; config: Record<string, unknown> }> ?? [])
-              if (!slots.some(s => s.type === 'garbage')) return w
-              return { ...w, config: { ...w.config, widgets: slots.map(s => s.type === 'garbage' ? { ...s, config: { ...s.config, days_ahead: days } } : s) } }
-            })
-            onChange({ ...draft, widgets: updated })
-          }}
-        />
       </Stack>
     )
   }
@@ -699,16 +894,6 @@ function ScreensTab({
   function updateScreenWidgets(widgets: WidgetConfig[]) {
     if (!currentScreen) return
     onChange(setActiveWidgets(draft, currentScreen.id, widgets))
-  }
-
-  function setGarbageDays(days: number) {
-    const updated = screenWidgets.map(w => {
-      if (w.type !== 'rotate') return w
-      const slots = (w.config.widgets as Array<{ type: string; config: Record<string, unknown> }> ?? [])
-      if (!slots.some(s => s.type === 'garbage')) return w
-      return { ...w, config: { ...w.config, widgets: slots.map(s => s.type === 'garbage' ? { ...s, config: { ...s.config, days_ahead: days } } : s) } }
-    })
-    updateScreenWidgets(updated)
   }
 
   return (
@@ -866,6 +1051,12 @@ function ScreensTab({
             onChange={ids => onChange(setScreenPeople(draft, currentScreen.id, ids))}
           />
 
+          {/* Clock */}
+          <ClockSection
+            widgets={screenWidgets}
+            onChange={updateScreenWidgets}
+          />
+
           {/* Rotators */}
           {rotators.map(w => (
             <RotatorSection
@@ -875,9 +1066,6 @@ function ScreensTab({
               onChange={cfg => updateScreenWidgets(screenWidgets.map(x => x.id === w.id ? { ...x, config: cfg } : x))}
             />
           ))}
-
-          {/* Garbage */}
-          <GarbageDaysSection widgets={screenWidgets} onChange={setGarbageDays} />
         </>
       )}
     </Stack>
