@@ -2,7 +2,7 @@
 
 **A self-hosted home display that casts personalised information to Chromecast-connected screens around your house.**
 
-Put the weather, family calendar, bin collection schedule, and live travel times on the TV in the living room. Put a different mix — with the kids' school schedule, the rain radar, and bus departures — on the screen in their room. All from one Docker stack, hot-reloading, no cloud, no subscription.
+Put the weather, family calendar, bin collection schedule, and live travel times on the TV in the living room. Put a different mix — with the kids' school schedule, the rain radar, and bus / tram departures — on the screen in their room. All from one Docker stack, hot-reloading, no cloud, no subscription.
 
 **This is not a digital signage system.** It's a lightweight, family-oriented display: *my* weather, *our* schedule, *the* waste collection. It runs entirely on a Docker host on your home LAN — a Raspberry Pi, a NAS, a spare PC — and casts the display to whichever Chromecasts or Google TVs you point it at.
 
@@ -14,32 +14,33 @@ It is fully AI-coded and designed to be extended. Fork it, tell Claude what you 
 
 ## What it looks like
 
+<!-- Screenshots: 2×2 grid of cast screens, then a row with landing page + admin panel -->
+
 <p align="center">
   <img src="docs/screenshots/screenshot-1.png" width="49%" alt="Clock, 7-day weather forecast and rain radar" />
   <img src="docs/screenshots/screenshot-2.png" width="49%" alt="Clock, family calendar and waste collection schedule" />
 </p>
 <p align="center">
   <img src="docs/screenshots/screenshot-3.png" width="49%" alt="Clock, live traffic jams and Polestar EV status" />
-  <img src="docs/screenshots/screenshot-4.png" width="49%" alt="Clock, KNMI weather warning and live bus departures" />
+  <img src="docs/screenshots/screenshot-4.png" width="49%" alt="Clock, KNMI weather warning and live bus / tram departures" />
 </p>
 <p align="center">
-  <img src="docs/screenshots/screenshot-5.png" width="49%" alt="Clock, 7-day weather and bus departures side by side" />
+  <img src="docs/screenshots/screenshot-5.png" width="49%" alt="Home page / screen selector" />
   <img src="docs/screenshots/screenshot-6.png" width="49%" alt="Admin panel — Screens tab with per-screen settings and Chromecast discovery" />
 </p>
 
 ## Features
 
 - **Multi-screen** — one installation drives multiple Chromecasts, each with its own layout and content
-- **Widget layout via YAML** — positions, spans, and widget config in one file; auto-created on first run
-- **Hot reload** — save the config, every screen updates within ~1 second (no container restart)
+- **Hot-reload config** — save the YAML, every screen updates within ~1 second; no container restart needed
+- **Widget system** — mix and match widgets per screen; layout, spans, and config all in one YAML file
+- **People & Calendars** — assign household members to screens; family members appear on all screens automatically
 - **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, and Chromecast IPs; built-in LAN scanner to discover devices
-- **People & Calendars** — assign household members to screens; family-flagged members appear everywhere automatically
+- **Network widget** — shows WAN status, external connectivity, LAN host count, and a Cloudflare speedtest; optionally integrates with a Zyxel VMG8825 router
 - **Dark theme** — pure black background, bold white type, cyan accent
-- **Dutch / English** — all widget labels switch with `language: en/nl` in the config
-- **Breaking news via ntfy** — push any message to a self-hosted ntfy topic; it appears instantly as a `BREAKING` ticker item
-- **Fully auto-refreshing** — weather every 15 min, rain every 5 min, news every 10 min, real-time bus departures
-- **Mostly no API keys** — most data sources are free and unauthenticated; optional widgets (Polestar, Calendar, Traffic, Bus) require free or personal keys
-- **Rotate widget** — cycle multiple widgets in one grid cell, with configurable intervals
+- **Dutch / English** — all widget labels switch with `language: en/nl`
+- **Rotate widget** — cycle multiple widgets in one grid cell on a configurable interval
+- **Mostly no API keys** — most data sources are free and unauthenticated
 - **Modular** — add new widgets without touching core code; [step-by-step guide](docs/adding-a-widget.md) included
 
 ## Widgets
@@ -56,8 +57,8 @@ It is fully AI-coded and designed to be extended. Fork it, tell Claude what you 
 | **Calendar** | L | Google Calendar (service account) | 10 min |
 | **Traffic** | L | ANWB (jams) + TomTom (travel time) | 5 min |
 | **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
-| **Bus departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
-| **Network** | S | Router DAL API + Cloudflare speedtest — WAN, connectivity, DNS, LAN hosts | 30 s |
+| **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
+| **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
 
 *Size guide — **S**: designed for the small bottom slot (~4×4 cells); **L**: designed for the large main slot (~8×7 cells); **Full**: full-width single-row strip; **Any**: container, inherits size from its grid position.*
@@ -73,35 +74,33 @@ cd wall-cast
 
 ### 2. Create your `.env`
 
-Copy the example and fill in your values:
-
 ```bash
 cp .env.example .env
 ```
 
-Then edit `.env`:
+Edit `.env` and set the required values:
 
 **`UID` / `GID`** — file ownership for config files written by the backend. Run `id -u && id -g` on the host to get your values. Default `1000` is fine on most Linux installs.
 
-**`SERVER_URL`** — the LAN address of this Docker host, as seen from the Chromecasts. Use `ip addr` (Linux) or `ipconfig` (Windows) to find it. Must be an IP, not `localhost` — the TV resolves localhost as itself.
+**`SERVER_URL`** — the LAN address of this Docker host, as seen from the Chromecasts. Use `ip addr` (Linux) to find it. Must be an IP, not `localhost` — the TV resolves localhost as itself.
 
-```bash
+```
 SERVER_URL=http://192.168.1.10
 ```
 
-**`TIMEZONE`** — IANA timezone name, e.g. `Europe/Amsterdam`. Used for calendar event times. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+**`TIMEZONE`** — IANA timezone name, e.g. `Europe/Amsterdam`. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 
-The remaining settings are **optional** — only fill in the ones for widgets you plan to use:
+The remaining settings are optional — only fill in the ones for widgets you plan to use:
 
-**`GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID`** *(calendar widget)* — requires a Google service account. Create one at [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials, enable the Calendar API, download the JSON key to `config/google-sa.json`, and share your calendar with the service account email. The Calendar ID is found under Settings → your calendar → *Integrate calendar*.
+**`GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID`** *(calendar widget)* — requires a Google service account. Create one at [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials, enable the Calendar API, and download the JSON key to `config/google-sa.json`. Share your Google Calendar with the service account — find the service account email in **Admin → General → Calendar**. The Calendar ID is under Settings → your calendar → *Integrate calendar*.
 
 **`TOMTOM_API_KEY`** *(traffic widget)* — free key from [developer.tomtom.com](https://developer.tomtom.com) (no credit card). Home/work address and route roads are set in the admin panel.
 
-**`VERTREKTIJD_API_KEY`** *(bus widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Stop city and name are set in the admin panel.
+**`VERTREKTIJD_API_KEY`** *(bus / tram widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Stop city and name are set in the admin panel.
 
 **`POLESTAR_USERNAME` / `POLESTAR_PASSWORD`** *(Polestar widget)* — the credentials you use to log in to the Polestar app or [my.polestar.com](https://my.polestar.com).
 
-**`ROUTER_PASSWORD`** *(network widget, optional)* — password for the router's admin interface. Router URL and username are set in the admin panel (General → Network widget). Currently supports the Zyxel VMG8825 DAL API; without this the widget still shows connectivity, DNS, and speedtest results.
+**`ROUTER_PASSWORD`** *(network widget, optional)* — password for the Zyxel VMG8825 router admin interface. Router URL and username are set in the admin panel (General → Network widget). Without this the widget still shows connectivity, DNS, and speedtest results.
 
 ### 3. Run
 
@@ -125,6 +124,17 @@ The display is cast to the TV within ~15 seconds of startup and re-casts automat
 
 To stop: `docker compose down`
 
+## Updating
+
+Pull the latest release and rebuild:
+
+```bash
+git pull
+docker compose up --build -d
+```
+
+Check [Releases](https://github.com/niels-emmer/wall-cast/releases) for what changed.
+
 ## Configuration
 
 All settings live in **`config/wall-cast.yaml`**. The file is gitignored and auto-created on first run — it will never block a `git pull`. Edit and save; the display reacts within ~1 second with no restart required.
@@ -135,11 +145,11 @@ Full reference: [docs/config-reference.md](docs/config-reference.md)
 
 ### Via admin panel
 
-Open **`http://<host-ip>/#admin`** to use the point-and-click admin panel. It has three tabs:
+Open the admin panel by clicking **Settings** on the home page, or by navigating to `/#admin`. It has three tabs:
 
-- **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, and news feed URLs
+- **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, news feed URLs, and network widget settings
 - **Screens** — add/rename/delete/enable/disable screens; set Chromecast IP (use the **Scan network** button to discover devices); set screen ID, layout, clock options, rotator intervals; assign people to the screen; configure weather and calendar options per slot
-- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus stop — used on any screen the person is assigned to
+- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus / tram stop — used on any screen the person is assigned to
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
@@ -152,7 +162,7 @@ shared:
   location: { lat, lon, name }  # weather, rain, sunrise/sunset
   language: en                  # en or nl
   garbage: { postcode, huisnummer }
-  people: [ ... ]               # household members with calendar IDs, commute, bus stop
+  people: [ ... ]               # household members with calendar IDs, commute, bus / tram stop
   widgets: [ ... ]              # widgets on every screen (e.g. news ticker)
 
 screens:
@@ -192,7 +202,7 @@ The backend reads calendars via a Google service account. It can only read calen
 
 1. Open [Google Calendar](https://calendar.google.com) → Settings → click the calendar
 2. Scroll to **Share with specific people and groups** → **+ Add people**
-3. Enter the **service account email** — find it in `config/google-sa.json` under `"client_email"` (ends in `@...iam.gserviceaccount.com`)
+3. Enter the **service account email** — find it in **Admin → General → Calendar** (it ends in `@...iam.gserviceaccount.com`)
 4. Set permission to **See all event details** (read-only is sufficient)
 5. Click **Send**
 
@@ -248,7 +258,7 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
 │  ┌──────────────────┐ host net  ┌───────────────────────────────┐   │
 │  │  caster          │           │  scanner                      │   │
 │  │  reads config    │           │  HTTP :8765                   │   │
-│  │  catt cast_site  │           │  ARP table + port 8009 probe  │   │
+│  │  catt cast_site  │           │  catt scan (mDNS)             │   │
 │  │  → each screen   │           └───────────────────────────────┘   │
 │  └────────┬─────────┘                                                │
 └───────────┼──────────────────────────────────────────────────────────┘
@@ -264,7 +274,7 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
 - **frontend** — nginx:alpine on port 80; serves the Vite-built React SPA; proxies `/api/*` to the backend with `proxy_buffering off` for SSE
 - **backend** — python:3.12-slim (internal, not exposed on the host); FastAPI; reads/writes `config/wall-cast.yaml`; proxies all external API calls with caching
 - **caster** — python:3.12-slim with `network_mode: host` (required to reach Chromecasts on the LAN); reads `chromecast_ip` from each screen in the config; uses `catt cast_site` with the DashCast receiver; polls every 60 s and re-casts if the session drops
-- **scanner** — python:3.12-slim with `network_mode: host` on port 8765; reads the host ARP table and TCP-probes port 8009 to discover Chromecast devices without mDNS; backend proxies `GET /api/admin/scan` to it via `host.docker.internal`
+- **scanner** — python:3.12-slim with `network_mode: host` on port 8765; runs `catt scan` on demand via mDNS; backend proxies `GET /api/admin/scan` to it via `host.docker.internal`
 
 ---
 
@@ -278,7 +288,7 @@ docker compose -f docker-compose.dev.yml up --build
 
 - **Frontend** (Vite HMR): http://localhost:5173
 - **Backend** (FastAPI + live reload): http://localhost:8000
-- **API docs** (Swagger): http://localhost:8000/docs
+- **API docs** (Swagger): http://localhost:8000/api/docs
 
 Or run the frontend standalone (fastest):
 
@@ -290,19 +300,19 @@ cd frontend && npm install && npm run dev
 
 ## Adding widgets
 
-See [docs/adding-a-widget.md](docs/adding-a-widget.md) for a step-by-step guide and the [docs/widget-style-guide.md](docs/widget-style-guide.md) for the design token system used across all widgets.
+See [docs/adding-a-widget.md](docs/adding-a-widget.md) for a step-by-step guide and [docs/widget-style-guide.md](docs/widget-style-guide.md) for the design token system used across all widgets.
 
 The widget registry is in `frontend/src/widgets/index.ts`. Any component registered there is immediately available in the YAML config.
 
 ## Security
 
-- The **backend is never exposed** on the host — only nginx is reachable from the network
+- **nginx is the only public port** (80) — the backend is never exposed on the host
 - All external API calls are **proxied server-side** — no CORS leakage, responses cached
+- `server_tokens off` and security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) set in nginx
 - **No authentication by design** — intended for local networks only
-- `server_tokens off` and standard security headers set in nginx
-- Backend runs as your host UID/GID (set via `.env`) so config files are always owned by the right user
+- Backend runs as your host UID/GID (set in `.env`) so config files are always owned by the right user
 
-If your host is internet-facing, restrict access in nginx:
+If your host is internet-facing, add `allow`/`deny` rules in `nginx.conf`:
 
 ```nginx
 location / {
@@ -323,7 +333,9 @@ wall-cast/
 │   ├── app/
 │   │   ├── main.py             FastAPI app + lifespan
 │   │   ├── wall_config.py      YAML loader + auto-create/migrate + SSE broadcaster
-│   │   └── routers/            one file per API endpoint
+│   │   └── routers/            one file per API endpoint (weather, rain, news, sun,
+│   │                           garbage, polestar, calendar, traffic, warnings, bus,
+│   │                           network, config, status)
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -335,14 +347,12 @@ wall-cast/
 │       │   └── styles.ts       ← design token system (font sizes, spacing, colour)
 │       └── hooks/              one hook per data source
 ├── caster/
-│   ├── Dockerfile              python:3.12-slim + catt
 │   ├── cast.py                 smart multi-screen caster + keepalive loop
-│   └── scanner.py              HTTP :8765; ARP-based Chromecast discovery
+│   └── scanner.py              HTTP :8765; mDNS-based Chromecast discovery
 ├── docs/
 │   ├── config-reference.md
 │   ├── adding-a-widget.md
-│   ├── widget-style-guide.md
-│   └── memory/                 project decisions and state
+│   └── widget-style-guide.md
 ├── docker-compose.yml          production
 └── docker-compose.dev.yml      development
 ```
@@ -363,7 +373,7 @@ This project was conceived, architected, and coded in collaboration with [Claude
 | [buienalarm.nl](https://buienalarm.nl) | Rain intensity forecast (2 h) |
 | [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, and daylight duration |
 | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) | Waste collection schedule (NL) |
-| [vertrektijd.info](https://vertrektijd.info) | Real-time bus departures (NL) |
+| [vertrektijd.info](https://vertrektijd.info) | Real-time bus / tram departures (NL) |
 | [ANWB](https://anwb.nl) | Traffic incidents |
 | [TomTom Routing API](https://developer.tomtom.com) | Travel time |
 | [MeteoAlarm](https://meteoalarm.org) | KNMI weather warnings |
