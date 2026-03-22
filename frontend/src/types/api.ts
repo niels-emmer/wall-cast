@@ -168,11 +168,6 @@ export interface NetworkConnectivity {
   latency_ms: number | null
 }
 
-export interface NetworkDns {
-  cloudflare: boolean
-  google: boolean
-}
-
 export interface NetworkHosts {
   total: number
   ethernet: number
@@ -188,7 +183,6 @@ export interface NetworkSpeedtest {
 export interface NetworkData {
   wan: NetworkWan | null
   connectivity: NetworkConnectivity
-  dns: NetworkDns
   hosts: NetworkHosts | null
   speedtest: NetworkSpeedtest | null
 }
