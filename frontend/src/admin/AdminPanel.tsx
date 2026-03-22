@@ -3,7 +3,7 @@ import {
   MantineProvider, createTheme,
   Box, Container, Stack, Group, Paper,
   Text, Code, Title,
-  TextInput, NumberInput, Autocomplete,
+  TextInput, NumberInput, Autocomplete, Select,
   Checkbox,
   Button, ActionIcon,
   Tabs, SegmentedControl,
@@ -18,6 +18,7 @@ import type {
   FlatConfig,
   Location,
   GarbageConfig,
+  NetworkConfig,
   Person,
   PersonTraffic,
   PersonBus,
@@ -146,6 +147,16 @@ function setGarbageInDraft(draft: AdminConfig, gc: GarbageConfig): AdminConfig {
   return { ...draft, shared: { ...draft.shared, garbage: gc } }
 }
 
+function getNetwork(draft: AdminConfig): NetworkConfig {
+  if (!isMultiScreen(draft)) return {}
+  return draft.shared.network ?? {}
+}
+
+function setNetworkInDraft(draft: AdminConfig, nc: NetworkConfig): AdminConfig {
+  if (!isMultiScreen(draft)) return draft  // only supported in multi-screen format
+  return { ...draft, shared: { ...draft.shared, network: nc } }
+}
+
 function getPeople(draft: AdminConfig): Person[] {
   if (!isMultiScreen(draft)) return []
   return (draft.shared.people ?? []) as Person[]
@@ -223,6 +234,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
             { type: 'garbage', config: { days_ahead: 31, postcode: '', huisnummer: '' } },
             { type: 'polestar', config: {} },
             { type: 'bus', config: { stop_city: '', stop_name: '' } },
+            { type: 'network', config: {} },
           ],
         },
       },
@@ -361,6 +373,7 @@ function RotatorSection({
 }) {
   const slots = (rotateConfig.widgets as RotateSlot[]) ?? []
   const intervalSec = (rotateConfig.interval_sec as number) ?? 30
+  const [addType, setAddType] = useState<string | null>(null)
 
   return (
     <Paper p="md" radius="sm" withBorder mb="md">
@@ -379,15 +392,29 @@ function RotatorSection({
           <Text size="xs" c="dimmed" fw={500}>Slots</Text>
           {slots.map((slot, idx) => (
             <Stack key={idx} gap={6}>
-              <Checkbox
-                checked={slot.enabled !== false}
-                onChange={() => {
-                  const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
-                  onChange({ ...rotateConfig, widgets: next })
-                }}
-                label={<Code fz="xs">{slot.type}</Code>}
-                size="sm"
-              />
+              <Group gap="xs" align="center">
+                <Checkbox
+                  checked={slot.enabled !== false}
+                  onChange={() => {
+                    const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
+                    onChange({ ...rotateConfig, widgets: next })
+                  }}
+                  label={<Code fz="xs">{slot.type}</Code>}
+                  size="sm"
+                />
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="xs"
+                  title="Remove slot"
+                  onClick={() => {
+                    const next = slots.filter((_, i) => i !== idx)
+                    onChange({ ...rotateConfig, widgets: next })
+                  }}
+                >
+                  ✕
+                </ActionIcon>
+              </Group>
               <SlotConfig
                 slot={slot}
                 onChange={updated => {
@@ -397,10 +424,58 @@ function RotatorSection({
               />
             </Stack>
           ))}
+          <Divider />
+          <Group gap="xs" align="flex-end">
+            <Select
+              label="Add slot"
+              placeholder="Pick widget type…"
+              data={ROTATOR_SLOT_TYPES.filter(t => !slots.some(s => s.type === t.value))}
+              value={addType}
+              onChange={setAddType}
+              size="xs"
+              w={160}
+              clearable
+            />
+            <Button
+              size="xs"
+              variant="light"
+              disabled={!addType}
+              onClick={() => {
+                if (!addType) return
+                const next = [...slots, { type: addType, config: defaultSlotConfig(addType), enabled: true }]
+                onChange({ ...rotateConfig, widgets: next })
+                setAddType(null)
+              }}
+            >
+              + Add
+            </Button>
+          </Group>
         </Stack>
       </Stack>
     </Paper>
   )
+}
+
+const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
+  { value: 'weather',  label: 'Weather' },
+  { value: 'calendar', label: 'Calendar' },
+  { value: 'traffic',  label: 'Traffic' },
+  { value: 'warnings', label: 'Warnings' },
+  { value: 'rain',     label: 'Rain' },
+  { value: 'garbage',  label: 'Garbage' },
+  { value: 'polestar', label: 'Polestar' },
+  { value: 'bus',      label: 'Bus' },
+  { value: 'network',  label: 'Network' },
+  { value: 'info',     label: 'Info' },
+]
+
+function defaultSlotConfig(type: string): Record<string, unknown> {
+  if (type === 'garbage') return { days_ahead: 31, postcode: '', huisnummer: '' }
+  if (type === 'traffic') return { home_address: '', work_address: '', route_roads: '' }
+  if (type === 'bus')     return { stop_city: '', stop_name: '' }
+  if (type === 'weather') return { show_hourly: true, show_daily: true }
+  if (type === 'calendar') return { calendar_ids: [] }
+  return {}
 }
 
 interface NewsFeed { url: string; label: string }
@@ -586,6 +661,62 @@ function GarbageSection({
 }
 
 // ---------------------------------------------------------------------------
+// NetworkSection
+// ---------------------------------------------------------------------------
+
+function NetworkSection({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const nc = getNetwork(draft)
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>Network widget</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        Optional Zyxel router integration — enables WAN status and host counts.
+        Without it the widget still shows connectivity, DNS, and speed.
+      </Text>
+      <Stack gap="sm">
+        <Group gap="sm" wrap="wrap" align="flex-end">
+          <TextInput
+            label="Router URL"
+            placeholder="https://192.168.1.1"
+            value={nc.router_url ?? ''}
+            onChange={e => onChange(setNetworkInDraft(draft, { ...nc, router_url: e.target.value || undefined }))}
+            size="sm"
+            w={210}
+          />
+          <TextInput
+            label="Router username"
+            placeholder="admin"
+            value={nc.router_username ?? ''}
+            onChange={e => onChange(setNetworkInDraft(draft, { ...nc, router_username: e.target.value || undefined }))}
+            size="sm"
+            w={150}
+          />
+        </Group>
+        <Group gap="xs" align="center">
+          <TextInput
+            label="Router password"
+            value="••••••••"
+            readOnly
+            disabled
+            size="sm"
+            w={150}
+          />
+          <Text size="xs" c="dimmed" mt={22}>
+            Set <Code fz="xs">ROUTER_PASSWORD=…</Code> in your <Code fz="xs">.env</Code> file — never stored in the config YAML.
+          </Text>
+        </Group>
+      </Stack>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // LocationSection
 // ---------------------------------------------------------------------------
 
@@ -745,6 +876,7 @@ function GeneralTab({
     <Stack gap="md">
       <LocationSection draft={draft} onChange={onChange} />
       <GarbageSection draft={draft} onChange={onChange} />
+      <NetworkSection draft={draft} onChange={onChange} />
 
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Display language</SectionTitle>
@@ -1447,8 +1579,12 @@ function AdminPanelInner() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
 
+  // Only initialise the draft from server data on first load (draft === null).
+  // Never overwrite an in-progress draft — that is what was causing edits to
+  // disappear: invalidateQueries() triggered a background refetch, remoteConfig
+  // updated, and this effect silently reset the draft to the server snapshot.
   useEffect(() => {
-    if (remoteConfig) setDraft(deepClone(remoteConfig))
+    if (remoteConfig && draft === null) setDraft(deepClone(remoteConfig))
   }, [remoteConfig])
 
   if (isError) {
@@ -1484,7 +1620,11 @@ function AdminPanelInner() {
     try {
       await saveAdminConfig(draft)
       setSaveState('saved')
-      queryClient.invalidateQueries({ queryKey: ['admin-config'] })
+      // Push the saved draft directly into the query cache instead of
+      // invalidating — we know the server now holds exactly `draft`, so there
+      // is no need to refetch, and no risk of the refetch triggering the
+      // useEffect above and overwriting the user's ongoing edits.
+      queryClient.setQueryData(['admin-config'], draft)
       setTimeout(() => setSaveState('idle'), 2000)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err))

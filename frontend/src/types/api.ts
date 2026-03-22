@@ -155,6 +155,44 @@ export interface BusData {
   departures: BusDeparture[]
 }
 
+export interface NetworkWan {
+  status: 'up' | 'down'
+  ip: string | null
+  link_type: string | null
+  service: string | null
+  uptime_s?: number
+}
+
+export interface NetworkConnectivity {
+  ok: boolean
+  latency_ms: number | null
+}
+
+export interface NetworkDns {
+  cloudflare: boolean
+  google: boolean
+}
+
+export interface NetworkHosts {
+  total: number
+  ethernet: number
+  wifi: number
+}
+
+export interface NetworkSpeedtest {
+  download_mbps: number | null
+  upload_mbps: number | null
+  tested_at: number   // Unix timestamp
+}
+
+export interface NetworkData {
+  wan: NetworkWan | null
+  connectivity: NetworkConnectivity
+  dns: NetworkDns
+  hosts: NetworkHosts | null
+  speedtest: NetworkSpeedtest | null
+}
+
 export interface SunData {
   sunrise: string
   sunset: string

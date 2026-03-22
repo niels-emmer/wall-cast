@@ -45,6 +45,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | info | n/a (static) | InfoWidget.tsx | ✅ production |
 | warnings | /api/warnings | WarningsWidget.tsx | ✅ production |
 | bus | /api/bus | BusWidget.tsx | ✅ production |
+| network | /api/network | NetworkWidget.tsx | ✅ production |
 
 ## Feature Status
 
@@ -72,7 +73,8 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval; skips slots that call onSkip() |
 | Bus widget | ✅ | vertrektijd.info live departures; cancelled services shown |
 | Visual harmony | ✅ | Shared design token system in `frontend/src/widgets/styles.ts` — 7 font tiers, unified shell gap/card padding/radius across all widgets. See `docs/widget-style-guide.md`. |
-| Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on drop |
+| Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on genuine drop; cooldown prevents false-negative recast loop |
+| Network widget | ✅ | WAN status, connectivity, DNS, LAN host count, speedtest; Zyxel VMG8825 DAL API; router password via `ROUTER_PASSWORD` env var |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
 
@@ -107,6 +109,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Manages one catt session per screen; detects dropped sessions and re-casts
 - `SERVER_URL` env var sets the base; screen URL is `{SERVER_URL}/?screen={id}`
 - `network_mode: host` required for mDNS LAN discovery
+- **Cooldown guard**: `catt status` gives a false negative right after `cast_site` completes — `is_casting()` returns `False` even though the page is loading. Without a guard this caused a recast loop every 60 s, constantly reloading the display. `cast.py` tracks `last_cast_at` per IP and skips the recast if it was cast within `CAST_COOLDOWN` seconds (default 300 s, configurable via env var). Only genuinely stale sessions (no cast for > 5 min) are restarted.
 
 ### Scanner sidecar
 - Separate `scanner` service with `network_mode: host` on port 8765 — host network needed for mDNS
@@ -188,8 +191,9 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Route: `/#admin` — hash-based, no React Router dependency, works with nginx static serving
 - `PUT /api/admin/config` — receives full WallConfig JSON, serialises to YAML atomically (tmpfile + `os.replace()`); existing `watchfiles` watcher detects the rename and broadcasts SSE to the display
 - Config volume is **read-write** (`./config:/config`, not `:ro`) — required for admin writes
-- Admin state: full config loaded from `useConfig()`, draft state held locally in AdminPanel; `setDraft()` updates the draft; save sends the whole thing
+- Admin state: `draft` is initialised from server data once (when `draft === null`). The `useEffect` that syncs `remoteConfig → draft` is guarded by `draft === null` so it only fires on first load. After save, `queryClient.setQueryData()` updates the cache directly — no refetch is triggered, so `remoteConfig` never changes and the useEffect never overwrites the user's ongoing edits. **Do NOT use `invalidateQueries` after admin saves** — it triggers a refetch that fires the useEffect and silently resets the draft.
 - Rotation slots: toggled per widget via `enabled` field on each slot in `config.widgets`
+- Rotator "Add slot" UI: `RotatorSection` has a `Select + Add` button at the bottom; only shows widget types not already in the rotator; uses `defaultSlotConfig()` helper to seed sensible defaults
 
 ### i18n
 - `frontend/src/i18n/translations.ts` — `Translations` interface + `nl` and `en` objects; all widget labels, day/month names, WMO codes, and format functions live here
@@ -197,6 +201,17 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - **Do NOT call `useConfig()` from `useLang()`** — `useConfig()` sets up a new SSE connection per render; `useLang()` must use `useQuery` directly with the same `['config']` key so TanStack Query deduplicates
 - `LANGUAGES` registry supports additional languages: add a new `Lang` union member + object in `translations.ts`
 - `language` is a top-level key under `shared` in the YAML
+
+### Network widget
+- `GET /api/network` aggregates 5 probes concurrently: WAN status, external connectivity, DNS reachability, LAN host count, speedtest
+- Router integration: Zyxel VMG8825 DAL API (RSA+AES encrypted). Requires `cryptography` package (in `requirements.txt`). Optional — widget still shows connectivity/DNS/speed without it.
+- `router_url` and `router_username` live in `shared.network` in the YAML (set via Admin → General → Network widget)
+- `router_password` is **never stored in YAML** — read from `ROUTER_PASSWORD` env var in `.env`
+- **`shared.network` must be explicitly forwarded** in `wall_config.get_config()` merged dict — it is a top-level shared key that the router endpoint reads. Adding any new shared-only backend keys (not widget configs) requires the same treatment.
+- Speedtest: Cloudflare `speed.cloudflare.com/__down` / `__up`, runs every 60 s in background, capped at `speedtest_bytes_down` / `speedtest_bytes_up` (YAML, defaults 2 MB / 200 KB)
+- Cache TTL: 30 s. Speedtest runs async so it never blocks the main probe responses.
+- WAN uptime: separate `status` OID call after the main `cardpage_status` query
+- LAN host count: `lanhosts` OID; wifi detected by "Wi-Fi" in `X_ZYXEL_ConnectionType`
 
 ### Widget registry
 - `BASE_REGISTRY` in `base-registry.ts` holds all widgets except `rotate`

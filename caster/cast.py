@@ -17,7 +17,8 @@ import yaml
 
 CONFIG_PATH = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
 SERVER_URL = os.environ.get("SERVER_URL", "http://localhost").rstrip("/")
-CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "60"))
+CHECK_INTERVAL  = int(os.environ.get("CHECK_INTERVAL", "60"))
+CAST_COOLDOWN   = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasting after a successful cast
 
 
 def load_screens() -> list[dict]:
@@ -77,6 +78,7 @@ def main() -> None:
     time.sleep(15)
 
     active_ips: set[str] = set()
+    last_cast_at: dict[str, float] = {}  # ip → timestamp of last cast attempt
 
     while True:
         screens = load_screens()
@@ -90,12 +92,19 @@ def main() -> None:
         if not screens:
             print("[caster] No screens with chromecast_ip configured — waiting...", flush=True)
 
+        now = time.time()
         for s in screens:
             if is_casting(s["ip"]):
                 print(f"[caster] {s['id']} OK", flush=True)
+            elif now - last_cast_at.get(s["ip"], 0) < CAST_COOLDOWN:
+                # catt status can give a false negative right after casting;
+                # trust the cast for CAST_COOLDOWN seconds before retrying
+                age = int(now - last_cast_at[s["ip"]])
+                print(f"[caster] {s['id']} OK (cast {age}s ago)", flush=True)
             else:
                 print(f"[caster] {s['id']} not casting — starting", flush=True)
                 cast(s["ip"], s["url"], s["id"])
+                last_cast_at[s["ip"]] = now
 
         time.sleep(CHECK_INTERVAL)
 

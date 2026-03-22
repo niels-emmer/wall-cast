@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import wall_config
-from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus
+from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus, network
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +53,7 @@ app.include_router(calendar.router, prefix="/api")
 app.include_router(traffic.router, prefix="/api")
 app.include_router(warnings.router, prefix="/api")
 app.include_router(bus.router, prefix="/api")
+app.include_router(network.router, prefix="/api")
 
 
 @app.get("/health")
