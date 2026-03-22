@@ -3,7 +3,7 @@ import {
   MantineProvider, createTheme,
   Box, Container, Stack, Group, Paper,
   Text, Code, Title,
-  TextInput, NumberInput, Autocomplete,
+  TextInput, NumberInput, Autocomplete, Select,
   Checkbox,
   Button, ActionIcon,
   Tabs, SegmentedControl,
@@ -223,6 +223,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
             { type: 'garbage', config: { days_ahead: 31, postcode: '', huisnummer: '' } },
             { type: 'polestar', config: {} },
             { type: 'bus', config: { stop_city: '', stop_name: '' } },
+            { type: 'network', config: {} },
           ],
         },
       },
@@ -361,6 +362,7 @@ function RotatorSection({
 }) {
   const slots = (rotateConfig.widgets as RotateSlot[]) ?? []
   const intervalSec = (rotateConfig.interval_sec as number) ?? 30
+  const [addType, setAddType] = useState<string | null>(null)
 
   return (
     <Paper p="md" radius="sm" withBorder mb="md">
@@ -379,15 +381,29 @@ function RotatorSection({
           <Text size="xs" c="dimmed" fw={500}>Slots</Text>
           {slots.map((slot, idx) => (
             <Stack key={idx} gap={6}>
-              <Checkbox
-                checked={slot.enabled !== false}
-                onChange={() => {
-                  const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
-                  onChange({ ...rotateConfig, widgets: next })
-                }}
-                label={<Code fz="xs">{slot.type}</Code>}
-                size="sm"
-              />
+              <Group gap="xs" align="center">
+                <Checkbox
+                  checked={slot.enabled !== false}
+                  onChange={() => {
+                    const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
+                    onChange({ ...rotateConfig, widgets: next })
+                  }}
+                  label={<Code fz="xs">{slot.type}</Code>}
+                  size="sm"
+                />
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="xs"
+                  title="Remove slot"
+                  onClick={() => {
+                    const next = slots.filter((_, i) => i !== idx)
+                    onChange({ ...rotateConfig, widgets: next })
+                  }}
+                >
+                  ✕
+                </ActionIcon>
+              </Group>
               <SlotConfig
                 slot={slot}
                 onChange={updated => {
@@ -397,10 +413,58 @@ function RotatorSection({
               />
             </Stack>
           ))}
+          <Divider />
+          <Group gap="xs" align="flex-end">
+            <Select
+              label="Add slot"
+              placeholder="Pick widget type…"
+              data={ROTATOR_SLOT_TYPES.filter(t => !slots.some(s => s.type === t.value))}
+              value={addType}
+              onChange={setAddType}
+              size="xs"
+              w={160}
+              clearable
+            />
+            <Button
+              size="xs"
+              variant="light"
+              disabled={!addType}
+              onClick={() => {
+                if (!addType) return
+                const next = [...slots, { type: addType, config: defaultSlotConfig(addType), enabled: true }]
+                onChange({ ...rotateConfig, widgets: next })
+                setAddType(null)
+              }}
+            >
+              + Add
+            </Button>
+          </Group>
         </Stack>
       </Stack>
     </Paper>
   )
+}
+
+const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
+  { value: 'weather',  label: 'Weather' },
+  { value: 'calendar', label: 'Calendar' },
+  { value: 'traffic',  label: 'Traffic' },
+  { value: 'warnings', label: 'Warnings' },
+  { value: 'rain',     label: 'Rain' },
+  { value: 'garbage',  label: 'Garbage' },
+  { value: 'polestar', label: 'Polestar' },
+  { value: 'bus',      label: 'Bus' },
+  { value: 'network',  label: 'Network' },
+  { value: 'info',     label: 'Info' },
+]
+
+function defaultSlotConfig(type: string): Record<string, unknown> {
+  if (type === 'garbage') return { days_ahead: 31, postcode: '', huisnummer: '' }
+  if (type === 'traffic') return { home_address: '', work_address: '', route_roads: '' }
+  if (type === 'bus')     return { stop_city: '', stop_name: '' }
+  if (type === 'weather') return { show_hourly: true, show_daily: true }
+  if (type === 'calendar') return { calendar_ids: [] }
+  return {}
 }
 
 interface NewsFeed { url: string; label: string }
