@@ -44,20 +44,23 @@ It is fully AI-coded and designed to be extended. Fork it, tell Claude what you 
 
 ## Widgets
 
-| Widget | Data source | Refresh |
-|--------|-------------|---------|
-| **Clock** | Client-side | Every second |
-| **Weather** | [open-meteo.com](https://open-meteo.com) — current, hourly, 7-day | 15 min |
-| **Rain forecast** | [buienalarm.nl](https://buienalarm.nl) — rain chart for next 2 h | 5 min |
-| **News ticker** | RSS feeds (configurable list) | 10 min |
-| **Sunrise/sunset** | [sunrise-sunset.org](https://sunrise-sunset.org/api) — embedded in weather widget | 6 h |
-| **Garbage** | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — upcoming collection (NL) | 1 h |
-| **Polestar** | [pypolestar](https://github.com/pypolestar/pypolestar) — SOC, range, charging, service | 5 min |
-| **Calendar** | Google Calendar (service account) | 10 min |
-| **Traffic** | ANWB (jams) + TomTom (travel time) | 5 min |
-| **KNMI warnings** | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
-| **Bus departures** | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
-| **Rotate** | Container — cycles child widgets in one grid cell | — |
+| Widget | Size | Data source | Refresh |
+|--------|------|-------------|---------|
+| **Clock** | L | Client-side | Every second |
+| **Weather** | L | [open-meteo.com](https://open-meteo.com) — current, hourly, 7-day | 15 min |
+| **Rain forecast** | S | [buienalarm.nl](https://buienalarm.nl) — rain chart for next 2 h | 5 min |
+| **News ticker** | Full | RSS feeds (configurable list) | 10 min |
+| **Sunrise/sunset** | — | [sunrise-sunset.org](https://sunrise-sunset.org/api) — embedded in weather widget | 6 h |
+| **Garbage** | S | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — upcoming collection (NL) | 1 h |
+| **Polestar** | S | [pypolestar](https://github.com/pypolestar/pypolestar) — SOC, range, charging, service | 5 min |
+| **Calendar** | L | Google Calendar (service account) | 10 min |
+| **Traffic** | L | ANWB (jams) + TomTom (travel time) | 5 min |
+| **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
+| **Bus departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
+| **Network** | S | Router DAL API + Cloudflare speedtest — WAN, connectivity, DNS, LAN hosts | 30 s |
+| **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
+
+*Size guide — **S**: designed for the small bottom slot (~4×4 cells); **L**: designed for the large main slot (~8×7 cells); **Full**: full-width single-row strip; **Any**: container, inherits size from its grid position.*
 
 ## Quick start
 
@@ -97,6 +100,8 @@ The remaining settings are **optional** — only fill in the ones for widgets yo
 **`VERTREKTIJD_API_KEY`** *(bus widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Stop city and name are set in the admin panel.
 
 **`POLESTAR_USERNAME` / `POLESTAR_PASSWORD`** *(Polestar widget)* — the credentials you use to log in to the Polestar app or [my.polestar.com](https://my.polestar.com).
+
+**`ROUTER_PASSWORD`** *(network widget, optional)* — password for the router's admin interface. Router URL and username are set in the admin panel (General → Network widget). Currently supports the Zyxel VMG8825 DAL API; without this the widget still shows connectivity, DNS, and speedtest results.
 
 ### 3. Run
 
