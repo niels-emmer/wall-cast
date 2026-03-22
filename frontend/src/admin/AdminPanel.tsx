@@ -18,6 +18,7 @@ import type {
   FlatConfig,
   Location,
   GarbageConfig,
+  NetworkConfig,
   Person,
   PersonTraffic,
   PersonBus,
@@ -144,6 +145,16 @@ function getGarbage(draft: AdminConfig): GarbageConfig {
 function setGarbageInDraft(draft: AdminConfig, gc: GarbageConfig): AdminConfig {
   if (!isMultiScreen(draft)) return { ...draft, garbage: gc }
   return { ...draft, shared: { ...draft.shared, garbage: gc } }
+}
+
+function getNetwork(draft: AdminConfig): NetworkConfig {
+  if (!isMultiScreen(draft)) return {}
+  return draft.shared.network ?? {}
+}
+
+function setNetworkInDraft(draft: AdminConfig, nc: NetworkConfig): AdminConfig {
+  if (!isMultiScreen(draft)) return draft  // only supported in multi-screen format
+  return { ...draft, shared: { ...draft.shared, network: nc } }
 }
 
 function getPeople(draft: AdminConfig): Person[] {
@@ -650,6 +661,62 @@ function GarbageSection({
 }
 
 // ---------------------------------------------------------------------------
+// NetworkSection
+// ---------------------------------------------------------------------------
+
+function NetworkSection({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const nc = getNetwork(draft)
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>Network widget</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        Optional Zyxel router integration — enables WAN status and host counts.
+        Without it the widget still shows connectivity, DNS, and speed.
+      </Text>
+      <Stack gap="sm">
+        <Group gap="sm" wrap="wrap" align="flex-end">
+          <TextInput
+            label="Router URL"
+            placeholder="https://192.168.1.1"
+            value={nc.router_url ?? ''}
+            onChange={e => onChange(setNetworkInDraft(draft, { ...nc, router_url: e.target.value || undefined }))}
+            size="sm"
+            w={210}
+          />
+          <TextInput
+            label="Router username"
+            placeholder="admin"
+            value={nc.router_username ?? ''}
+            onChange={e => onChange(setNetworkInDraft(draft, { ...nc, router_username: e.target.value || undefined }))}
+            size="sm"
+            w={150}
+          />
+        </Group>
+        <Group gap="xs" align="center">
+          <TextInput
+            label="Router password"
+            value="••••••••"
+            readOnly
+            disabled
+            size="sm"
+            w={150}
+          />
+          <Text size="xs" c="dimmed" mt={22}>
+            Set <Code fz="xs">ROUTER_PASSWORD=…</Code> in your <Code fz="xs">.env</Code> file — never stored in the config YAML.
+          </Text>
+        </Group>
+      </Stack>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // LocationSection
 // ---------------------------------------------------------------------------
 
@@ -809,6 +876,7 @@ function GeneralTab({
     <Stack gap="md">
       <LocationSection draft={draft} onChange={onChange} />
       <GarbageSection draft={draft} onChange={onChange} />
+      <NetworkSection draft={draft} onChange={onChange} />
 
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Display language</SectionTitle>

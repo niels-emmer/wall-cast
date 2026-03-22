@@ -13,7 +13,9 @@ Router config is read from wall-cast.yaml shared.network:
   network:
     router_url:      https://192.168.101.1
     router_username: admin
-    router_password: <password>
+
+The router password is read from the environment variable ROUTER_PASSWORD
+(set it in .env — never store it in the YAML config).
 
 All five probes are attempted concurrently; partial results are returned if any
 individual probe fails. The combined result is cached for 30 s.
@@ -218,7 +220,7 @@ def _get_router_session() -> RouterSession | None:
     net_cfg: dict = cfg.get("network", {})
     url = net_cfg.get("router_url", "")
     user = net_cfg.get("router_username", "admin")
-    pwd = net_cfg.get("router_password", "")
+    pwd = os.environ.get("ROUTER_PASSWORD", "")
     if not url or not pwd:
         return None
     key = f"{url}:{user}:{pwd}"
