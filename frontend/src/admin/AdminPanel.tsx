@@ -19,6 +19,7 @@ import type {
   Location,
   GarbageConfig,
   NetworkConfig,
+  AssistantConfig,
   Person,
   PersonTraffic,
   PersonBus,
@@ -155,6 +156,16 @@ function getNetwork(draft: AdminConfig): NetworkConfig {
 function setNetworkInDraft(draft: AdminConfig, nc: NetworkConfig): AdminConfig {
   if (!isMultiScreen(draft)) return draft  // only supported in multi-screen format
   return { ...draft, shared: { ...draft.shared, network: nc } }
+}
+
+function getAssistant(draft: AdminConfig): AssistantConfig {
+  if (!isMultiScreen(draft)) return {}
+  return draft.shared.assistant ?? {}
+}
+
+function setAssistantInDraft(draft: AdminConfig, ac: AssistantConfig): AdminConfig {
+  if (!isMultiScreen(draft)) return draft
+  return { ...draft, shared: { ...draft.shared, assistant: ac } }
 }
 
 function getPeople(draft: AdminConfig): Person[] {
@@ -843,6 +854,202 @@ function LocationSection({
         )}
       </Stack>
     </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Assistant
+// ---------------------------------------------------------------------------
+
+function AssistantTab({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const ac = getAssistant(draft)
+  const notify  = ac.notify  ?? {}
+  const ai      = ac.ai      ?? {}
+  const rules   = ac.rules   ?? {}
+
+  function update(patch: Partial<AssistantConfig>) {
+    onChange(setAssistantInDraft(draft, { ...ac, ...patch }))
+  }
+
+  return (
+    <Stack gap="md">
+      {/* Enable / interval */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>Assistant</SectionTitle>
+        <Text size="sm" c="dimmed" mb="md">
+          Proactive notifications — sends alerts when your bin needs to go out,
+          your bus is late, or your commute has delays.
+        </Text>
+        <Stack gap="sm">
+          <Checkbox
+            label="Enable assistant"
+            checked={ac.enabled ?? false}
+            onChange={e => update({ enabled: e.currentTarget.checked })}
+            size="sm"
+          />
+          <NumberInput
+            label="Check interval (seconds)"
+            description="How often to poll for new alerts"
+            value={ac.check_interval ?? 300}
+            onChange={v => update({ check_interval: Number(v) })}
+            min={60}
+            max={3600}
+            step={60}
+            size="sm"
+            w={200}
+            disabled={!ac.enabled}
+          />
+        </Stack>
+      </Paper>
+
+      {/* Notifications */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>Notifications (ntfy)</SectionTitle>
+        <Text size="sm" c="dimmed" mb="md">
+          Notifications are pushed to your ntfy server. Subscribe to the topic
+          on your phone via the ntfy app to receive alerts.
+        </Text>
+        <Group gap="sm" wrap="wrap" align="flex-start">
+          <TextInput
+            label="ntfy server URL"
+            placeholder="https://ntfy.example.com"
+            value={notify.ntfy_url ?? ''}
+            onChange={e => update({ notify: { ...notify, ntfy_url: e.target.value || undefined } })}
+            size="sm"
+            style={{ flex: 1, minWidth: 220 }}
+          />
+          <TextInput
+            label="Topic"
+            placeholder="wall-cast-alerts"
+            value={notify.ntfy_topic ?? ''}
+            onChange={e => update({ notify: { ...notify, ntfy_topic: e.target.value || undefined } })}
+            size="sm"
+            w={180}
+          />
+        </Group>
+      </Paper>
+
+      {/* AI */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>AI formatting (optional)</SectionTitle>
+        <Text size="sm" c="dimmed" mb="md">
+          Rewrites template notifications into natural language. Rules always fire
+          deterministically — AI only changes the wording. Falls back to templates
+          if unavailable.
+        </Text>
+        <Stack gap="sm">
+          <Select
+            label="Provider"
+            data={[
+              { value: 'none',   label: 'None (template messages)' },
+              { value: 'ollama', label: 'Ollama (self-hosted)' },
+              { value: 'openai', label: 'OpenAI' },
+            ]}
+            value={ai.provider ?? 'none'}
+            onChange={v => update({ ai: { ...ai, provider: (v as 'none' | 'ollama' | 'openai') ?? 'none' } })}
+            size="sm"
+            w={240}
+          />
+          {ai.provider === 'ollama' && (
+            <Group gap="sm" wrap="wrap">
+              <TextInput
+                label="Ollama URL"
+                placeholder="http://host.docker.internal:11434"
+                value={ai.ollama_url ?? ''}
+                onChange={e => update({ ai: { ...ai, ollama_url: e.target.value || undefined } })}
+                size="sm"
+                style={{ flex: 1, minWidth: 220 }}
+              />
+              <TextInput
+                label="Model"
+                placeholder="llama3.2:3b"
+                value={ai.ollama_model ?? ''}
+                onChange={e => update({ ai: { ...ai, ollama_model: e.target.value || undefined } })}
+                size="sm"
+                w={160}
+              />
+            </Group>
+          )}
+          {ai.provider === 'openai' && (
+            <Group gap="sm" wrap="wrap" align="flex-end">
+              <TextInput
+                label="Model"
+                placeholder="gpt-4o-mini"
+                value={ai.openai_model ?? ''}
+                onChange={e => update({ ai: { ...ai, openai_model: e.target.value || undefined } })}
+                size="sm"
+                w={180}
+              />
+              <Group gap="xs" align="center">
+                <TextInput
+                  label="API key"
+                  value="••••••••"
+                  readOnly
+                  disabled
+                  size="sm"
+                  w={120}
+                />
+                <Text size="xs" c="dimmed" mt={22}>
+                  Set <Code fz="xs">OPENAI_API_KEY=…</Code> in <Code fz="xs">.env</Code>
+                </Text>
+              </Group>
+            </Group>
+          )}
+        </Stack>
+      </Paper>
+
+      {/* Rules */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>Rules</SectionTitle>
+        <Stack gap="sm">
+          <NumberInput
+            label="Garbage — notify hours before pickup"
+            description="Alert when collection is within this many hours"
+            value={rules.garbage_notify_hours_before ?? 18}
+            onChange={v => update({ rules: { ...rules, garbage_notify_hours_before: Number(v) } })}
+            min={1}
+            max={48}
+            size="sm"
+            w={220}
+          />
+          <NumberInput
+            label="Bus — delay threshold (minutes)"
+            description="Only alert if delay is at least this many minutes"
+            value={rules.bus_delay_threshold_min ?? 5}
+            onChange={v => update({ rules: { ...rules, bus_delay_threshold_min: Number(v) } })}
+            min={1}
+            max={60}
+            size="sm"
+            w={220}
+          />
+          <NumberInput
+            label="Traffic — delay threshold (%)"
+            description="Alert when commute is this % above normal"
+            value={rules.traffic_delay_threshold_pct ?? 25}
+            onChange={v => update({ rules: { ...rules, traffic_delay_threshold_pct: Number(v) } })}
+            min={5}
+            max={200}
+            size="sm"
+            w={220}
+          />
+          <NumberInput
+            label="Calendar reminder (minutes before)"
+            description="Send reminder this many minutes before an event"
+            value={rules.calendar_reminder_min ?? 30}
+            onChange={v => update({ rules: { ...rules, calendar_reminder_min: Number(v) } })}
+            min={1}
+            max={120}
+            size="sm"
+            w={220}
+          />
+        </Stack>
+      </Paper>
+    </Stack>
   )
 }
 
@@ -1568,7 +1775,7 @@ function PeopleTab({
 // Main AdminPanel
 // ---------------------------------------------------------------------------
 
-type AdminTab = 'general' | 'screens' | 'people'
+type AdminTab = 'general' | 'screens' | 'people' | 'assistant'
 
 function AdminPanelInner() {
   useScrollUnlock()
@@ -1651,6 +1858,7 @@ function AdminPanelInner() {
             <Tabs.Tab value="general">General</Tabs.Tab>
             <Tabs.Tab value="screens">Screens</Tabs.Tab>
             <Tabs.Tab value="people">People</Tabs.Tab>
+            <Tabs.Tab value="assistant">Assistant</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="general">
@@ -1661,6 +1869,9 @@ function AdminPanelInner() {
           </Tabs.Panel>
           <Tabs.Panel value="people">
             <PeopleTab draft={draft} onChange={handleDraftChange} />
+          </Tabs.Panel>
+          <Tabs.Panel value="assistant">
+            <AssistantTab draft={draft} onChange={handleDraftChange} />
           </Tabs.Panel>
         </Tabs>
 

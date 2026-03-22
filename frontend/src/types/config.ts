@@ -59,6 +59,35 @@ export interface NetworkConfig {
   // router_password is NOT stored in YAML — set ROUTER_PASSWORD in .env
 }
 
+export interface AssistantNotifyConfig {
+  ntfy_url?: string
+  ntfy_topic?: string
+}
+
+export interface AssistantAiConfig {
+  provider?: 'none' | 'ollama' | 'openai'
+  ollama_url?: string
+  ollama_model?: string
+  openai_model?: string
+  // openai_api_key — set OPENAI_API_KEY in .env, never stored in YAML
+}
+
+export interface AssistantRulesConfig {
+  garbage_notify_hours_before?: number
+  bus_delay_threshold_min?: number
+  traffic_delay_threshold_pct?: number
+  calendar_reminder_min?: number
+}
+
+export interface AssistantConfig {
+  enabled?: boolean
+  check_interval?: number
+  backend_url?: string
+  notify?: AssistantNotifyConfig
+  ai?: AssistantAiConfig
+  rules?: AssistantRulesConfig
+}
+
 export interface SharedSection {
   location?: Location
   language?: string
@@ -67,6 +96,7 @@ export interface SharedSection {
   people?: Person[]
   garbage?: GarbageConfig
   network?: NetworkConfig
+  assistant?: AssistantConfig
 }
 
 export interface ScreenSection {
