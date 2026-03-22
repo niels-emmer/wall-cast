@@ -53,6 +53,12 @@ export interface GarbageConfig {
   huisnummer?: string
 }
 
+export interface NetworkConfig {
+  router_url?: string
+  router_username?: string
+  // router_password is NOT stored in YAML — set ROUTER_PASSWORD in .env
+}
+
 export interface SharedSection {
   location?: Location
   language?: string
@@ -60,6 +66,7 @@ export interface SharedSection {
   widgets?: WidgetConfig[]
   people?: Person[]
   garbage?: GarbageConfig
+  network?: NetworkConfig
 }
 
 export interface ScreenSection {

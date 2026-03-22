@@ -431,6 +431,45 @@ Stop city and name are configured **per person** in the **People** tab of the ad
 
 ---
 
+### `network`
+
+Live network status monitor: WAN connection, internet connectivity, DNS server health, active LAN host count, and a periodic speedtest.
+
+```yaml
+- id: network
+  type: network
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config: {}   # all options are in shared.network (see below)
+```
+
+To enable router integration (WAN IP, host count), add a `network` block to `shared`:
+
+```yaml
+shared:
+  network:
+    router_url:           https://192.168.1.1
+    router_username:      admin
+    router_password:      YOUR_ROUTER_PASSWORD
+    speedtest_bytes_down: 2000000   # bytes per speedtest (default 2 MB)
+    speedtest_bytes_up:   200000    # bytes per speedtest (default 200 KB)
+```
+
+The `router_url` / `router_username` / `router_password` fields are only needed for Zyxel VMG8825-series routers (DAL API). Without them the widget still shows connectivity, DNS status, and speedtest results.
+
+**Display (5 rows):**
+1. **WAN** — status dot (green/red), WAN IP, link type badge (ETH/VDSL/ADSL), router uptime
+2. **Net** — Online/Offline with latency in ms
+3. **DNS** — Cloudflare (CF) and Google (G) badges, coloured green/red
+4. **LAN** — total active host count + ethernet/wifi breakdown
+5. **Speed** — last speedtest ↓ / ↑ in Mbps with time since last run
+
+**Backend cache:** 30 s. Speedtest runs in background every 60 s.
+
+---
+
 ### `rotate`
 
 Cycles through a list of child widgets, showing one at a time. Used to display multiple widgets in a single grid cell.
