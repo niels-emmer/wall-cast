@@ -223,3 +223,24 @@ async def get_route_roads(
                 roads.add(road.upper())
 
     return JSONResponse(content={"roads": sorted(roads), "error": None})
+
+
+@router.post("/admin/casting/global", status_code=204)
+async def set_global_casting(body: dict[str, Any]) -> None:
+    """Toggle global casting on/off in shared.casting_enabled."""
+    raw = wall_config.get_raw_config()
+    raw.setdefault("shared", {})["casting_enabled"] = bool(body.get("enabled", True))
+    wall_config.save_config(raw)
+
+
+@router.post("/admin/casting/screen", status_code=204)
+async def set_screen_casting(body: dict[str, Any]) -> None:
+    """Toggle casting for a specific screen via screen.casting_active."""
+    screen_id = body.get("screen_id")
+    active = bool(body.get("active", True))
+    raw = wall_config.get_raw_config()
+    for screen in raw.get("screens", []):
+        if screen.get("id") == screen_id:
+            screen["casting_active"] = active
+            break
+    wall_config.save_config(raw)

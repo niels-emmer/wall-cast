@@ -5,13 +5,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import wall_config
-from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus, network
+from app import log_capture, wall_config
+from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus, network, status
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
+log_capture.install()
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +39,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Restricted at nginx level; dev convenience
-    allow_methods=["GET"],
+    allow_methods=["GET", "PUT", "POST"],
     allow_headers=["*"],
 )
 
@@ -54,6 +55,7 @@ app.include_router(traffic.router, prefix="/api")
 app.include_router(warnings.router, prefix="/api")
 app.include_router(bus.router, prefix="/api")
 app.include_router(network.router, prefix="/api")
+app.include_router(status.router, prefix="/api")
 
 
 @app.get("/health")

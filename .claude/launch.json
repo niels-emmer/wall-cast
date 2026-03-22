@@ -11,9 +11,9 @@
     {
       "name": "frontend-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["run", "dev", "--", "--port", "5174"],
       "cwd": "frontend",
-      "port": 5173
+      "port": 5174
     }
   ]
 }
