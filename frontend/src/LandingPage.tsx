@@ -48,6 +48,37 @@ interface LogRecord {
   msg: string
 }
 
+// ── Logo ──────────────────────────────────────────────────────────────────────
+function WallCastLogo() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      {/* Background rounded square */}
+      <rect width="56" height="56" rx="13" fill="#161b22"/>
+      <rect width="56" height="56" rx="13" fill="url(#wcg)"/>
+      {/* Monitor bezel */}
+      <rect x="7" y="10" width="42" height="27" rx="3.5" fill="#0a0f17" stroke="#21262d" strokeWidth="1.5"/>
+      {/* Widget grid */}
+      <rect x="11" y="14" width="17" height="8" rx="2" fill="#4ade80" opacity="0.9"/>
+      <rect x="30" y="14" width="15" height="8" rx="2" fill="#60a5fa" opacity="0.5"/>
+      <rect x="11" y="24" width="9" height="9" rx="2" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.75"/>
+      <rect x="22" y="24" width="10" height="9" rx="2" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.75"/>
+      {/* Cast signal — corner point + two concentric arcs, bottom-right of screen */}
+      <circle cx="45" cy="35" r="1.8" fill="#4ade80"/>
+      <path d="M 41 35 A 4 4 0 0 0 45 31" stroke="#4ade80" strokeWidth="1.4" fill="none" strokeLinecap="round" opacity="0.7"/>
+      <path d="M 38 35 A 7 7 0 0 0 45 28" stroke="#4ade80" strokeWidth="1.4" fill="none" strokeLinecap="round" opacity="0.38"/>
+      {/* Monitor stand */}
+      <path d="M 23 37 L 28 42 L 33 37" stroke="#21262d" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <line x1="21" y1="42" x2="35" y2="42" stroke="#21262d" strokeWidth="1.5" strokeLinecap="round"/>
+      <defs>
+        <linearGradient id="wcg" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#4ade80" stopOpacity="0.07"/>
+          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.04"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}
+
 // ── Shared card style ─────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
   background:   C.surface,
@@ -210,12 +241,15 @@ export default function LandingPage() {
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-              wall-cast
-            </div>
-            <div style={{ fontSize: '0.85rem', color: C.muted }}>
-              Docker-hosted wall display · Chromecast multi-screen
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <WallCastLogo />
+            <div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+                wall-cast
+              </div>
+              <div style={{ fontSize: '0.85rem', color: C.muted }}>
+                Your home's pulse, on every wall.
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
@@ -258,7 +292,10 @@ export default function LandingPage() {
 
         {/* ── System ─────────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={sectionTitle}>System</div>
+          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>System</div>
+          <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
+            Halt casting across every screen at once, or open the admin panel to configure widgets, people, and integrations.
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             <ToggleButton
               active={globalCasting}
@@ -286,7 +323,10 @@ export default function LandingPage() {
 
         {/* ── Screens ────────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={sectionTitle}>Screens</div>
+          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>Screens</div>
+          <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
+            Start or pause casting per screen independently. Open a live preview in your browser without touching the Chromecast.
+          </div>
           {screens.length === 0 ? (
             <div style={{ fontSize: '0.85rem', color: C.muted }}>No screens configured.</div>
           ) : (
@@ -346,7 +386,10 @@ export default function LandingPage() {
 
         {/* ── Status ─────────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={sectionTitle}>Status</div>
+          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>Status</div>
+          <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
+            Live health of the backend and caster, with a running feed of recent warnings and errors.
+          </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <Pill ok label="BACKEND OK" />
             <Pill
