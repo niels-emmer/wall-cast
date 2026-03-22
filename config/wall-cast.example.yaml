@@ -19,6 +19,15 @@ shared:
     postcode: "1234AB"
     huisnummer: "1"
 
+  # Network widget — router integration (optional, Zyxel VMG8825 DAL API)
+  # Without this block the widget still shows connectivity, DNS, and speedtest.
+  # network:
+  #   router_url:              https://192.168.1.1
+  #   router_username:         admin
+  #   router_password:         YOUR_ROUTER_PASSWORD
+  #   speedtest_bytes_down:    2000000   # bytes per test (default 2 MB)
+  #   speedtest_bytes_up:      200000    # bytes per test (default 200 KB)
+
   people: []
     # Example:
     # - id: alice
@@ -115,3 +124,5 @@ screens:
               config: {}
             - type: bus
               config: {}        # stop city/name come from the person assigned to this screen
+            - type: network
+              config: {}

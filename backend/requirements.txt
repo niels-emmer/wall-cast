@@ -10,3 +10,4 @@ pypolestar>=1.0.0
 gql[httpx]>=3.5.2
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
+cryptography>=41.0.0
