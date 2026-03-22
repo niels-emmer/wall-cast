@@ -129,3 +129,27 @@
 ### Card padding and radius: unified across all widgets
 **Decision**: `cardPad = '0.45rem 0.7rem'`, `cardRadius = 8` everywhere.
 **Rationale**: TravelCard used `0.6rem 0.85rem`; GarbageCard used `0.4em 0.65em`; JamRow used radius 6. The differences were not intentional design choices but natural drift. Uniform values make cards read as a consistent system regardless of which widget they appear in.
+
+---
+
+## 2026-03-22 — Network widget, caster fix, admin save fix
+
+### Network widget: router password in .env, not YAML
+**Decision**: `router_url` and `router_username` are stored in `shared.network` in the YAML (editable via admin panel). `router_password` is read exclusively from the `ROUTER_PASSWORD` environment variable.
+**Rationale**: Passwords should never be stored in config files that could be shared, backed up, or accidentally committed. The `.env` file is gitignored and explicitly excluded from the config volume. The YAML is the right place for non-secret configuration (URLs, usernames); the env file is the right place for secrets.
+
+### Network widget: shared.network must be forwarded through get_config() merge
+**Decision**: Added `"network": shared.get("network", {})` explicitly to the merged dict returned by `wall_config.get_config()`.
+**Rationale**: The merge function only forwarded `location`, `language`, `layout`, and `widgets`. All other top-level shared keys were silently dropped. The network router calls `get_config()` (not `get_raw_config()`) and looked up `cfg.get("network", {})` — always getting an empty dict, so `router_url` was always `""` and the router session was never created. Any future shared-only backend config key (not widget config) needs the same explicit forwarding in the merge.
+
+### Network widget: Zyxel VMG8825 DAL API with RSA+AES auth
+**Decision**: Implemented a `RouterSession` class that performs the full Zyxel RSA+AES handshake: fetch RSA public key → generate AES key → RSA-encrypt AES key → AES-encrypt credentials → POST to `/UserLogin` → decrypt response → use `sessionkey` as CSRFToken on subsequent DAL requests.
+**Rationale**: The Zyxel VMG8825 does not use basic auth or a simple API key. It uses an encrypted login flow derived from CryptoJS. Without implementing this handshake, the router API is inaccessible. The `cryptography` Python package handles both RSA (PKCS1v15) and AES-CBC with PKCS7 padding.
+
+### Caster: cooldown to prevent false-negative recast loop
+**Decision**: `cast.py` tracks `last_cast_at: dict[str, float]` per Chromecast IP. If `is_casting()` returns `False` but we cast within the last `CAST_COOLDOWN` seconds (default 300, env-configurable), the recast is skipped.
+**Rationale**: `catt status` consistently returns no PLAYING/DashCast match immediately after `cast_site` completes — likely because the receiver is still loading. Without a cooldown, `is_casting()` returns `False` on the very next 60 s check, triggering a recast that reloads the display page. This caused all widgets to flash "unavailable" every 60 s (reload → TanStack Query cache miss → loading state). The cooldown gives the cast 5 minutes to settle before the caster considers it genuinely dropped.
+
+### Admin panel: draft overwrite bug on save
+**Decision**: Two changes: (1) the `useEffect` that syncs `remoteConfig → draft` is guarded by `draft === null` so it only runs on initial load; (2) `handleSave` uses `queryClient.setQueryData()` instead of `queryClient.invalidateQueries()`.
+**Rationale**: The original code called `invalidateQueries()` after a successful save, which triggered a background refetch. When the refetch completed, `remoteConfig` changed, and the unguarded `useEffect` called `setDraft(deepClone(remoteConfig))`, silently overwriting the user's current draft with the server snapshot. This caused newly added people/screens or changed values to disappear immediately after saving, or when switching tabs back. The fix ensures the draft is a one-way initialisation from server data, and that saves never trigger a refetch (since we know the server now holds exactly what we just sent).
