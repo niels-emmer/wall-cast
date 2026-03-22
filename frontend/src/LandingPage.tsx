@@ -240,7 +240,7 @@ export default function LandingPage() {
       <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ ...card, display: 'flex', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <WallCastLogo />
             <div>
@@ -251,42 +251,6 @@ export default function LandingPage() {
                 Your home's pulse, on every wall.
               </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
-            <a
-              href="https://github.com/niels-emmer/wall-cast"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                padding: '0.35rem 0.85rem',
-                borderRadius: 6,
-                border: `1px solid ${C.border}`,
-                background: 'rgba(255,255,255,0.04)',
-                color: C.text,
-                fontSize: '0.8rem',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              GitHub
-            </a>
-            <a
-              href="/api/docs"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                padding: '0.35rem 0.85rem',
-                borderRadius: 6,
-                border: `1px solid ${C.border}`,
-                background: 'rgba(255,255,255,0.04)',
-                color: C.text,
-                fontSize: '0.8rem',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              API docs
-            </a>
           </div>
         </div>
 
@@ -432,6 +396,61 @@ export default function LandingPage() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+
+        {/* ── About ──────────────────────────────────────────────────────── */}
+        <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: C.muted }}>wall-cast</span>
+            <span style={{ fontSize: '0.78rem', color: C.muted, opacity: 0.4 }}>·</span>
+            <span style={{
+              fontSize:     '0.72rem',
+              fontWeight:   600,
+              color:        C.green,
+              background:   C.greenBg,
+              border:       `1px solid ${C.greenBdr}`,
+              borderRadius: 4,
+              padding:      '0.1em 0.45em',
+            }}>
+              v{__APP_VERSION__}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <a
+              href="https://github.com/niels-emmer/wall-cast"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                padding:        '0.3rem 0.75rem',
+                borderRadius:   6,
+                border:         `1px solid ${C.border}`,
+                background:     'rgba(255,255,255,0.04)',
+                color:          C.muted,
+                fontSize:       '0.78rem',
+                textDecoration: 'none',
+                fontWeight:     500,
+              }}
+            >
+              GitHub
+            </a>
+            <a
+              href="/api/docs"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                padding:        '0.3rem 0.75rem',
+                borderRadius:   6,
+                border:         `1px solid ${C.border}`,
+                background:     'rgba(255,255,255,0.04)',
+                color:          C.muted,
+                fontSize:       '0.78rem',
+                textDecoration: 'none',
+                fontWeight:     500,
+              }}
+            >
+              API docs
+            </a>
           </div>
         </div>
 
