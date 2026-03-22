@@ -109,6 +109,14 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
         seen_ids.add(event_id)
         deduped.append(item)
 
+    # Sort chronologically so personal-calendar events on earlier dates
+    # are not crowded out by family-calendar events on later dates.
+    deduped.sort(key=lambda item: (
+        item.get("start", {}).get("dateTime")
+        or item.get("start", {}).get("date")
+        or ""
+    ))
+
     def _parse(item: dict) -> dict:
         start_raw = item.get("start", {})
         end_raw   = item.get("end",   {})
@@ -152,7 +160,7 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
         if ev["date"] == today_str:
             today_events.append(ev)
         elif ev["date"] > today_str:
-            if upcoming_count >= 3:
+            if upcoming_count >= 8:
                 continue
             week_by_date.setdefault(ev["date"], []).append(ev)
             upcoming_count += 1
@@ -161,7 +169,7 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
     today_events.sort(key=lambda e: (e["start_time"] is None, e["start_time"] or ""))
 
     week_days = []
-    for date_str in sorted(week_by_date):
+    for date_str in sorted(week_by_date)[:3]:
         dt = datetime.fromisoformat(date_str)
         week_days.append({
             "date":       date_str,
