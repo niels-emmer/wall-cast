@@ -60,27 +60,6 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── DNS badge ─────────────────────────────────────────────────────────────────
-function DnsBadge({ label, ok }: { label: string; ok: boolean }) {
-  const color  = ok ? GREEN : RED
-  const bg     = ok ? 'rgba(74,222,128,0.10)' : 'rgba(239,68,68,0.10)'
-  const border = ok ? 'rgba(74,222,128,0.25)' : 'rgba(239,68,68,0.25)'
-  return (
-    <span style={{
-      fontSize:     fs.xs,
-      fontWeight:   700,
-      color,
-      background:   bg,
-      border:       `1px solid ${border}`,
-      borderRadius: 4,
-      padding:      '0.1em 0.45em',
-      flexShrink:   0,
-    }}>
-      {label}
-    </span>
-  )
-}
-
 // ── Uptime formatter ──────────────────────────────────────────────────────────
 function fmtUptime(s: number): string {
   const d = Math.floor(s / 86400)
@@ -117,7 +96,7 @@ export function NetworkWidget(_props: WidgetProps) {
     </div>
   )
 
-  const { wan, connectivity, dns, hosts, speedtest } = data
+  const { wan, connectivity, hosts, speedtest } = data
   const wanUp = wan?.status === 'up'
 
   return (
@@ -173,16 +152,6 @@ export function NetworkWidget(_props: WidgetProps) {
             <span style={{ fontSize: fs.xs, color: MUTED, flexShrink: 0, whiteSpace: 'nowrap' as const }}>
               {connectivity.latency_ms} ms
             </span>
-          )}
-        </Row>
-
-        {/* ── DNS row ───────────────────────────────────────────────────── */}
-        <Row>
-          <Label>DNS</Label>
-          <DnsBadge label="CF" ok={dns.cloudflare} />
-          <DnsBadge label="G" ok={dns.google} />
-          {!dns.cloudflare && !dns.google && (
-            <span style={{ fontSize: fs.xs, color: RED, marginLeft: '0.3em' }}>All down</span>
           )}
         </Row>
 

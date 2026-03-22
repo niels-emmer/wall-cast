@@ -58,10 +58,6 @@ _SPEEDTEST_URL_UP   = "https://speed.cloudflare.com/__up"
 _PROBE_URLS = ["https://1.1.1.1", "https://8.8.8.8"]
 _PROBE_TIMEOUT = 3.0
 
-# ── DNS probe ─────────────────────────────────────────────────────────────────
-_DNS_HOSTS = {"cloudflare": ("1.1.1.1", 53), "google": ("8.8.8.8", 53)}
-_DNS_TIMEOUT = 2.0
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Router session — handles Zyxel VMG8825 RSA+AES encrypted DAL API
@@ -249,30 +245,6 @@ async def _probe_connectivity() -> dict:
     return {"ok": False, "latency_ms": None}
 
 
-async def _probe_dns_host(host: str, port: int) -> bool:
-    """TCP connect to DNS server port 53; return True if reachable."""
-    try:
-        _, writer = await asyncio.wait_for(
-            asyncio.open_connection(host, port), timeout=_DNS_TIMEOUT
-        )
-        writer.close()
-        await writer.wait_closed()
-        return True
-    except Exception:
-        return False
-
-
-async def _probe_dns() -> dict:
-    results = await asyncio.gather(
-        *[_probe_dns_host(h, p) for h, p in _DNS_HOSTS.values()],
-        return_exceptions=True,
-    )
-    return {
-        key: (r is True)
-        for key, r in zip(_DNS_HOSTS.keys(), results)
-    }
-
-
 async def _probe_router() -> tuple[dict | None, dict | None]:
     """
     Query router DAL API.
@@ -421,17 +393,15 @@ async def get_network() -> dict[str, Any]:
 
     # Run all probes concurrently
     conn_task   = asyncio.create_task(_probe_connectivity())
-    dns_task    = asyncio.create_task(_probe_dns())
     router_task = asyncio.create_task(_probe_router())
 
-    conn, dns, (wan, hosts) = await asyncio.gather(
-        conn_task, dns_task, router_task
+    conn, (wan, hosts) = await asyncio.gather(
+        conn_task, router_task
     )
 
     result: dict[str, Any] = {
         "wan":          wan,
         "connectivity": conn,
-        "dns":          dns,
         "hosts":        hosts,
         "speedtest":    _speedtest,
     }
