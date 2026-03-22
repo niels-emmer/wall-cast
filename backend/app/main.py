@@ -32,7 +32,8 @@ app = FastAPI(
     description="Backend for the wall-cast display system",
     version="0.1.0",
     lifespan=lifespan,
-    docs_url="/docs",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
     redoc_url=None,
 )
 
