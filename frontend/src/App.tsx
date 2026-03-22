@@ -3,6 +3,7 @@ import { useConfig } from './hooks/use-config'
 import { WidgetRenderer } from './widgets/WidgetRenderer'
 import type { WidgetConfig } from './types/config'
 import AdminPanel from './admin/AdminPanel'
+import LandingPage from './LandingPage'
 
 function useWakeLock() {
   useEffect(() => {
@@ -30,10 +31,14 @@ function useWakeLock() {
   }, [])
 }
 
-export default function App() {
+// Computed once at module load — these never change during a page session.
+const _hasScreen = new URLSearchParams(window.location.search).has('screen')
+const _isAdminHash = window.location.hash === '#admin'
+
+function ScreenApp() {
   useWakeLock()
 
-  const [isAdmin, setIsAdmin] = useState(window.location.hash === '#admin')
+  const [isAdmin, setIsAdmin] = useState(_isAdminHash)
   useEffect(() => {
     const handler = () => setIsAdmin(window.location.hash === '#admin')
     window.addEventListener('hashchange', handler)
@@ -94,4 +99,9 @@ export default function App() {
       ))}
     </div>
   )
+}
+
+export default function App() {
+  if (!_hasScreen && !_isAdminHash) return <LandingPage />
+  return <ScreenApp />
 }

@@ -374,6 +374,11 @@ def get_raw_config() -> dict[str, Any]:
     return _config
 
 
+def save_config(data: dict[str, Any]) -> None:
+    """Atomically write data to the config file (triggers file watcher + SSE)."""
+    _write_config(Path(settings.wall_config_path), data)
+
+
 def subscribe() -> asyncio.Queue:
     q: asyncio.Queue = asyncio.Queue()
     _subscribers.append(q)

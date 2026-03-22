@@ -19,6 +19,7 @@ CONFIG_PATH = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
 SERVER_URL = os.environ.get("SERVER_URL", "http://localhost").rstrip("/")
 CHECK_INTERVAL  = int(os.environ.get("CHECK_INTERVAL", "60"))
 CAST_COOLDOWN   = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasting after a successful cast
+HEARTBEAT_PATH = os.environ.get("CASTER_HEARTBEAT_PATH", "/config/caster-heartbeat.txt")
 
 
 def load_screens() -> list[dict]:
@@ -28,9 +29,16 @@ def load_screens() -> list[dict]:
     except Exception as exc:
         print(f"[caster] Config read error: {exc}", flush=True)
         return []
+
+    # Global casting toggle — if explicitly disabled, treat as no screens
+    if not cfg.get("shared", {}).get("casting_enabled", True):
+        return []
+
     result = []
     for screen in cfg.get("screens", []):
         if screen.get("enabled", True) is False:
+            continue
+        if screen.get("casting_active", True) is False:
             continue
         ip = (screen.get("chromecast_ip") or "").strip()
         if not ip:
@@ -105,6 +113,13 @@ def main() -> None:
                 print(f"[caster] {s['id']} not casting — starting", flush=True)
                 cast(s["ip"], s["url"], s["id"])
                 last_cast_at[s["ip"]] = now
+
+        # Write heartbeat so the backend landing page can report caster status
+        try:
+            with open(HEARTBEAT_PATH, "w") as f:
+                f.write(str(time.time()))
+        except Exception as exc:
+            print(f"[caster] Heartbeat write failed: {exc}", flush=True)
 
         time.sleep(CHECK_INTERVAL)
 
