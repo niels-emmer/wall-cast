@@ -1,6 +1,6 @@
 import { useNetwork } from '../../hooks/use-network'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, col, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp, col, shellStyle, titleStyle } from '../styles'
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const GREEN  = '#4ade80'
@@ -60,27 +60,6 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── WAN link type badge ───────────────────────────────────────────────────────
-function LinkBadge({ type }: { type: string | null }) {
-  if (!type) return null
-  const labels: Record<string, string> = { ETH: 'ETH', PTM: 'VDSL', ATM: 'ADSL', USB: 'USB' }
-  const label = labels[type] ?? type
-  return (
-    <span style={{
-      fontSize:     fs.xs,
-      fontWeight:   700,
-      color:        GREEN,
-      background:   'rgba(74,222,128,0.12)',
-      border:       '1px solid rgba(74,222,128,0.25)',
-      borderRadius: 4,
-      padding:      '0.1em 0.4em',
-      flexShrink:   0,
-    }}>
-      {label}
-    </span>
-  )
-}
-
 // ── DNS badge ─────────────────────────────────────────────────────────────────
 function DnsBadge({ label, ok }: { label: string; ok: boolean }) {
   const color  = ok ? GREEN : RED
@@ -125,14 +104,12 @@ export function NetworkWidget(_props: WidgetProps) {
 
   const shell = shellStyle
   const title = <div style={titleStyle}>Network</div>
-  const divider = <div style={dividerStyle} />
 
   if (isLoading) return <div style={shell}>{title}</div>
 
   if (isError || !data) return (
     <div style={shell}>
       {title}
-      {divider}
       <Row>
         <Dot ok={false} />
         <span style={{ fontSize: fs.sm, color: RED }}>Unavailable</span>
@@ -146,7 +123,6 @@ export function NetworkWidget(_props: WidgetProps) {
   return (
     <div style={shell}>
       {title}
-      {divider}
 
       {/* Content list */}
       <div style={{
@@ -174,7 +150,6 @@ export function NetworkWidget(_props: WidgetProps) {
           }}>
             {wan ? (wanUp ? (wan.ip ?? 'Up') : 'Down') : 'No router'}
           </span>
-          {wan && <LinkBadge type={wan.link_type} />}
           {wan?.uptime_s != null && (
             <span style={{ fontSize: fs.xs, color: MUTED, flexShrink: 0, whiteSpace: 'nowrap' as const }}>
               {fmtUptime(wan.uptime_s)}
