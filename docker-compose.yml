@@ -65,6 +65,7 @@ services:
     network_mode: host
     restart: unless-stopped
     stop_grace_period: 0s   # SIGKILL immediately — prevents orphaned host-network processes
+    user: "${UID:-1000}:${GID:-1000}"
     command: ["python", "/scanner.py"]
 
   # network_mode: host is required to reach Chromecasts via mDNS on the LAN.
@@ -74,6 +75,7 @@ services:
       context: ./caster
     network_mode: host
     restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./config:/config
     environment:

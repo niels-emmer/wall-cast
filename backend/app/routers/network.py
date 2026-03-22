@@ -235,7 +235,7 @@ async def _probe_connectivity() -> dict:
     for url in _PROBE_URLS:
         try:
             t0 = time.monotonic()
-            async with httpx.AsyncClient(timeout=_PROBE_TIMEOUT, verify=False) as c:
+            async with httpx.AsyncClient(timeout=_PROBE_TIMEOUT) as c:
                 r = await c.get(url)
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
             if r.status_code < 600:

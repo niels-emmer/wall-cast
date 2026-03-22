@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # the previous process has released the port.
     for attempt in range(15):
         try:
-            server = HTTPServer(("", PORT), ScanHandler, bind_and_activate=False)
+            server = HTTPServer(("127.0.0.1", PORT), ScanHandler, bind_and_activate=False)
             server.allow_reuse_address = True
             server.server_bind()
             server.server_activate()
@@ -126,5 +126,5 @@ if __name__ == "__main__":
             else:
                 raise
 
-    print(f"[scanner] Listening on :{PORT}", flush=True)
+    print(f"[scanner] Listening on 127.0.0.1:{PORT}", flush=True)
     server.serve_forever()
