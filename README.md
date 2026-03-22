@@ -35,7 +35,8 @@ It is fully AI-coded and designed to be extended. Fork it, tell Claude what you 
 - **Hot-reload config** — save the YAML, every screen updates within ~1 second; no container restart needed
 - **Widget system** — mix and match widgets per screen; layout, spans, and config all in one YAML file
 - **People & Calendars** — assign household members to screens; family members appear on all screens automatically
-- **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, and Chromecast IPs; built-in LAN scanner to discover devices
+- **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, assistant, and Chromecast IPs; built-in LAN scanner to discover devices
+- **Assistant** — proactive push notifications via ntfy: bin day reminders, bus delay alerts cross-correlated with your calendar, commute delay warnings, and weather alerts; optional AI (Ollama/OpenAI) rewrites messages into natural language
 - **Network widget** — shows WAN status, external connectivity, LAN host count, and a Cloudflare speedtest; optionally integrates with a Zyxel VMG8825 router
 - **Dark theme** — pure black background, bold white type, cyan accent
 - **Dutch / English** — all widget labels switch with `language: en/nl`
@@ -145,11 +146,12 @@ Full reference: [docs/config-reference.md](docs/config-reference.md)
 
 ### Via admin panel
 
-Open the admin panel by clicking **Settings** on the home page, or by navigating to `/#admin`. It has three tabs:
+Open the admin panel by clicking **Settings** on the home page, or by navigating to `/#admin`. It has four tabs:
 
 - **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, news feed URLs, and network widget settings
 - **Screens** — add/rename/delete/enable/disable screens; set Chromecast IP (use the **Scan network** button to discover devices); set screen ID, layout, clock options, rotator intervals; assign people to the screen; configure weather and calendar options per slot
 - **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus / tram stop — used on any screen the person is assigned to
+- **Assistant** — enable the notification assistant; configure ntfy server and topic; set AI provider (Ollama or OpenAI) and model; tune rule thresholds (garbage hours, bus delay, traffic %, calendar reminder minutes)
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
@@ -238,6 +240,119 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
 
 ---
 
+## Assistant
+
+The assistant is a standalone sidecar service that watches your data and pushes proactive notifications to your phone or any ntfy-compatible client. It runs entirely on the Docker host and requires no cloud connection beyond your chosen notification channel.
+
+### What it does
+
+| Rule | Trigger | Smart cross-correlation |
+|------|---------|------------------------|
+| **Garbage** | Collection within 18 h (configurable) | — |
+| **Calendar** | Event starting within 30 min (configurable) | — |
+| **Bus** | Delay ≥ 5 min or cancellation | **Only fires if you have a calendar event in the next 90 min** — avoids spam on days you're not travelling |
+| **Traffic** | Commute 25%+ above normal (configurable) | — |
+| **Weather** | Orange or red KNMI warning | — |
+
+Example notifications:
+
+```
+Garbage collection   GFT (organic waste) is being collected tomorrow (2026-03-23).
+Bus delay            Line 2 (Centraal Station) at 08:45 is +8 min late.
+                     You have 'Dentist' at 09:30.
+Traffic delay        Niels: commute is 56 min today (16 min delay, +40% above normal).
+Weather: Rood        Heavy rain warning for Noord-Holland. Until 2026-03-22 18:00.
+```
+
+### Setup
+
+**1. Configure ntfy**
+
+Install the [ntfy app](https://ntfy.sh) on your phone (Android / iOS) and subscribe to your chosen topic. If you self-host ntfy, point `ntfy_url` at your instance.
+
+**2. Enable in admin panel**
+
+Open `/#admin` → **Assistant** tab:
+
+- Tick **Enable assistant**
+- Enter your **ntfy server URL** and **topic**
+- Adjust rule thresholds if needed
+- Click **Save**
+
+Or add directly to `wall-cast.yaml`:
+
+```yaml
+shared:
+  assistant:
+    enabled: true
+    check_interval: 300          # seconds between check cycles
+
+    notify:
+      ntfy_url: https://ntfy.example.com
+      ntfy_topic: wall-cast-alerts
+
+    rules:
+      garbage_notify_hours_before: 18
+      bus_delay_threshold_min: 5
+      traffic_delay_threshold_pct: 25
+      calendar_reminder_min: 30
+```
+
+**3. Start the service**
+
+```bash
+docker compose up --build assistant -d
+```
+
+The assistant logs each notification it sends:
+
+```
+[assistant] ntfy → wall-cast-alerts: 'Garbage collection'
+[assistant] ntfy → wall-cast-niels: 'Bus delay — Leidseplein'
+```
+
+### Per-person notification topics
+
+Each person can have their own ntfy topic so alerts go to the right phone:
+
+```yaml
+shared:
+  people:
+    - id: niels
+      name: Niels
+      notify:
+        ntfy_topic: wall-cast-niels   # overrides the global topic for Niels's alerts
+```
+
+### AI formatting (optional)
+
+By default the assistant sends concise template messages. Enable an AI provider to rewrite them into natural language and combine related facts into a single sentence.
+
+| Provider | Config |
+|----------|--------|
+| **None** (default) | Template strings — no extra setup |
+| **Ollama** (self-hosted) | Set `provider: ollama`, `ollama_url`, and `ollama_model` (recommended: `llama3.2:3b`) |
+| **OpenAI** | Set `provider: openai`, `OPENAI_API_KEY` in `.env`, optionally `openai_model` |
+
+```yaml
+    ai:
+      provider: ollama
+      ollama_url: http://host.docker.internal:11434
+      ollama_model: llama3.2:3b
+```
+
+With AI enabled, the bus delay example above might be rewritten as:
+
+> *"Heads up Niels — the line 2 at 08:45 is running 8 minutes late, and you've got your dentist appointment at 09:30."*
+
+AI is **additive only**: rules still fire deterministically; if the AI call fails, the assistant falls back to the template message automatically.
+
+### Deduplication
+
+The assistant tracks sent notifications in `/config/assistant-state.json`. Each rule fires at most once per event — you won't get the same bin-day reminder every 5 minutes. State survives container restarts. Old entries are pruned automatically after 7 days.
+
+---
+
 ## Architecture
 
 ```
@@ -254,13 +369,19 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
 │                                 └───────────────┬───────────────┘   │
 │                                                 │ reads/writes       │
 │                                        config/wall-cast.yaml         │
-│                                                                       │
-│  ┌──────────────────┐ host net  ┌───────────────────────────────┐   │
+│                                                 │                    │
+│  ┌──────────────────┐ host net  ┌───────────────┴───────────────┐   │
 │  │  caster          │           │  scanner                      │   │
 │  │  reads config    │           │  HTTP :8765                   │   │
 │  │  catt cast_site  │           │  catt scan (mDNS)             │   │
 │  │  → each screen   │           └───────────────────────────────┘   │
 │  └────────┬─────────┘                                                │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  assistant                                                   │   │
+│  │  polls GET /api/garbage, /api/calendar, /api/bus, …         │   │
+│  │  runs rules → deduplicates → pushes ntfy notifications  ────┼───┼──▶ ntfy / phone
+│  └──────────────────────────────────────────────────────────────┘   │
 └───────────┼──────────────────────────────────────────────────────────┘
             │ DashCast receiver
             ▼
@@ -269,12 +390,13 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
    browser subscribes to ntfy SSE directly (no proxy)
 ```
 
-**Four Docker services:**
+**Five Docker services:**
 
 - **frontend** — nginx:alpine on port 80; serves the Vite-built React SPA; proxies `/api/*` to the backend with `proxy_buffering off` for SSE
 - **backend** — python:3.12-slim (internal, not exposed on the host); FastAPI; reads/writes `config/wall-cast.yaml`; proxies all external API calls with caching
 - **caster** — python:3.12-slim with `network_mode: host` (required to reach Chromecasts on the LAN); reads `chromecast_ip` from each screen in the config; uses `catt cast_site` with the DashCast receiver; polls every 60 s and re-casts if the session drops
 - **scanner** — python:3.12-slim with `network_mode: host` on port 8765; runs `catt scan` on demand via mDNS; backend proxies `GET /api/admin/scan` to it via `host.docker.internal`
+- **assistant** — python:3.12-slim; polls the backend `/api/*` endpoints every 5 min; runs configurable rules; pushes notifications via ntfy; state persisted in `/config/assistant-state.json`; fully opt-in via `shared.assistant.enabled`
 
 ---
 
@@ -349,6 +471,13 @@ wall-cast/
 ├── caster/
 │   ├── cast.py                 smart multi-screen caster + keepalive loop
 │   └── scanner.py              HTTP :8765; mDNS-based Chromecast discovery
+├── assistant/
+│   ├── assistant.py            main polling loop; reads config, runs rules, dispatches
+│   ├── rules/                  one file per rule domain (garbage, bus, calendar,
+│   │                           traffic, weather) — each returns Notification objects
+│   ├── notify/ntfy.py          push to ntfy via HTTP POST
+│   ├── ai/formatter.py         optional AI message rewriting (Ollama / OpenAI)
+│   └── state.py                deduplication state (JSON, persisted to /config)
 ├── docs/
 │   ├── config-reference.md
 │   ├── adding-a-widget.md
