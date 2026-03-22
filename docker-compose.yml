@@ -83,3 +83,29 @@ services:
     depends_on:
       frontend:
         condition: service_started
+
+  # Assistant: polls backend data, cross-correlates across sources, and pushes
+  # proactive notifications via ntfy (and optionally Matrix). Fully opt-in —
+  # enable via shared.assistant.enabled in wall-cast.yaml.
+  #
+  # Notification examples:
+  #   - "GFT collection tomorrow (2026-03-23)"
+  #   - "Line 2 at 08:45 is +8 min late. You have 'Dentist' at 09:30."
+  #   - "Commute is 55 min today (+18 min delay, +49% above normal)."
+  #
+  assistant:
+    build:
+      context: ./assistant
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ./config:/config
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WALL_CONFIG_PATH: /config/wall-cast.yaml
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    depends_on:
+      backend:
+        condition: service_healthy
