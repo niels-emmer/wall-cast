@@ -1579,8 +1579,12 @@ function AdminPanelInner() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
 
+  // Only initialise the draft from server data on first load (draft === null).
+  // Never overwrite an in-progress draft — that is what was causing edits to
+  // disappear: invalidateQueries() triggered a background refetch, remoteConfig
+  // updated, and this effect silently reset the draft to the server snapshot.
   useEffect(() => {
-    if (remoteConfig) setDraft(deepClone(remoteConfig))
+    if (remoteConfig && draft === null) setDraft(deepClone(remoteConfig))
   }, [remoteConfig])
 
   if (isError) {
@@ -1616,7 +1620,11 @@ function AdminPanelInner() {
     try {
       await saveAdminConfig(draft)
       setSaveState('saved')
-      queryClient.invalidateQueries({ queryKey: ['admin-config'] })
+      // Push the saved draft directly into the query cache instead of
+      // invalidating — we know the server now holds exactly `draft`, so there
+      // is no need to refetch, and no risk of the refetch triggering the
+      // useEffect above and overwriting the user's ongoing edits.
+      queryClient.setQueryData(['admin-config'], draft)
       setTimeout(() => setSaveState('idle'), 2000)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err))
