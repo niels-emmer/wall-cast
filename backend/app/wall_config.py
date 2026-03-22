@@ -356,6 +356,8 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
         "layout":   target.get("layout")   or shared.get("layout", {"columns": 12, "rows": 8}),
         # Screen-specific widgets first, shared widgets appended (e.g. news ticker stays at bottom)
         "widgets": merged_widgets,
+        # Pass through shared-only keys used by backend routers
+        "network": shared.get("network", {}),
     }
     return merged
 
