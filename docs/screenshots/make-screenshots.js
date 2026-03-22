@@ -37,13 +37,12 @@ const path = require('path');
 const BASE_URL = 'http://localhost:5173';
 const OUT_DIR  = path.resolve(__dirname);
 
-// 5 display shots — one per screen, covering all widget types
+// 4 display shots — covers all widget types; screenshot-5 is the landing page
 const DISPLAY_SHOTS = [
   { n: 1, screen: 'living-room', mainSlot: 0, bottomSlot: 0, desc: 'weather + rain' },
   { n: 2, screen: 'kids-room',   mainSlot: 1, bottomSlot: 1, desc: 'calendar + garbage' },
   { n: 3, screen: 'office',      mainSlot: 2, bottomSlot: 2, desc: 'traffic + polestar' },
   { n: 4, screen: 'bedroom',     mainSlot: 3, bottomSlot: 3, desc: 'warnings (injected) + bus' },
-  { n: 5, screen: 'kitchen',     mainSlot: 0, bottomSlot: 3, desc: 'weather + bus' },
 ];
 
 // ── Anonymisation ──────────────────────────────────────────────────────────────
@@ -224,7 +223,7 @@ const INJECT_WARNING_SCRIPT = `
     defaultViewport: { width: 1920, height: 1080 },
   });
 
-  // ── Display screenshots ────────────────────────────────────────────────────
+  // ── Display screenshots (1–4) ─────────────────────────────────────────────
   for (const { n, screen, mainSlot, bottomSlot, desc } of DISPLAY_SHOTS) {
     const outFile = path.join(OUT_DIR, `screenshot-${n}.png`);
     console.log(`[${n}/6] /?screen=${screen}  (${desc})`);
@@ -259,6 +258,24 @@ const INJECT_WARNING_SCRIPT = `
     console.log(`       ✓ ${path.basename(outFile)}\n`);
     await page.close();
   }
+
+  // ── Landing page screenshot ────────────────────────────────────────────────
+  console.log('[5/6] /  (landing page)');
+
+  const landingPage = await browser.newPage();
+  await landingPage.setViewport({ width: 1920, height: 1080 });
+  await landingPage.goto(`${BASE_URL}/`, {
+    waitUntil: 'load',
+    timeout: 20000,
+  });
+  await new Promise(r => setTimeout(r, 2500));
+  await landingPage.evaluate(replaceScript(TEXT_REPLACEMENTS));
+  await landingPage.screenshot({
+    path: path.join(OUT_DIR, 'screenshot-5.png'),
+    type: 'png',
+  });
+  console.log('       ✓ screenshot-5.png\n');
+  await landingPage.close();
 
   // ── Admin screenshot ───────────────────────────────────────────────────────
   console.log('[6/6] /#admin  (Screens tab)');
