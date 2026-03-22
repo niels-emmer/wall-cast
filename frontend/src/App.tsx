@@ -78,6 +78,7 @@ function ScreenApp() {
         gridTemplateRows: `repeat(${rows}, 1fr)`,
         width: '100vw',
         height: '100vh',
+        overflow: 'hidden', // kiosk — no scrollbars on cast screens
         gap: '0.5rem',
         padding: '0.5rem',
         background: 'var(--color-bg)',
