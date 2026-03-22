@@ -31,14 +31,13 @@ function useWakeLock() {
   }, [])
 }
 
-// Computed once at module load — these never change during a page session.
+// ?screen= never changes during a page session — safe to compute once.
 const _hasScreen = new URLSearchParams(window.location.search).has('screen')
-const _isAdminHash = window.location.hash === '#admin'
 
 function ScreenApp() {
   useWakeLock()
 
-  const [isAdmin, setIsAdmin] = useState(_isAdminHash)
+  const [isAdmin, setIsAdmin] = useState(window.location.hash === '#admin')
   useEffect(() => {
     const handler = () => setIsAdmin(window.location.hash === '#admin')
     window.addEventListener('hashchange', handler)
@@ -103,6 +102,13 @@ function ScreenApp() {
 }
 
 export default function App() {
-  if (!_hasScreen && !_isAdminHash) return <LandingPage />
+  const [hash, setHash] = useState(window.location.hash)
+  useEffect(() => {
+    const handler = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', handler)
+    return () => window.removeEventListener('hashchange', handler)
+  }, [])
+
+  if (!_hasScreen && hash !== '#admin') return <LandingPage />
   return <ScreenApp />
 }
