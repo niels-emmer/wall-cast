@@ -1641,7 +1641,7 @@ function AdminPanelInner() {
             wall-cast admin
           </Title>
           <Anchor href="/" c="dimmed" size="sm" style={{ textDecoration: 'none' }}>
-            ← display
+            ← home
           </Anchor>
         </Group>
 
