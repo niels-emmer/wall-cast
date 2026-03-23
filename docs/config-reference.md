@@ -498,6 +498,7 @@ Cycles through a list of child widgets, showing one at a time. Used to display m
 - Child widgets in `config.widgets` use the same `type` and `config` keys as top-level widgets, but do not need `id`, `col`, `row`, `col_span`, or `row_span` — they inherit the rotator's grid cell.
 - `enabled: false` skips a slot entirely. Useful for temporarily hiding a widget without removing its config.
 - Rotation and individual slot `enabled` states can be toggled live from the admin panel at `/#admin`.
+- **Fade speed** is a global setting — set `shared.fade_speed` (seconds) in the YAML or use the **Rotator fade speed** slider in Admin → General. Presets: `2.0` (Slow) · `1.4` (Relaxed) · `0.8` (Normal, default) · `0.4` (Snappy) · `0.15` (Fast). All rotators on all screens share this value.
 
 ---
 
@@ -513,6 +514,7 @@ From the admin panel you can:
 - Set the **home location** (lat/lon/name) with a Geolocate button
 - Set the **garbage collection** address (postcode and house number — Netherlands; shared across all screens)
 - Set the **display language** (Dutch or English)
+- Set the **rotator fade speed** (Slow / Relaxed / Normal / Snappy / Fast — applies to all rotators on all screens)
 - Configure **news ticker** feeds, scroll speed, ntfy URL and topic
 
 **Screens tab** (per screen)

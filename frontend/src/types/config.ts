@@ -24,6 +24,7 @@ export interface WallConfig {
   }
   language?: string
   widgets: WidgetConfig[]
+  fade_speed?: number
 }
 
 // ── Admin config (raw unmerged, returned by GET /api/admin/config) ───────────
@@ -97,6 +98,7 @@ export interface SharedSection {
   garbage?: GarbageConfig
   network?: NetworkConfig
   assistant?: AssistantConfig
+  fade_speed?: number
 }
 
 export interface ScreenSection {

@@ -168,6 +168,16 @@ function setAssistantInDraft(draft: AdminConfig, ac: AssistantConfig): AdminConf
   return { ...draft, shared: { ...draft.shared, assistant: ac } }
 }
 
+function getFadeSpeed(draft: AdminConfig): number {
+  if (!isMultiScreen(draft)) return 0.8
+  return (draft.shared.fade_speed ?? 0.8) as number
+}
+
+function setFadeSpeedInDraft(draft: AdminConfig, speed: number): AdminConfig {
+  if (!isMultiScreen(draft)) return draft
+  return { ...draft, shared: { ...draft.shared, fade_speed: speed } }
+}
+
 function getPeople(draft: AdminConfig): Person[] {
   if (!isMultiScreen(draft)) return []
   return (draft.shared.people ?? []) as Person[]
@@ -728,6 +738,53 @@ function NetworkSection({
 }
 
 // ---------------------------------------------------------------------------
+// FadeSpeedSection
+// ---------------------------------------------------------------------------
+
+const FADE_STEPS = [
+  { value: '2.0',  label: 'Slow' },
+  { value: '1.4',  label: 'Relaxed' },
+  { value: '0.8',  label: 'Normal' },
+  { value: '0.4',  label: 'Snappy' },
+  { value: '0.15', label: 'Fast' },
+]
+
+function nearestFadeStep(speed: number): string {
+  let best = FADE_STEPS[0].value
+  let bestDist = Infinity
+  for (const step of FADE_STEPS) {
+    const dist = Math.abs(parseFloat(step.value) - speed)
+    if (dist < bestDist) { bestDist = dist; best = step.value }
+  }
+  return best
+}
+
+function FadeSpeedSection({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const speed = getFadeSpeed(draft)
+  const value = nearestFadeStep(speed)
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>Rotator fade speed</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        How fast widgets cross-fade when the rotator switches slots.
+      </Text>
+      <SegmentedControl
+        value={value}
+        onChange={val => onChange(setFadeSpeedInDraft(draft, parseFloat(val)))}
+        data={FADE_STEPS}
+        size="sm"
+      />
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // LocationSection
 // ---------------------------------------------------------------------------
 
@@ -1094,6 +1151,8 @@ function GeneralTab({
           size="sm"
         />
       </Paper>
+
+      <FadeSpeedSection draft={draft} onChange={onChange} />
 
       {newsWidget && (
         <NewsSection newsConfig={newsWidget.config} onChange={updateNewsConfig} />

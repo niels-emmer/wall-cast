@@ -46,6 +46,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "shared": {
         "location": {"lat": 52.37, "lon": 4.89, "name": "My City"},
         "language": "nl",
+        "fade_speed": 0.8,
         "people": [],
         "widgets": [
             {
@@ -358,6 +359,7 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
         "widgets": merged_widgets,
         # Pass through shared-only keys used by backend routers
         "network": shared.get("network", {}),
+        "fade_speed": shared.get("fade_speed", 0.8),
     }
     return merged
 

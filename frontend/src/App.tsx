@@ -68,11 +68,13 @@ function ScreenApp() {
   const cols = config.layout?.columns ?? 12
   const rows = config.layout?.rows ?? 8
   const widgets: WidgetConfig[] = config.widgets ?? []
+  const fadeSpeed = config.fade_speed ?? 0.8
 
   return (
     <div
       style={{
         display: 'grid',
+        ['--rotator-fade-duration' as string]: `${fadeSpeed}s`,
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
         width: '100vw',
