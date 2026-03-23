@@ -32,7 +32,7 @@ interface Screen {
 }
 
 interface RawConfig {
-  shared?: { casting_enabled?: boolean }
+  shared?: { casting_enabled?: boolean; people?: unknown[] }
   screens?: Screen[]
 }
 
@@ -186,6 +186,18 @@ export default function LandingPage() {
 
   const globalCasting = rawCfg?.shared?.casting_enabled !== false
   const screens: Screen[] = rawCfg?.screens ?? []
+  const peopleCount = rawCfg?.shared?.people?.length ?? 0
+
+  const castingScreens = screens.filter(s =>
+    globalCasting && s.casting_active !== false && !!(s.chromecast_ip || '').trim()
+  ).length
+
+  const castingStatus = (() => {
+    if (!rawCfg) return null
+    if (!globalCasting || castingScreens === 0) return 'Currently not casting.'
+    const p = peopleCount
+    return `Casting to ${castingScreens} of ${screens.length} screens, ${p} personal profile${p !== 1 ? 's' : ''}.`
+  })()
 
   const toggleGlobal = useCallback(async () => {
     setTogglingGlobal(true)
@@ -283,6 +295,11 @@ export default function LandingPage() {
               ⚙ Settings
             </a>
           </div>
+          {castingStatus && (
+            <div style={{ fontSize: '0.78rem', color: C.muted, marginTop: '0.6rem' }}>
+              {castingStatus}
+            </div>
+          )}
         </div>
 
         {/* ── Screens ────────────────────────────────────────────────────── */}
