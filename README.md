@@ -420,7 +420,11 @@ cd frontend && npm install && npm run dev
 
 (Requires the backend running on port 8000.)
 
-## Adding widgets
+## Extending the project
+
+This project is fully AI-coded and designed to be extended by prompting. See [docs/prompt-a-feature.md](docs/prompt-a-feature.md) for a framework — a prompt structure that lets you describe a feature in plain language and have Claude implement it end-to-end: branch, config, admin UI, widget code, tests, docs, commit, and PR.
+
+### Adding widgets
 
 See [docs/adding-a-widget.md](docs/adding-a-widget.md) for a step-by-step guide and [docs/widget-style-guide.md](docs/widget-style-guide.md) for the design token system used across all widgets.
 
