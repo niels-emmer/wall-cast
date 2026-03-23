@@ -462,7 +462,7 @@ wall-cast/
 │   │   ├── wall_config.py      YAML loader + auto-create/migrate + SSE broadcaster
 │   │   └── routers/            one file per API endpoint (weather, rain, news, sun,
 │   │                           garbage, polestar, calendar, traffic, warnings, bus,
-│   │                           network, config, status)
+│   │                           network, airquality, config, status)
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -503,7 +503,7 @@ This project was conceived, architected, and coded in collaboration with [Claude
 
 | Source | Used for |
 |--------|----------|
-| [open-meteo.com](https://open-meteo.com) | Weather forecasts — free, no API key |
+| [open-meteo.com](https://open-meteo.com) | Weather forecasts and air quality / pollen — free, no API key |
 | [buienalarm.nl](https://buienalarm.nl) | Rain intensity forecast (2 h) |
 | [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, and daylight duration |
 | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) | Waste collection schedule (NL) |

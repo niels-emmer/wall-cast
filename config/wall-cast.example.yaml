@@ -29,10 +29,8 @@ shared:
   # router_url and router_username can also be set via Admin → General → Network widget.
   # ⚠ router_password is NOT stored here — set ROUTER_PASSWORD in your .env file.
   # network:
-  #   router_url:              https://192.168.1.1
-  #   router_username:         admin
-  #   speedtest_bytes_down:    2000000   # bytes per test (default 2 MB)
-  #   speedtest_bytes_up:      200000    # bytes per test (default 200 KB)
+  #   router_url:      https://192.168.1.1
+  #   router_username: admin
 
   people: []
     # Example:
