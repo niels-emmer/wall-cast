@@ -427,7 +427,7 @@ Stop city and name are configured **per person** in the **People** tab of the ad
 
 **Display:** Title with stop name. Lists upcoming departures showing line number, destination, and departure time. Cancelled departures are shown with a strikethrough. Lookahead window: 90 minutes.
 
-**Backend cache:** 1 min.
+**Backend cache:** 30 s.
 
 ---
 
@@ -450,11 +450,9 @@ To enable router integration (WAN IP, host count), add a `network` block to `sha
 ```yaml
 shared:
   network:
-    router_url:           https://192.168.1.1
-    router_username:      admin
-    router_password:      YOUR_ROUTER_PASSWORD
-    speedtest_bytes_down: 2000000   # bytes per speedtest (default 2 MB)
-    speedtest_bytes_up:   200000    # bytes per speedtest (default 200 KB)
+    router_url:      https://192.168.1.1
+    router_username: admin
+    # router_password is NOT stored in YAML — set ROUTER_PASSWORD=... in .env
 ```
 
 The `router_url` / `router_username` / `router_password` fields are only needed for Zyxel VMG8825-series routers (DAL API). Without them the widget still shows connectivity, DNS status, and speedtest results.
@@ -530,6 +528,8 @@ From the admin panel you can:
 - Add **Google Calendar IDs** per person; the admin panel shows the service account email to share with
 - Set **commute** (home address, work address, route roads) with TomTom address autocomplete and a **Lookup** button that auto-detects highway numbers along the route
 - Set **bus stop** (city and stop name) per person
+- Add **per-person RSS feeds** (personalised news shown only when that person's screen is active)
+- Add **per-person notification rules** (same condition builder as the shared rules; only evaluated when that person is in scope)
 
 Changes are saved back to `config/wall-cast.yaml` and take effect on the display immediately via hot-reload.
 

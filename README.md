@@ -24,7 +24,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 </p>
 <p align="center">
   <img src="docs/screenshots/screenshot-5.png" width="49%" alt="Home page / screen selector" />
-  <img src="docs/screenshots/screenshot-6.png" width="49%" alt="Admin panel — Screens tab with per-screen settings and Chromecast discovery" />
+  <img src="docs/screenshots/screenshot-6.png" width="49%" alt="Admin panel — Assistant tab with rules list and notification settings" />
 </p>
 
 ## Features
@@ -148,8 +148,8 @@ Open the admin panel by clicking **Settings** on the home page, or by navigating
 
 - **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, news feed URLs, and network widget settings
 - **Screens** — add/rename/delete/enable/disable screens; set Chromecast IP (use the **Scan network** button to discover devices); set screen ID, layout, clock options, rotator intervals; assign people to the screen; configure weather and calendar options per slot
-- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus / tram stop — used on any screen the person is assigned to
-- **Assistant** — enable the notification assistant; configure ntfy server and topic; set AI provider (Ollama or OpenAI) and model; tune rule thresholds (garbage hours, bus delay, traffic %, calendar reminder minutes)
+- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus / tram stop; add per-person RSS feeds; add per-person notification rules — used on any screen the person is assigned to
+- **Assistant** — enable the notification assistant; configure ntfy server and topic; set AI provider (Ollama or OpenAI) and model; add, edit, and toggle notification rules using the condition builder (generic rules shared across everyone; per-person rules live in the People tab)
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
@@ -274,7 +274,7 @@ Open `/#admin` → **Assistant** tab:
 
 - Tick **Enable assistant**
 - Enter your **ntfy server URL** and **topic**
-- Adjust rule thresholds if needed
+- Review or edit the default rules (or add your own) using the condition builder
 - Click **Save**
 
 Or add directly to `wall-cast.yaml`:
@@ -290,10 +290,14 @@ shared:
       ntfy_topic: wall-cast-alerts
 
     rules:
-      garbage_notify_hours_before: 18
-      bus_delay_threshold_min: 5
-      traffic_delay_threshold_pct: 25
-      calendar_reminder_min: 30
+      - id: garbage-reminder
+        title: Garbage pickup reminder
+        enabled: true
+        condition: { variable: garbage.hours_until_pickup, operator: "<=", value: 18, unit: h }
+      - id: bus-delay
+        title: Bus delay alert
+        enabled: true
+        condition: { variable: bus.delay_minutes, operator: ">=", value: 5, unit: min }
 ```
 
 **3. Start the service**
@@ -475,8 +479,8 @@ wall-cast/
 │   └── scanner.py              HTTP :8765; mDNS-based Chromecast discovery
 ├── assistant/
 │   ├── assistant.py            main polling loop; reads config, runs rules, dispatches
-│   ├── rules/                  one file per rule domain (garbage, bus, calendar,
-│   │                           traffic, weather) — each returns Notification objects
+│   ├── rules/                  engine.py dispatches rules by variable; one file per
+│   │                           data domain extracts variable values (garbage, bus, …)
 │   ├── notify/ntfy.py          push to ntfy via HTTP POST
 │   ├── ai/formatter.py         optional AI message rewriting (Ollama / OpenAI)
 │   └── state.py                deduplication state (JSON, persisted to /config)
