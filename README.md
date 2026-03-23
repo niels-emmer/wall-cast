@@ -56,6 +56,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **Calendar** | L | Google Calendar (service account) | 10 min |
 | **Traffic** | L | ANWB (jams) + TomTom (travel time) | 5 min |
 | **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
+| **Air quality** | L | [open-meteo.com](https://open-meteo.com) — European AQI, PM2.5/PM10/NO₂/O₃, 4-day pollen forecast | 1 h |
 | **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
 | **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |

@@ -30,5 +30,7 @@ class Settings(BaseSettings):
     bus_cache_ttl: int = 30         # 30 seconds (real-time data)
     bus_lookahead_min: int = 90     # show departures within this many minutes
 
+    airquality_cache_ttl: int = 3600  # 1 hour (CAMS model updates twice daily)
+
 
 settings = Settings()

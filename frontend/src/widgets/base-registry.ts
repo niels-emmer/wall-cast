@@ -11,6 +11,7 @@ import { TrafficWidget } from './traffic/TrafficWidget'
 import { WarningsWidget } from './warnings/WarningsWidget'
 import { BusWidget } from './bus/BusWidget'
 import { NetworkWidget } from './network/NetworkWidget'
+import { AirQualityWidget } from './airquality/AirQualityWidget'
 
 export interface WidgetProps {
   config: Record<string, unknown>
@@ -32,5 +33,6 @@ export const BASE_REGISTRY: Record<string, ComponentType<WidgetProps>> = {
   traffic: TrafficWidget,
   warnings: WarningsWidget,
   bus: BusWidget,
-  network: NetworkWidget,
+  network:     NetworkWidget,
+  airquality:  AirQualityWidget,
 }

@@ -189,6 +189,8 @@ screens:
               config: {}    # home/work/roads come from the person assigned to this screen
             - type: warnings
               config: {}
+            - type: airquality
+              config: {}
 
       - id: bottom-left-rotator
         type: rotate

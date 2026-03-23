@@ -468,6 +468,29 @@ The `router_url` / `router_username` / `router_password` fields are only needed 
 
 ---
 
+### `airquality`
+
+Current outdoor air quality and a 4-day pollen forecast. Data from [open-meteo.com](https://open-meteo.com) (CAMS European air quality model) — no API key required. Location is taken from `shared.location`.
+
+```yaml
+- id: airquality
+  type: airquality
+  col: 5
+  row: 1
+  col_span: 8
+  row_span: 7
+  config: {}   # no configuration options — location comes from shared.location
+```
+
+**Display (top to bottom):**
+1. Title
+2. AQI card — large European AQI index number, quality level label (Good / Fair / Moderate / Poor / Very Poor / Hazardous), and pollutant chips (PM2.5, PM10, NO₂, O₃, Dust). Card border colour reflects the AQI level.
+3. Pollen section — one row per active pollen species (birch, grass, alder, mugwort, ragweed). Each row shows the species name and a 4-day bar chart coloured by intensity (green → amber → orange → red). Species with no pollen forecast are hidden. Shows "None" when pollen is absent for all species.
+
+**Backend cache:** 1 hour (CAMS model updates twice daily).
+
+---
+
 ### `rotate`
 
 Cycles through a list of child widgets, showing one at a time. Used to display multiple widgets in a single grid cell.
@@ -574,6 +597,7 @@ All data sources refresh automatically — the display never needs a manual relo
 | Polestar | Every 5 minutes |
 | Calendar | Every 10 minutes |
 | Traffic | Every 5 minutes |
+| Air quality | Every 1 hour |
 | Config (YAML) | Instant (SSE push on file save) |
 | Breaking news (ntfy) | Instant (persistent SSE connection) |
 
@@ -585,7 +609,7 @@ Most data sources used by wall-cast are fully public and require no authenticati
 
 | Service | Widget | Key required | Cost | How to get |
 |---------|--------|-------------|------|-----------|
-| [open-meteo.com](https://open-meteo.com) | `weather` | No | Free | — |
+| [open-meteo.com](https://open-meteo.com) | `weather`, `airquality` | No | Free | — |
 | [sunrise-sunset.org](https://sunrise-sunset.org/api) | `weather` | No | Free | — |
 | [buienalarm.nl](https://buienalarm.nl) | `rain` | No | Free | — |
 | [mijnafvalwijzer.nl](https://www.mijnafvalwijzer.nl) | `garbage` | No (public key baked in) | Free | — |

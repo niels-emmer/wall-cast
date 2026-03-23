@@ -242,10 +242,11 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
         config: {
           interval_sec: 20,
           widgets: [
-            { type: 'weather', config: { show_hourly: true, show_daily: true } },
-            { type: 'calendar', config: { calendar_ids: [] } },
-            { type: 'traffic', config: { home_address: '', work_address: '', route_roads: '' } },
-            { type: 'warnings', config: {} },
+            { type: 'weather',    config: { show_hourly: true, show_daily: true } },
+            { type: 'calendar',   config: { calendar_ids: [] } },
+            { type: 'traffic',    config: { home_address: '', work_address: '', route_roads: '' } },
+            { type: 'warnings',   config: {} },
+            { type: 'airquality', config: {} },
           ],
         },
       },
