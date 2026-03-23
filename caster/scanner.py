@@ -3,13 +3,14 @@
 wall-cast Chromecast scanner
 
 Discovers Chromecasts on the LAN without mDNS:
-  1. Read the host ARP/neighbour table for all known L2 neighbours
-  2. TCP-probe port 8009 (Chromecast CastV2 control port) on each one
+  1. Derive all /24 subnets from the host ARP/neighbour table
+  2. TCP-probe port 8009 (Chromecast CastV2 control port) on every host in
+     those subnets (1–254), not just ARP-cached addresses
   3. Fetch the friendly name from the Chromecast's built-in HTTP API (port 8008)
 
-This approach works regardless of whether mDNS/Zeroconf is available on the
-host, as long as the server and the Chromecasts share the same L2 segment
-(same switch / broadcast domain) — which is the typical home-server setup.
+Probing the full subnet (rather than just ARP neighbours) ensures devices that
+recently rebooted to a new DHCP address are also found, even before the host
+has communicated with them.
 
 Requires network_mode: host so the container shares the host ARP table and
 can TCP-probe devices on the LAN directly.
@@ -50,6 +51,29 @@ def arp_neighbours() -> list[str]:
         return []
 
 
+def subnet_candidates() -> list[str]:
+    """Return all host IPs (1–254) in every /24 subnet visible in the ARP table.
+
+    Devices that rebooted to a new DHCP lease won't be in the ARP cache yet,
+    but they're still on the same subnet — probing the full range finds them.
+    """
+    neighbours = arp_neighbours()
+    subnets: set[str] = set()
+    for ip in neighbours:
+        parts = ip.split(".")
+        if len(parts) == 4:
+            subnets.add(".".join(parts[:3]))
+
+    if not subnets:
+        return neighbours  # fallback: use whatever we have
+
+    candidates: list[str] = []
+    for subnet in sorted(subnets):
+        candidates.extend(f"{subnet}.{i}" for i in range(1, 255))
+
+    return candidates
+
+
 def chromecast_name(ip: str) -> str | None:
     """Fetch the friendly device name from the Chromecast Eureka HTTP API."""
     try:
@@ -73,16 +97,15 @@ def probe(ip: str) -> dict | None:
 
 
 def scan_chromecasts() -> list[dict]:
-    print("[scanner] Reading ARP table…", flush=True)
-    neighbours = arp_neighbours()
-    if not neighbours:
-        print("[scanner] ARP table is empty — no neighbours to probe", flush=True)
+    candidates = subnet_candidates()
+    if not candidates:
+        print("[scanner] ARP table is empty — no subnets to probe", flush=True)
         return []
 
-    print(f"[scanner] Probing {len(neighbours)} neighbour(s) on port {CHROMECAST_PORT}…", flush=True)
+    print(f"[scanner] Probing {len(candidates)} address(es) on port {CHROMECAST_PORT}…", flush=True)
     devices: list[dict] = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-        for result in executor.map(probe, neighbours):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=64) as executor:
+        for result in executor.map(probe, candidates):
             if result:
                 devices.append(result)
 
