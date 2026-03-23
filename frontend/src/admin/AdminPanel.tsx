@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   MantineProvider, createTheme,
   Box, Container, Stack, Group, Paper,
@@ -9,6 +9,7 @@ import {
   Tabs, SegmentedControl,
   Loader, Alert,
   Anchor, Divider,
+  Modal,
 } from '@mantine/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LANGUAGE_LABELS, type Lang } from '../i18n/translations'
@@ -942,20 +943,281 @@ function formatCondition(condition: RuleCondition, variables: RuleVariable[]): s
   return op === 'in' ? `${label}: ${val}` : `${label} ${op} ${val}${unit}`
 }
 
+function generateRuleId(title: string): string {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'rule'
+  return slug + '-' + Math.random().toString(36).slice(2, 6)
+}
+
+// ── Pill component used in the condition builder ──────────────────────────────
+
+function CondPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      background: 'rgba(34,184,207,0.15)', border: '1px solid rgba(34,184,207,0.4)',
+      borderRadius: 4, padding: '3px 8px', fontSize: 13, whiteSpace: 'nowrap',
+    }}>
+      {label}
+      <span
+        onClick={onRemove}
+        style={{ cursor: 'pointer', opacity: 0.6, lineHeight: 1, fontSize: 11 }}
+      >✕</span>
+    </div>
+  )
+}
+
+// ── Rule editor modal ─────────────────────────────────────────────────────────
+
+function RuleEditorModal({
+  opened, onClose, onSave, initial, variables,
+}: {
+  opened: boolean
+  onClose: () => void
+  onSave: (rule: Rule) => void
+  initial?: Rule
+  variables: RuleVariable[]
+}) {
+  const [title,       setTitle]       = useState('')
+  const [description, setDescription] = useState('')
+  const [enabled,     setEnabled]     = useState(true)
+  const [condVar,     setCondVar]     = useState('')
+  const [condOp,      setCondOp]      = useState('')
+  const [condValue,   setCondValue]   = useState('')
+  const [condUnit,    setCondUnit]    = useState('')
+
+  useEffect(() => {
+    if (!opened) return
+    setTitle(initial?.title ?? '')
+    setDescription(initial?.description ?? '')
+    setEnabled(initial?.enabled ?? true)
+    setCondVar(initial?.condition?.variable ?? '')
+    setCondOp(initial?.condition?.operator ?? '')
+    const v = initial?.condition?.value
+    setCondValue(Array.isArray(v) ? v.join(',') : String(v ?? ''))
+    setCondUnit(initial?.condition?.unit ?? '')
+  }, [opened])
+
+  const varMeta    = variables.find(v => v.id === condVar)
+  const validOps   = varMeta?.operators ?? []
+  const isEnum     = varMeta?.type === 'enum'
+  const enumValues = varMeta?.enum_values ?? []
+
+  function selectVariable(id: string) {
+    const meta = variables.find(v => v.id === id)
+    setCondVar(id)
+    setCondUnit(meta?.default_unit ?? '')
+    setCondValue('')
+    if (meta?.operators.length === 1) setCondOp(meta.operators[0])
+    else if (meta && !meta.operators.includes(condOp)) setCondOp('')
+  }
+
+  function toggleEnumValue(val: string) {
+    const current = condValue ? condValue.split(',').filter(Boolean) : []
+    const next = current.includes(val) ? current.filter(x => x !== val) : [...current, val]
+    setCondValue(next.join(','))
+  }
+
+  const selectedEnumValues = condValue ? condValue.split(',').filter(Boolean) : []
+
+  const canSave = title.trim() && condVar && condOp && (condValue.trim() || isEnum && selectedEnumValues.length > 0)
+
+  function handleSave() {
+    if (!canSave) return
+    const rawValue = isEnum
+      ? selectedEnumValues
+      : (varMeta?.type === 'number' ? Number(condValue) : condValue)
+    onSave({
+      id: initial?.id ?? generateRuleId(title),
+      title: title.trim(),
+      description: description.trim() || undefined,
+      enabled,
+      condition: {
+        variable: condVar,
+        operator: condOp,
+        value: rawValue,
+        unit: condUnit || null,
+      },
+    })
+  }
+
+  // ── shared pill/tag styles ─────────────────────────────────────────────────
+  const tagBase: React.CSSProperties = {
+    display: 'inline-block', padding: '3px 10px', borderRadius: 4,
+    fontSize: 12, cursor: 'pointer', userSelect: 'none', border: '1px solid transparent',
+  }
+  const tagIdle: React.CSSProperties = {
+    ...tagBase, background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#aaa',
+  }
+  const tagActive: React.CSSProperties = {
+    ...tagBase, background: 'rgba(34,184,207,0.18)', borderColor: 'rgba(34,184,207,0.5)', color: '#22b8cf',
+  }
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={initial ? 'Edit rule' : 'Add rule'}
+      size="lg"
+      centered
+    >
+      <Stack gap="md">
+        {/* Title + description */}
+        <TextInput
+          label="Title"
+          placeholder="e.g. Bus delay alert"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          size="sm"
+          autoFocus
+        />
+        <TextInput
+          label="Description"
+          placeholder="Optional — shown under the title in the rule list"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          size="sm"
+        />
+        <Checkbox
+          label="Enabled"
+          checked={enabled}
+          onChange={e => setEnabled(e.currentTarget.checked)}
+          size="sm"
+        />
+
+        <Divider />
+
+        {/* Condition builder */}
+        <div>
+          <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb={8}>Condition</Text>
+
+          {/* Pill display row */}
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 34,
+            padding: '6px 10px', borderRadius: 6,
+            background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: 16,
+          }}>
+            {!condVar && !condOp && !condValue && (
+              <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
+                Click tags below to build the condition
+              </Text>
+            )}
+            {condVar && (
+              <CondPill
+                label={varMeta?.label ?? condVar}
+                onRemove={() => { setCondVar(''); setCondOp(''); setCondValue(''); setCondUnit('') }}
+              />
+            )}
+            {condOp && (
+              <CondPill label={condOp} onRemove={() => setCondOp('')} />
+            )}
+            {condValue && (
+              <CondPill
+                label={isEnum ? selectedEnumValues.join(', ') : condValue + (condUnit ? ' ' + condUnit : '')}
+                onRemove={() => setCondValue('')}
+              />
+            )}
+          </div>
+
+          {/* Variables */}
+          <Text size="xs" fw={500} c="dimmed" mb={6}>Variable</Text>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {variables.map(v => (
+              <span
+                key={v.id}
+                style={condVar === v.id ? tagActive : tagIdle}
+                onClick={() => selectVariable(v.id)}
+              >
+                {v.label}
+              </span>
+            ))}
+          </div>
+
+          {/* Operators — only show once a variable is selected */}
+          {condVar && (
+            <>
+              <Text size="xs" fw={500} c="dimmed" mb={6}>Operator</Text>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                {validOps.map(op => (
+                  <span
+                    key={op}
+                    style={condOp === op ? tagActive : tagIdle}
+                    onClick={() => setCondOp(op)}
+                  >
+                    {op}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Value — only show once operator is selected */}
+          {condOp && (
+            isEnum ? (
+              <>
+                <Text size="xs" fw={500} c="dimmed" mb={6}>Values</Text>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {enumValues.map(val => (
+                    <span
+                      key={val}
+                      style={selectedEnumValues.includes(val) ? tagActive : tagIdle}
+                      onClick={() => toggleEnumValue(val)}
+                    >
+                      {val}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <Group gap="sm" align="flex-end">
+                <TextInput
+                  label="Value"
+                  value={condValue}
+                  onChange={e => setCondValue(e.target.value)}
+                  size="sm"
+                  w={120}
+                  placeholder={varMeta?.type === 'number' ? '0' : '…'}
+                />
+                <TextInput
+                  label="Unit"
+                  value={condUnit}
+                  onChange={e => setCondUnit(e.target.value)}
+                  size="sm"
+                  w={80}
+                  placeholder="min"
+                />
+              </Group>
+            )
+          )}
+        </div>
+
+        {/* Actions */}
+        <Group justify="flex-end" gap="sm" mt="xs">
+          <Button variant="subtle" color="gray" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" onClick={handleSave} disabled={!canSave}>Save rule</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  )
+}
+
+// ── RuleList ──────────────────────────────────────────────────────────────────
+
 function RuleList({
   rules,
   onChangeRules,
   variables,
   onAddRule,
+  onEditRule,
 }: {
   rules: Rule[]
   onChangeRules: (rules: Rule[]) => void
   variables: RuleVariable[]
-  onAddRule?: () => void  // Phase 5c — passed undefined until modal is ready
+  onAddRule: () => void
+  onEditRule: (rule: Rule, index: number) => void
 }) {
   function toggleEnabled(idx: number) {
-    const updated = rules.map((r, i) => i === idx ? { ...r, enabled: !r.enabled } : r)
-    onChangeRules(updated)
+    onChangeRules(rules.map((r, i) => i === idx ? { ...r, enabled: !r.enabled } : r))
   }
 
   function removeRule(idx: number) {
@@ -981,23 +1243,17 @@ function RuleList({
               {formatCondition(rule.condition, variables)}
             </Text>
           </div>
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            size="sm"
-            onClick={() => removeRule(idx)}
-            style={{ flexShrink: 0 }}
-          >
+          <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => onEditRule(rule, idx)}>
+            ✎
+          </ActionIcon>
+          <ActionIcon variant="subtle" color="red" size="sm" onClick={() => removeRule(idx)}>
             ✕
           </ActionIcon>
         </div>
       ))}
       <Button
-        variant="subtle"
-        color="gray"
-        size="xs"
+        variant="subtle" color="gray" size="xs"
         onClick={onAddRule}
-        disabled={!onAddRule}
         style={{ alignSelf: 'flex-start', marginTop: 4 }}
       >
         + Add rule
@@ -1022,8 +1278,26 @@ function AssistantTab({
   const rules     = Array.isArray(ac.rules) ? ac.rules : []
   const variables = useRuleVariables()
 
+  const [ruleModal,      setRuleModal]      = useState(false)
+  const [editingRule,    setEditingRule]    = useState<Rule | undefined>()
+  const [editingRuleIdx, setEditingRuleIdx] = useState(-1)
+
   function update(patch: Partial<AssistantConfig>) {
     onChange(setAssistantInDraft(draft, { ...ac, ...patch }))
+  }
+
+  function openAddRule() {
+    setEditingRule(undefined); setEditingRuleIdx(-1); setRuleModal(true)
+  }
+  function openEditRule(rule: Rule, idx: number) {
+    setEditingRule(rule); setEditingRuleIdx(idx); setRuleModal(true)
+  }
+  function saveRule(rule: Rule) {
+    const updated = editingRuleIdx >= 0
+      ? rules.map((r, i) => i === editingRuleIdx ? rule : r)
+      : [...rules, rule]
+    update({ rules: updated })
+    setRuleModal(false)
   }
 
   return (
@@ -1160,8 +1434,18 @@ function AssistantTab({
           rules={rules}
           onChangeRules={r => update({ rules: r })}
           variables={variables}
+          onAddRule={openAddRule}
+          onEditRule={openEditRule}
         />
       </Paper>
+
+      <RuleEditorModal
+        opened={ruleModal}
+        onClose={() => setRuleModal(false)}
+        onSave={saveRule}
+        initial={editingRule}
+        variables={variables}
+      />
     </Stack>
   )
 }
@@ -1850,6 +2134,9 @@ function PeopleTab({
   const [saEmail, setSaEmail] = useState<string | null>(null)
   const [lookingUpRoads, setLookingUpRoads] = useState(false)
   const [roadsError, setRoadsError] = useState('')
+  const [ruleModal,      setRuleModal]      = useState(false)
+  const [editingRule,    setEditingRule]    = useState<Rule | undefined>()
+  const [editingRuleIdx, setEditingRuleIdx] = useState(-1)
 
   useEffect(() => {
     fetch('/api/admin/google-sa-email')
@@ -1887,6 +2174,21 @@ function PeopleTab({
   function updatePerson(updates: Partial<Person>) {
     if (!currentPerson) return
     updatePeople(people.map(p => p.id === currentPerson.id ? { ...p, ...updates } : p))
+  }
+
+  function openAddPersonRule() {
+    setEditingRule(undefined); setEditingRuleIdx(-1); setRuleModal(true)
+  }
+  function openEditPersonRule(rule: Rule, idx: number) {
+    setEditingRule(rule); setEditingRuleIdx(idx); setRuleModal(true)
+  }
+  function savePersonRule(rule: Rule) {
+    const existing = currentPerson?.rules ?? []
+    const updated = editingRuleIdx >= 0
+      ? existing.map((r, i) => i === editingRuleIdx ? rule : r)
+      : [...existing, rule]
+    updatePerson({ rules: updated })
+    setRuleModal(false)
   }
 
   function addCalendarId() {
@@ -2128,8 +2430,18 @@ function PeopleTab({
               rules={currentPerson.rules ?? []}
               onChangeRules={r => updatePerson({ rules: r })}
               variables={ruleVariables}
+              onAddRule={openAddPersonRule}
+              onEditRule={openEditPersonRule}
             />
           </Paper>
+
+          <RuleEditorModal
+            opened={ruleModal}
+            onClose={() => setRuleModal(false)}
+            onSave={savePersonRule}
+            initial={editingRule}
+            variables={ruleVariables}
+          />
 
           <Paper p="md" radius="sm" withBorder>
             <SectionTitle>Personal RSS feeds</SectionTitle>
