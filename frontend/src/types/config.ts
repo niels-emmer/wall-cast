@@ -40,11 +40,17 @@ export interface PersonBus {
   stop_name?: string
 }
 
+export interface PersonRssFeed {
+  url: string
+  label?: string
+}
+
 export interface Person {
   id: string
   name: string
   family?: boolean
   calendar_ids?: string[]
+  rss_feeds?: PersonRssFeed[]
   traffic?: PersonTraffic
   bus?: PersonBus
 }

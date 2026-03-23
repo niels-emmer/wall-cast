@@ -23,6 +23,7 @@ import type {
   Person,
   PersonTraffic,
   PersonBus,
+  PersonRssFeed,
   ScreenSection,
   WidgetConfig,
 } from '../types/config'
@@ -1854,6 +1855,23 @@ function PeopleTab({
     updatePerson({ bus: { ...currentPerson?.bus, ...patch } })
   }
 
+  function addRssFeed() {
+    const feed: PersonRssFeed = { url: '', label: '' }
+    updatePerson({ rss_feeds: [...(currentPerson?.rss_feeds ?? []), feed] })
+  }
+
+  function updateRssFeed(feedIdx: number, key: keyof PersonRssFeed, value: string) {
+    const feeds = (currentPerson?.rss_feeds ?? []).map((f, i) =>
+      i === feedIdx ? { ...f, [key]: value } : f
+    )
+    updatePerson({ rss_feeds: feeds })
+  }
+
+  function removeRssFeed(feedIdx: number) {
+    const feeds = (currentPerson?.rss_feeds ?? []).filter((_, i) => i !== feedIdx)
+    updatePerson({ rss_feeds: feeds })
+  }
+
   async function handleLookupRoads() {
     const home = currentPerson?.traffic?.home_address ?? ''
     const work = currentPerson?.traffic?.work_address ?? ''
@@ -2043,6 +2061,53 @@ function PeopleTab({
                 w={200}
               />
             </Group>
+          </Paper>
+
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Personal RSS feeds</SectionTitle>
+            <Stack gap="xs">
+              {(currentPerson.rss_feeds ?? []).map((feed, feedIdx) => (
+                <Group key={feedIdx} gap="xs" wrap="nowrap">
+                  <TextInput
+                    placeholder="https://feeds.example.com/rss"
+                    value={feed.url}
+                    onChange={e => updateRssFeed(feedIdx, 'url', e.target.value)}
+                    size="sm"
+                    style={{ flex: 2, minWidth: 0 }}
+                    ff="monospace"
+                  />
+                  <TextInput
+                    placeholder="Label"
+                    value={feed.label ?? ''}
+                    onChange={e => updateRssFeed(feedIdx, 'label', e.target.value)}
+                    size="sm"
+                    style={{ flex: 1, minWidth: 0 }}
+                  />
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    onClick={() => removeRssFeed(feedIdx)}
+                    style={{ flexShrink: 0 }}
+                  >
+                    ✕
+                  </ActionIcon>
+                </Group>
+              ))}
+              <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                onClick={addRssFeed}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                + Add feed
+              </Button>
+              <Text size="xs" c="dimmed" mt={4}>
+                Shown in the news ticker on screens where this person is assigned,
+                alongside the global feeds.
+              </Text>
+            </Stack>
           </Paper>
         </>
       )}

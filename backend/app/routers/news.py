@@ -1,5 +1,9 @@
 """
 RSS feed proxy — returns a flat list of news items from configured feeds.
+
+Accepts an optional ?screen=<id> parameter. When provided the backend merges
+shared + screen config (including personal RSS feeds of assigned people) before
+determining which feeds to fetch. Each screen gets its own cache entry.
 """
 
 import logging
@@ -11,18 +15,19 @@ import httpx
 
 from app import wall_config
 from app.config import settings
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["news"])
 
-_cache: list[dict] = []
-_cache_ts: float = 0.0
+# Per-screen cache: key = screen id (empty string = no screen specified)
+_cache: dict[str, list[dict]] = {}
+_cache_ts: dict[str, float] = {}
 
 
 def _invalidate_cache() -> None:
-    global _cache_ts
-    _cache_ts = 0.0
+    _cache.clear()
+    _cache_ts.clear()
 
 
 # Clear the news cache whenever the config changes (e.g. feed URLs updated)
@@ -56,17 +61,17 @@ async def _fetch_feed(url: str, label: str) -> list[dict]:
 
 
 @router.get("/news")
-async def get_news() -> dict:
-    global _cache, _cache_ts
+async def get_news(screen: str | None = None) -> dict:
+    cache_key = screen or ""
 
-    if _cache and (time.monotonic() - _cache_ts) < settings.news_cache_ttl:
-        return {"items": _cache}
+    if _cache.get(cache_key) and (time.monotonic() - _cache_ts.get(cache_key, 0)) < settings.news_cache_ttl:
+        return {"items": _cache[cache_key]}
 
-    cfg = wall_config.get_config()
+    cfg = wall_config.get_config(screen)
     feeds_cfg = cfg.get("widgets", [])
-    feeds = DEFAULT_FEEDS
+    feeds: list[dict[str, Any]] = DEFAULT_FEEDS
 
-    # Pull feed config from the news widget if present
+    # Pull feed list from the news widget (includes injected personal feeds)
     for widget in feeds_cfg:
         if widget.get("type") == "news":
             feeds = widget.get("config", {}).get("feeds", DEFAULT_FEEDS)
@@ -77,11 +82,11 @@ async def get_news() -> dict:
         items = await _fetch_feed(feed["url"], feed["label"])
         all_items.extend(items)
 
-    if not all_items and _cache:
-        return {"items": _cache}  # return stale on total failure
-    if not all_items:
-        raise HTTPException(status_code=502, detail="No news feeds available")
+    if not all_items and _cache.get(cache_key):
+        return {"items": _cache[cache_key]}  # return stale on total failure
 
-    _cache = all_items
-    _cache_ts = time.monotonic()
-    return {"items": _cache}
+    if all_items:
+        _cache[cache_key] = all_items
+        _cache_ts[cache_key] = time.monotonic()
+
+    return {"items": all_items}

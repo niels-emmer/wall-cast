@@ -109,7 +109,9 @@ function NewsItem({ source, title }: { source: string; title: string }) {
 
 // ── Main widget ────────────────────────────────────────────────────────────────
 export function NewsTickerWidget({ config }: Props) {
-  const { data, isError } = useNews()
+  // Pass the screen ID so the backend can include personal feeds for assigned people
+  const screen = new URLSearchParams(window.location.search).get('screen') ?? undefined
+  const { data, isError } = useNews(screen)
   const breaking = useNtfy(
     config.ntfy_url  as string | undefined,
     config.ntfy_topic as string | undefined,

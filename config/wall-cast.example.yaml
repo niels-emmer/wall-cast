@@ -49,6 +49,9 @@ shared:
     #     home_address: "Home Street 1, 1234AB City, NL"
     #     work_address: "Work Street 1, 5678CD City, NL"
     #     route_roads: "A10,A2"   # comma-separated — jams on these float to the top
+    #   rss_feeds:          # personal feeds — appended to global feeds on screens Bob is assigned to
+    #     - url: https://feeds.example.com/bob
+    #       label: Bob's Blog   # optional; defaults to the person's name
     #   bus:                # bus stop — used on any screen Bob is assigned to
     #     stop_city: Amsterdam
     #     stop_name: Leidseplein

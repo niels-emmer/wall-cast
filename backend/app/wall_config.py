@@ -271,6 +271,57 @@ def _inject_garbage(
     return _inject(widgets)
 
 
+def _inject_people_feeds(
+    widgets: list[dict[str, Any]],
+    screen_people_ids: list[str] | None,
+    all_people: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Append personal RSS feeds from assigned people into news widget feeds.
+
+    Global feeds defined in the news widget config stay first; personal feeds
+    are appended after, deduplicated by URL. Family people are always included.
+    If screen_people_ids is None (field absent from YAML), widgets are left untouched.
+    """
+    if screen_people_ids is None:
+        return widgets
+
+    personal: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    for person in all_people:
+        if not (person.get("family") or person.get("id") in screen_people_ids):
+            continue
+        for feed in person.get("rss_feeds") or []:
+            url = feed.get("url", "").strip()
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                personal.append({
+                    "url": url,
+                    "label": (feed.get("label") or "").strip() or person.get("name") or "Personal",
+                })
+
+    if not personal:
+        return widgets
+
+    def _inject(wlist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        result = []
+        for w in wlist:
+            if w.get("type") == "news":
+                cfg = dict(w.get("config") or {})
+                existing: list[dict[str, Any]] = list(cfg.get("feeds") or [])
+                existing_urls = {f.get("url") for f in existing}
+                new_feeds = [f for f in personal if f["url"] not in existing_urls]
+                cfg["feeds"] = existing + new_feeds
+                w = {**w, "config": cfg}
+            elif w.get("type") == "rotate":
+                inner = _inject(w.get("config", {}).get("widgets") or [])
+                w = {**w, "config": {**w.get("config", {}), "widgets": inner}}
+            result.append(w)
+        return result
+
+    return _inject(widgets)
+
+
 def _inject_people_calendars(
     widgets: list[dict[str, Any]],
     screen_people_ids: list[str] | None,
@@ -347,6 +398,7 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
     # Inject person-specific config into widgets
     all_people = shared.get("people") or []
     screen_people_ids = target.get("people")  # None = field absent, [] = explicitly empty
+    merged_widgets = _inject_people_feeds(merged_widgets, screen_people_ids, all_people)
     merged_widgets = _inject_people_calendars(merged_widgets, screen_people_ids, all_people)
     merged_widgets = _inject_people_commute(merged_widgets, screen_people_ids, all_people)
     merged_widgets = _inject_garbage(merged_widgets, shared.get("garbage"))
