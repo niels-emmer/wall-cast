@@ -492,8 +492,9 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
   { value: 'garbage',  label: 'Garbage' },
   { value: 'polestar', label: 'Polestar' },
   { value: 'bus',      label: 'Bus' },
-  { value: 'network',  label: 'Network' },
-  { value: 'info',     label: 'Info' },
+  { value: 'network',    label: 'Network' },
+  { value: 'airquality', label: 'Air Quality' },
+  { value: 'info',       label: 'Info' },
 ]
 
 function defaultSlotConfig(type: string): Record<string, unknown> {
