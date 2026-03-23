@@ -19,7 +19,7 @@ What it does:
   5. Takes a 1920×1080 screenshot
   6. Produces 6 PNGs:   screenshot-{1-4}.png  (display screens)
                         screenshot-5.png       (landing page)
-                        screenshot-6.png       (admin panel, Screens tab)
+                        screenshot-6.png       (admin panel, Assistant tab — Rules section)
 
 Rotator slot reference (update if widget order changes in wall-cast.yaml):
     main   rotator (right/large):  0=weather  1=calendar  2=traffic  3=warnings
@@ -70,6 +70,8 @@ TEXT_REPLACEMENTS = [
     # ── Bus stop names ──
     ("Polakkenbrug",   "Leidseplein"),
     ("Rembrandtplein", "Leidseplein"),
+    # ── ntfy server URL ──
+    ("ntfy.macjuu.com", "ntfy.example.com"),
     # ── LAN IPs from the VPS subnet (192.168.101.x → anonymised subnet) ──
     ("192.168.101.", "192.168.1."),
 ]
@@ -148,12 +150,15 @@ ROTATOR_JS = """
 REPLACE_JS = """
 ([pairs, fakePublicIp]) => {
   const PUBLIC_IP_RE = /\\b(?!(?:10\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.|192\\.168\\.|127\\.))(?:\\d{1,3}\\.){3}\\d{1,3}\\b/g;
+  // Odometer readings: e.g. "71,087km" / "71.087 km" / "123,456 km"
+  const ODOMETER_RE = /\\b\\d{2,3}[.,]\\d{3}\\s*km\\b/gi;
 
   function sub(str) {
     for (const [from, to] of pairs) {
       if (str.includes(from)) str = str.split(from).join(to);
     }
-    return str.replace(PUBLIC_IP_RE, fakePublicIp);
+    str = str.replace(PUBLIC_IP_RE, fakePublicIp);
+    return str.replace(ODOMETER_RE, '42,000 km');
   }
 
   function walk(node) {
@@ -350,34 +355,34 @@ async def main() -> None:
         print("       ✓ screenshot-5.png\n")
         await page.close()
 
-        # ── Admin panel — Screens tab (6) ──────────────────────────────────────
-        print("[6/6] /#admin  (Screens tab)")
+        # ── Admin panel — Assistant tab / Rules section (6) ───────────────────
+        print("[6/6] /#admin  (Assistant tab — Rules section)")
         page = await context.new_page()
         await page.goto(f"{BASE_URL}/#admin", wait_until="load", timeout=20000)
-        # Wait for the admin config (people, screens) to load from the API
+        # Wait for tabs to render
         await page.wait_for_function(
             "() => document.querySelector('[class*=\"Tabs-tab\"]') !== null",
             timeout=10000,
         )
         await page.wait_for_timeout(1500)
+        # Click the Assistant tab
         await page.evaluate("""() => {
             const btn = Array.from(document.querySelectorAll('button'))
-              .find(b => b.textContent.trim() === 'Screens');
+              .find(b => b.textContent.trim() === 'Assistant');
             if (btn) btn.click();
         }""")
-        # Wait until the People checkboxes are in the DOM, then anonymise twice
-        # (second pass catches anything that rendered just after the first pass)
-        await page.wait_for_function(
-            "() => document.querySelectorAll('input[type=\"checkbox\"]').length > 0",
-            timeout=8000,
-        )
-        await page.wait_for_timeout(500)
+        # Wait for the tab panel content to fully load
+        await page.wait_for_timeout(1500)
         await anonymise(page)
-        # Targeted pass: overwrite Mantine Checkbox labels in the People section
-        # by DOM position — handles names with special chars or unusual encoding.
-        await page.evaluate(REPLACE_PEOPLE_LABELS_JS, GENERIC_PEOPLE_NAMES)
+        # Scroll to the Rules section (try both uppercase and mixed case)
+        await page.evaluate("""() => {
+            const el = Array.from(document.querySelectorAll('*'))
+              .find(e => e.children.length === 0 &&
+                         /^rules$/i.test(e.textContent.trim()));
+            if (el) el.scrollIntoView({ block: 'center' });
+        }""")
         await page.wait_for_timeout(200)
-        await anonymise(page)   # final pass for any remaining text nodes
+        await anonymise(page)   # final pass after scroll
 
         await page.screenshot(path=str(OUT_DIR / "screenshot-6.png"), type="png")
         print("       ✓ screenshot-6.png\n")
