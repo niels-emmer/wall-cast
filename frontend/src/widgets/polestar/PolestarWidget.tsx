@@ -145,6 +145,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
         alignItems: 'center',
         gap:        '0.5rem',
         flexShrink: 0,
+        marginTop:  '0.35rem',
       }}>
         <span style={{
           fontSize:  fs.md,
