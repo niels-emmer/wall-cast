@@ -25,6 +25,11 @@ from fastapi import APIRouter, HTTPException, Query
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["calendar"])
 
+# The Google API client library logs 403s at WARNING before raising them.
+# We handle these exceptions ourselves (shared calendars often 403 on calendarList
+# but still allow events.list), so suppress the library's own noise.
+logging.getLogger("googleapiclient.http").setLevel(logging.ERROR)
+
 _cache: dict[str, Any] = {}      # keyed by sorted-ids string
 _cache_ts: dict[str, float] = {}
 
