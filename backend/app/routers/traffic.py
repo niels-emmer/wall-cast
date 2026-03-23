@@ -17,6 +17,7 @@ cached for the lifetime of the process. Cache keyed by "home:work:route_roads".
 import asyncio
 import logging
 import time
+from math import atan2, cos, radians, sin, sqrt
 from typing import Any
 
 import httpx
@@ -51,6 +52,30 @@ TOMTOM_ROUTE_URL = (
     "/{olat},{olon}:{dlat},{dlon}/json"
     "?traffic=true&travelMode=car&key={key}"
 )
+
+# Jams on a route road are only flagged on-route if their fromLoc is within
+# this distance of the actual TomTom route polyline.
+ON_ROUTE_CORRIDOR_KM = 25.0
+
+# Type alias for a lat/lon point
+_Point = tuple[float, float]
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two lat/lon points."""
+    R = 6_371.0
+    d_lat = radians(lat2 - lat1)
+    d_lon = radians(lon2 - lon1)
+    a = sin(d_lat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
+    return R * 2 * atan2(sqrt(a), sqrt(1 - a))
+
+
+def _dist_to_polyline_km(lat: float, lon: float, polyline: list[_Point]) -> float:
+    """Minimum Haversine distance (km) from a point to any waypoint on a polyline."""
+    if not polyline:
+        return float("inf")
+    return min(_haversine_km(lat, lon, p[0], p[1]) for p in polyline)
+
 
 # Incident types that count as traffic jams
 JAM_TYPES = {
@@ -104,11 +129,20 @@ async def _ensure_coords(client: httpx.AsyncClient, api_key: str, home: str, wor
             logger.warning("Using fallback coords for '%s'", addr)
 
 
-def _parse_jams(raw: dict, route: frozenset[str]) -> list[dict]:
+def _parse_jams(
+    raw: dict,
+    route: frozenset[str],
+    route_polyline: list[_Point],
+) -> list[dict]:
     """Extract jams from ANWB incidents response.
 
     Structure: roads[] → segments[] → jams[]
-    Jam objects carry: road, from, to, distance (m), delay (s), incidentType.
+    Jam objects carry: road, from, to, distance (m), delay (s), incidentType,
+    fromLoc/toLoc coordinates.
+
+    on_route = road name in route_roads AND jam's fromLoc is within
+    ON_ROUTE_CORRIDOR_KM of the actual TomTom route polyline.
+    Falls back to road-name-only when no polyline is available.
 
     Sorted: on-route jams first, then by delay desc. Capped at 12 rows.
     """
@@ -123,6 +157,23 @@ def _parse_jams(raw: dict, route: frozenset[str]) -> list[dict]:
                 if delay_s < 60 and incident_type not in JAM_TYPES:
                     continue
                 road_final = (jam.get("road") or road).upper()
+
+                # Determine on_route: road name must match; if we have a route
+                # polyline, also require the jam to be near the route corridor.
+                if road_final in route:
+                    if route_polyline:
+                        from_loc = jam.get("fromLoc") or {}
+                        lat = from_loc.get("lat")
+                        lon = from_loc.get("lon")
+                        if lat is not None and lon is not None:
+                            on_route = _dist_to_polyline_km(lat, lon, route_polyline) <= ON_ROUTE_CORRIDOR_KM
+                        else:
+                            on_route = True   # no coords → trust road name
+                    else:
+                        on_route = True       # no polyline yet → trust road name
+                else:
+                    on_route = False
+
                 jams.append({
                     "road": road_final,
                     "from": jam.get("from", ""),
@@ -130,23 +181,32 @@ def _parse_jams(raw: dict, route: frozenset[str]) -> list[dict]:
                     "distance_km": round(distance_m / 1000, 1),
                     "delay_min": max(1, round(delay_s / 60)),
                     "type": incident_type,
-                    "on_route": road_final in route,
+                    "on_route": on_route,
                 })
     jams.sort(key=lambda j: (0 if j["on_route"] else 1, -j["delay_min"]))
     return jams[:12]
 
 
-def _parse_travel(raw: dict) -> dict | None:
-    """Extract travel time summary from TomTom route response."""
+def _parse_travel(raw: dict) -> tuple[dict | None, list[_Point]]:
+    """Extract travel time summary and route polyline from TomTom route response.
+
+    Returns (travel_dict, polyline) where polyline is a list of (lat, lon) tuples.
+    """
+    polyline: list[_Point] = []
     try:
-        summary = raw["routes"][0]["summary"]
-        return {
+        route = raw["routes"][0]
+        summary = route["summary"]
+        travel = {
             "duration_min": round(summary["travelTimeInSeconds"] / 60),
             "delay_min": round(summary.get("trafficDelayInSeconds", 0) / 60),
             "distance_km": round(summary["lengthInMeters"] / 1000, 1),
         }
+        for leg in route.get("legs", []):
+            for pt in leg.get("points", []):
+                polyline.append((pt["latitude"], pt["longitude"]))
+        return travel, polyline
     except (KeyError, IndexError, TypeError):
-        return None
+        return None, []
 
 
 @router.get("/traffic")
@@ -193,20 +253,9 @@ async def get_traffic(
                 return _cache[cache_key]
             raise HTTPException(status_code=502, detail="Traffic API unavailable")
 
-    jams: list[dict] = []
-    anwb_ok = False
-    anwb_resp = responses[0]
-    if isinstance(anwb_resp, Exception):
-        logger.error("ANWB incidents fetch failed: %s", anwb_resp)
-    else:
-        try:
-            anwb_resp.raise_for_status()
-            jams = _parse_jams(anwb_resp.json(), route)
-            anwb_ok = True
-        except Exception as exc:
-            logger.error("ANWB incidents parse error: %s", exc)
-
+    # Parse TomTom first so we have the route polyline for jam filtering.
     travel: dict | None = None
+    route_polyline: list[_Point] = []
     tomtom_ok = not api_key
     if api_key and len(responses) > 1:
         tomtom_resp = responses[1]
@@ -215,10 +264,24 @@ async def get_traffic(
         else:
             try:
                 tomtom_resp.raise_for_status()
-                travel = _parse_travel(tomtom_resp.json())
+                travel, route_polyline = _parse_travel(tomtom_resp.json())
                 tomtom_ok = True
+                logger.debug("Route polyline: %d points", len(route_polyline))
             except Exception as exc:
                 logger.error("TomTom parse error: %s", exc)
+
+    jams: list[dict] = []
+    anwb_ok = False
+    anwb_resp = responses[0]
+    if isinstance(anwb_resp, Exception):
+        logger.error("ANWB incidents fetch failed: %s", anwb_resp)
+    else:
+        try:
+            anwb_resp.raise_for_status()
+            jams = _parse_jams(anwb_resp.json(), route, route_polyline)
+            anwb_ok = True
+        except Exception as exc:
+            logger.error("ANWB incidents parse error: %s", exc)
 
     if not anwb_ok and not tomtom_ok:
         if cache_key in _cache:
