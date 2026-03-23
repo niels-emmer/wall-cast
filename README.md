@@ -111,7 +111,7 @@ The config file (`config/wall-cast.yaml`) is created automatically on first run 
 
 ### 4. Configure
 
-Open **`http://<host-ip>/#admin`** in a browser. At minimum, set your location in the **General** tab.
+The casting server is now available at **`http://<host-ip>`**. To set up and configure your server, click **Configure**. (Alternatively, go directly to **`http://<host-ip>/#admin`** for the admin panel.)
 
 ### 5. Enable casting
 
