@@ -401,20 +401,30 @@ export default function LandingPage() {
 
         {/* ── About ──────────────────────────────────────────────────────── */}
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.78rem', color: C.muted }}>wall-cast</span>
             <span style={{ fontSize: '0.78rem', color: C.muted, opacity: 0.4 }}>·</span>
-            <span style={{
-              fontSize:     '0.72rem',
-              fontWeight:   600,
-              color:        C.green,
-              background:   C.greenBg,
-              border:       `1px solid ${C.greenBdr}`,
-              borderRadius: 4,
-              padding:      '0.1em 0.45em',
-            }}>
+            <span style={{ fontSize: '0.78rem', color: C.muted }}>Prompts: 100% human</span>
+            <span style={{ fontSize: '0.78rem', color: C.muted, opacity: 0.4 }}>·</span>
+            <span style={{ fontSize: '0.78rem', color: C.muted }}>Writing &amp; coding: 100% Claude</span>
+            <span style={{ fontSize: '0.78rem', color: C.muted, opacity: 0.4 }}>·</span>
+            <a
+              href="https://github.com/niels-emmer/wall-cast/releases"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize:       '0.72rem',
+                fontWeight:     600,
+                color:          C.green,
+                background:     C.greenBg,
+                border:         `1px solid ${C.greenBdr}`,
+                borderRadius:   4,
+                padding:        '0.1em 0.45em',
+                textDecoration: 'none',
+              }}
+            >
               v{__APP_VERSION__}
-            </span>
+            </a>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <a
