@@ -159,7 +159,7 @@ export function NetworkWidget(_props: WidgetProps) {
         {hosts ? (
           <Row>
             <Label>LAN</Label>
-            <span style={{ fontSize: fs.lg, fontWeight: 700, color: TEXT, lineHeight: 1 }}>
+            <span style={{ fontSize: fs.sm, fontWeight: 600, color: TEXT }}>
               {hosts.total}
             </span>
             <span style={{ fontSize: fs.xs, color: MUTED }}>hosts</span>
