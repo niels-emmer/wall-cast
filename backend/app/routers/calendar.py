@@ -56,7 +56,7 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
     # Fetch the authoritative event color palette once.
     global _event_colors
     try:
-        colors_resp = service.colors().list().execute()
+        colors_resp = service.colors().get().execute()
         _event_colors = {
             cid: meta["background"]
             for cid, meta in colors_resp.get("event", {}).items()
