@@ -242,10 +242,11 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
         config: {
           interval_sec: 20,
           widgets: [
-            { type: 'weather', config: { show_hourly: true, show_daily: true } },
-            { type: 'calendar', config: { calendar_ids: [] } },
-            { type: 'traffic', config: { home_address: '', work_address: '', route_roads: '' } },
-            { type: 'warnings', config: {} },
+            { type: 'weather',    config: { show_hourly: true, show_daily: true } },
+            { type: 'calendar',   config: { calendar_ids: [] } },
+            { type: 'traffic',    config: { home_address: '', work_address: '', route_roads: '' } },
+            { type: 'warnings',   config: {} },
+            { type: 'airquality', config: {} },
           ],
         },
       },
@@ -491,8 +492,9 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
   { value: 'garbage',  label: 'Garbage' },
   { value: 'polestar', label: 'Polestar' },
   { value: 'bus',      label: 'Bus' },
-  { value: 'network',  label: 'Network' },
-  { value: 'info',     label: 'Info' },
+  { value: 'network',    label: 'Network' },
+  { value: 'airquality', label: 'Air Quality' },
+  { value: 'info',       label: 'Info' },
 ]
 
 function defaultSlotConfig(type: string): Record<string, unknown> {

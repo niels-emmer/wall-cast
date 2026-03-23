@@ -56,6 +56,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **Calendar** | L | Google Calendar (service account) | 10 min |
 | **Traffic** | L | ANWB (jams) + TomTom (travel time) | 5 min |
 | **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
+| **Air quality** | L | [open-meteo.com](https://open-meteo.com) — European AQI, PM2.5/PM10/NO₂/O₃, 4-day pollen forecast | 1 h |
 | **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
 | **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
@@ -461,7 +462,7 @@ wall-cast/
 │   │   ├── wall_config.py      YAML loader + auto-create/migrate + SSE broadcaster
 │   │   └── routers/            one file per API endpoint (weather, rain, news, sun,
 │   │                           garbage, polestar, calendar, traffic, warnings, bus,
-│   │                           network, config, status)
+│   │                           network, airquality, config, status)
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -502,7 +503,7 @@ This project was conceived, architected, and coded in collaboration with [Claude
 
 | Source | Used for |
 |--------|----------|
-| [open-meteo.com](https://open-meteo.com) | Weather forecasts — free, no API key |
+| [open-meteo.com](https://open-meteo.com) | Weather forecasts and air quality / pollen — free, no API key |
 | [buienalarm.nl](https://buienalarm.nl) | Rain intensity forecast (2 h) |
 | [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, and daylight duration |
 | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) | Waste collection schedule (NL) |

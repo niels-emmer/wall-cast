@@ -1,8 +1,8 @@
 # Rules System Rewrite Plan
 
-**Status:** In progress
+**Status:** Complete ✅
 **Started:** 2026-03-23
-**Stop before:** Phase 5c (rule editor modal) — finish together with user
+**Finished:** 2026-03-23
 
 ---
 

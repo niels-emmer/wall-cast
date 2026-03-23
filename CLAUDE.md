@@ -9,7 +9,7 @@ A Docker-hosted wall display that casts to multiple Chromecast-connected screens
 - **Backend**: Python 3.12, FastAPI, pydantic-settings, pyyaml, watchfiles, httpx, feedparser
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS v4, TanStack Query v5
 - **Serving**: nginx:alpine proxies `/api/*` → `backend:8000`
-- **Containers**: Docker Compose (four services: `frontend`, `backend`, `caster`, `scanner`)
+- **Containers**: Docker Compose (five services: `frontend`, `backend`, `caster`, `scanner`, `assistant`)
 - **Config**: `/config/wall-cast.yaml` — gitignored, auto-created on first run, hot-reloaded via SSE
 
 ## Commands
@@ -103,6 +103,7 @@ Always read `docs/memory/INDEX.md` at the start of each session on this project.
 | `GET /api/traffic` | ANWB jams + TomTom travel time | 5 min |
 | `GET /api/warnings` | MeteoAlarm (KNMI) Atom/CAP feed | 15 min |
 | `GET /api/bus` | vertrektijd.info proxy | 30 s |
+| `GET /api/airquality` | open-meteo CAMS air quality + pollen | 1 h |
 
 ## Widget System
 
@@ -155,6 +156,7 @@ CSS variables and `clamp()` for font sizing work fine. Only layout utilities are
 | `backend/app/routers/traffic.py` | ANWB + TomTom proxy, 5 min cache |
 | `backend/app/routers/warnings.py` | MeteoAlarm Atom/CAP proxy, 15 min cache |
 | `backend/app/routers/bus.py` | vertrektijd.info proxy, 30 s cache |
+| `backend/app/routers/airquality.py` | open-meteo CAMS proxy, 1 h cache |
 | `caster/cast.py` | Smart multi-screen caster; reads chromecast_ip from config |
 | `caster/scanner.py` | HTTP server on :8765; runs catt scan on demand |
 | `frontend/src/widgets/index.ts` | Widget registry |
@@ -178,4 +180,5 @@ CSS variables and `clamp()` for font sizing work fine. Only layout utilities are
 | /api/traffic | ANWB incidents + TomTom routing | 5 min | `TOMTOM_API_KEY` |
 | /api/warnings | MeteoAlarm Atom/CAP feed | 15 min | None |
 | /api/bus | vertrektijd.info | 30 s | None |
+| /api/airquality | open-meteo.com CAMS (European AQI + pollen) | 1 h | None |
 | ntfy (browser direct) | ntfy instance (self-hosted) | real-time | None |

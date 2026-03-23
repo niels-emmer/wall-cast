@@ -91,6 +91,13 @@ export interface Translations {
   /** Map English CAP phenomenon names (from MeteoAlarm) to display label. */
   warningsPhenomenon: (phenomenon: string) => string
 
+  // Air quality
+  airQualityTitle: string
+  airQualityLevel: (level: string) => string
+  airQualityPollen: string
+  pollenSpecies: (species: string) => string
+  pollenLevel: (level: string) => string
+
   // Shared
   unavailable: string
   loading: string
@@ -220,6 +227,20 @@ export const nl: Translations = {
     return map[p] ?? p
   },
 
+  airQualityTitle: 'Luchtkwaliteit',
+  airQualityLevel: (level) => ({
+    good: 'Goed', fair: 'Redelijk', moderate: 'Matig',
+    poor: 'Slecht', very_poor: 'Zeer slecht', extremely_poor: 'Gevaarlijk',
+  } as Record<string, string>)[level] ?? level,
+  airQualityPollen: 'Pollen',
+  pollenSpecies: (s) => ({
+    birch: 'Berk', grass: 'Grassen', alder: 'Els',
+    mugwort: 'Bijvoet', ragweed: 'Ambrosia',
+  } as Record<string, string>)[s] ?? s,
+  pollenLevel: (level) => ({
+    none: 'Geen', low: 'Laag', moderate: 'Matig', high: 'Hoog', very_high: 'Zeer hoog',
+  } as Record<string, string>)[level] ?? level,
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -338,6 +359,20 @@ export const en: Translations = {
     return map[level] ?? level
   },
   warningsPhenomenon: (p) => p, // MeteoAlarm already supplies English
+
+  airQualityTitle: 'Air Quality',
+  airQualityLevel: (level) => ({
+    good: 'Good', fair: 'Fair', moderate: 'Moderate',
+    poor: 'Poor', very_poor: 'Very Poor', extremely_poor: 'Hazardous',
+  } as Record<string, string>)[level] ?? level,
+  airQualityPollen: 'Pollen',
+  pollenSpecies: (s) => ({
+    birch: 'Birch', grass: 'Grass', alder: 'Alder',
+    mugwort: 'Mugwort', ragweed: 'Ragweed',
+  } as Record<string, string>)[s] ?? s,
+  pollenLevel: (level) => ({
+    none: 'None', low: 'Low', moderate: 'Moderate', high: 'High', very_high: 'Very High',
+  } as Record<string, string>)[level] ?? level,
 
   unavailable: 'Unavailable',
   loading: 'Loading...',
