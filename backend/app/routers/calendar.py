@@ -70,14 +70,21 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
     all_items: list[dict] = []
 
     for cal_id in calendar_ids:
-        # Background color from calendarList entry (used as per-event fallback)
+        # Background color from calendarList entry (used as per-event fallback).
+        # Service accounts need the calendar in their list; insert it if missing.
         cal_color: str | None = None
         try:
             entry = service.calendarList().get(calendarId=cal_id).execute()
             cal_color = entry.get("backgroundColor")
             logger.info("Calendar %s backgroundColor: %s", cal_id, cal_color)
-        except Exception as exc:
-            logger.warning("calendarList.get() failed for %s: %s", cal_id, exc)
+        except Exception:
+            try:
+                service.calendarList().insert(body={"id": cal_id}).execute()
+                entry = service.calendarList().get(calendarId=cal_id).execute()
+                cal_color = entry.get("backgroundColor")
+                logger.info("Subscribed service account to %s, backgroundColor: %s", cal_id, cal_color)
+            except Exception as exc2:
+                logger.debug("Could not get calendar color for %s: %s", cal_id, exc2)
         cal_colors[cal_id] = cal_color
 
         # Fetch events
@@ -126,7 +133,7 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
         cal_id   = item.get("_calendar_id", "")
         # Prefer event's own colorId; fall back to this calendar's background color.
         color = _event_colors.get(str(color_id)) if color_id else cal_colors.get(cal_id)
-        logger.info("Event %r colorId=%r → %s", item.get("summary", "?"), color_id, color)
+        logger.debug("Event %r colorId=%r → %s", item.get("summary", "?"), color_id, color)
 
         if all_day:
             date_str   = start_raw["date"]
