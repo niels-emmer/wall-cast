@@ -17,6 +17,19 @@ appears immediately in the admin panel.
 
 Requires chromecast_name to be set per screen (in addition to chromecast_ip).
 Without a name the caster still works but cannot auto-recover from IP changes.
+
+Recast signals
+--------------
+The backend drops a /config/recast-<screen_id>.signal file when the admin
+panel's "Re-cast now" button is pressed.  The caster checks for it at the
+start of each screen's cycle, removes it, and forces an immediate recast
+(bypassing the cooldown).
+
+Per-screen status
+-----------------
+After each cycle the caster writes /config/caster-status.json with the last
+known status of every active screen.  The backend serves this via
+GET /api/admin/screens/status.
 """
 
 import json
@@ -37,7 +50,9 @@ CAST_COOLDOWN  = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasti
 HEARTBEAT_PATH = os.environ.get("CASTER_HEARTBEAT_PATH", "/config/caster-heartbeat.txt")
 SCANNER_URL    = os.environ.get("SCANNER_URL", "http://localhost:8765/scan")
 
-CAST_PORT = 8009  # CastV2 control port — open on every Chromecast / Google TV
+CAST_PORT   = 8009  # CastV2 control port — open on every Chromecast / Google TV
+_CONFIG_DIR = os.path.dirname(CONFIG_PATH) or "."
+STATUS_FILE = os.path.join(_CONFIG_DIR, "caster-status.json")
 
 
 def load_screens() -> list[dict]:
@@ -141,8 +156,7 @@ def update_config_ip(screen_id: str, new_ip: str) -> None:
             return
 
         yaml_text = yaml.dump(cfg, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        config_dir = os.path.dirname(CONFIG_PATH) or "."
-        fd, tmp_path = tempfile.mkstemp(dir=config_dir, suffix=".tmp")
+        fd, tmp_path = tempfile.mkstemp(dir=_CONFIG_DIR, suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(yaml_text)
@@ -155,6 +169,31 @@ def update_config_ip(screen_id: str, new_ip: str) -> None:
 
     except Exception as exc:
         print(f"[caster] Config IP update failed ({screen_id}): {exc}", flush=True)
+
+
+def check_recast_signal(sid: str) -> bool:
+    """Return True (and consume the file) if a recast was requested for this screen."""
+    path = os.path.join(_CONFIG_DIR, f"recast-{sid}.signal")
+    if os.path.exists(path):
+        try:
+            os.unlink(path)
+            print(f"[caster] {sid} recast signal received", flush=True)
+        except Exception:
+            pass
+        return True
+    return False
+
+
+def write_screen_statuses(statuses: dict) -> None:
+    """Atomically write per-screen status to caster-status.json."""
+    try:
+        payload = json.dumps({"updated_at": time.time(), "screens": statuses})
+        tmp = STATUS_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            f.write(payload)
+        os.replace(tmp, STATUS_FILE)
+    except Exception as exc:
+        print(f"[caster] Status file write failed: {exc}", flush=True)
 
 
 def main() -> None:
@@ -182,42 +221,65 @@ def main() -> None:
             print("[caster] No screens with chromecast_ip configured — waiting...", flush=True)
 
         now = time.time()
+        screen_statuses: dict = {}
+
         for s in screens:
-            ip  = s["ip"]
-            sid = s["id"]
+            ip   = s["ip"]
+            sid  = s["id"]
+            name = s["name"]
+            status_str = "unknown"
 
-            if is_casting(ip):
+            force_recast = check_recast_signal(sid)
+
+            if not force_recast and is_casting(ip):
                 print(f"[caster] {sid} OK", flush=True)
+                status_str = "casting"
 
-            elif now - last_cast_at.get(sid, 0) < CAST_COOLDOWN:
+            elif not force_recast and now - last_cast_at.get(sid, 0) < CAST_COOLDOWN:
                 # catt status can give a false negative right after casting;
                 # trust the cast for CAST_COOLDOWN seconds before retrying
                 age = int(now - last_cast_at[sid])
                 print(f"[caster] {sid} OK (cast {age}s ago)", flush=True)
+                status_str = "cooldown"
 
-            elif not is_reachable(ip) and s["name"]:
+            elif not force_recast and not is_reachable(ip) and name:
                 # Device unreachable at known IP — try to find it at a new IP via scanner
-                name = s["name"]
                 print(f"[caster] {sid} unreachable at {ip} — scanning for '{name}'…", flush=True)
+                status_str = "scanning"
                 new_ip = find_by_name(name)
                 if new_ip and new_ip != ip:
                     print(f"[caster] {sid} found at new IP {new_ip} (was {ip}) — updating config", flush=True)
                     update_config_ip(sid, new_ip)
-                    s["ip"] = new_ip          # use new IP for this cycle
+                    s["ip"] = new_ip
                     active_ips.discard(ip)
                     active_ips.add(new_ip)
                     cast(new_ip, s["url"], sid)
                     last_cast_at[sid] = now
+                    status_str = "starting"
+                    ip = new_ip
                 elif new_ip == ip:
-                    # Scanner confirmed same IP but it's not responding — device is off
                     print(f"[caster] {sid} confirmed at {ip} but not responding — may be off", flush=True)
+                    status_str = "unreachable"
                 else:
                     print(f"[caster] {sid} not found by name '{name}' — will retry next cycle", flush=True)
+                    status_str = "unreachable"
 
             else:
-                print(f"[caster] {sid} not casting — starting", flush=True)
+                if force_recast:
+                    print(f"[caster] {sid} recast requested — starting", flush=True)
+                else:
+                    print(f"[caster] {sid} not casting — starting", flush=True)
+                status_str = "starting"
                 cast(ip, s["url"], sid)
                 last_cast_at[sid] = now
+
+            screen_statuses[sid] = {
+                "status":       status_str,
+                "ip":           ip,
+                "last_cast_at": last_cast_at.get(sid, 0),
+            }
+
+        write_screen_statuses(screen_statuses)
 
         # Write heartbeat so the backend landing page can report caster status
         try:

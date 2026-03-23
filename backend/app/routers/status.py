@@ -1,4 +1,5 @@
-"""Status endpoints for the landing page."""
+"""Status endpoints for the landing page and admin panel."""
+import json
 import time
 from pathlib import Path
 
@@ -10,7 +11,8 @@ from app import log_capture
 router = APIRouter(tags=["status"])
 
 CASTER_HEARTBEAT_PATH = Path("/config/caster-heartbeat.txt")
-CASTER_STALE_AFTER = 180  # seconds — 3× the default 60 s check interval
+CASTER_STATUS_PATH    = Path("/config/caster-status.json")
+CASTER_STALE_AFTER    = 180  # seconds — 3× the default 60 s check interval
 
 
 @router.get("/admin/status")
@@ -28,6 +30,16 @@ async def get_status() -> JSONResponse:
         "backend": {"status": "ok"},
         "caster": {"status": caster_status, "last_seen_s": last_seen_s},
     })
+
+
+@router.get("/admin/screens/status")
+async def get_screens_status() -> JSONResponse:
+    """Per-screen caster status written by cast.py after each cycle."""
+    try:
+        data = json.loads(CASTER_STATUS_PATH.read_text())
+        return JSONResponse(content=data)
+    except Exception:
+        return JSONResponse(content={"updated_at": None, "screens": {}})
 
 
 @router.get("/admin/logs")

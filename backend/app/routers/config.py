@@ -244,3 +244,14 @@ async def set_screen_casting(body: dict[str, Any]) -> None:
             screen["casting_active"] = active
             break
     wall_config.save_config(raw)
+
+
+@router.post("/admin/casting/recast", status_code=204)
+async def recast_screen(body: dict[str, Any]) -> None:
+    """Drop a signal file that tells the caster to force-recast this screen immediately."""
+    screen_id = (body.get("screen_id") or "").strip()
+    if not screen_id:
+        raise HTTPException(status_code=400, detail="screen_id required")
+    config_dir = Path(settings.wall_config_path).parent
+    signal_path = config_dir / f"recast-{screen_id}.signal"
+    signal_path.touch()

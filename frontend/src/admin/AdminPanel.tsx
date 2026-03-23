@@ -1261,6 +1261,188 @@ function ScreenPeopleSection({
   )
 }
 
+// ---------------------------------------------------------------------------
+// Screen diagnostics box
+// ---------------------------------------------------------------------------
+
+interface ScreenStatus {
+  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'unknown'
+  ip: string
+  last_cast_at: number
+}
+
+interface ScreensStatusData {
+  updated_at: number | null
+  screens: Record<string, ScreenStatus>
+}
+
+interface LogRecord {
+  ts: string
+  level: string
+  name: string
+  msg: string
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  casting:     'green',
+  cooldown:    'teal',
+  starting:    'blue',
+  scanning:    'yellow',
+  unreachable: 'red',
+  unknown:     'gray',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  casting:     'Casting',
+  cooldown:    'Casting (cooldown)',
+  starting:    'Starting…',
+  scanning:    'Scanning for device…',
+  unreachable: 'Unreachable',
+  unknown:     'Unknown',
+}
+
+function ScreenDiagnosticsBox({
+  screenId,
+  screensStatus,
+  logsData,
+}: {
+  screenId: string
+  screensStatus: ScreensStatusData | undefined
+  logsData: { records: LogRecord[] } | undefined
+}) {
+  const [recasting, setRecasting] = useState(false)
+  const [recastDone, setRecastDone] = useState(false)
+
+  const screenStatus = screensStatus?.screens?.[screenId]
+  const updatedAgo   = screensStatus?.updated_at
+    ? Math.round(Date.now() / 1000 - screensStatus.updated_at)
+    : null
+
+  const filteredLogs = ((logsData?.records ?? []) as LogRecord[])
+    .filter(r => r.msg.includes(screenId) || r.name.includes(screenId))
+    .slice()
+    .reverse()
+
+  async function handleRecast() {
+    setRecasting(true)
+    setRecastDone(false)
+    try {
+      await fetch('/api/admin/casting/recast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ screen_id: screenId }),
+      })
+      setRecastDone(true)
+      setTimeout(() => setRecastDone(false), 4000)
+    } finally {
+      setRecasting(false)
+    }
+  }
+
+  const statusKey   = screenStatus?.status ?? 'unknown'
+  const statusColor = STATUS_COLOR[statusKey] ?? 'gray'
+  const statusLabel = STATUS_LABEL[statusKey] ?? statusKey
+
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Stack gap="sm">
+
+        {/* Header row */}
+        <Group justify="space-between" align="center">
+          <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em' }}>
+            Diagnostics
+          </Text>
+          <Button
+            size="xs"
+            variant="light"
+            color={recastDone ? 'green' : 'blue'}
+            loading={recasting}
+            onClick={handleRecast}
+          >
+            {recastDone ? 'Signal sent' : 'Re-cast now'}
+          </Button>
+        </Group>
+
+        {/* Status row */}
+        <Group gap="sm" align="center">
+          <Text size="sm" c="dimmed" style={{ minWidth: 52 }}>Status</Text>
+          {screenStatus ? (
+            <Group gap="xs" align="center">
+              <span style={{
+                display: 'inline-block',
+                width: 8, height: 8,
+                borderRadius: '50%',
+                background: `var(--mantine-color-${statusColor}-5)`,
+                flexShrink: 0,
+              }} />
+              <Text size="sm">{statusLabel}</Text>
+              {screenStatus.ip && (
+                <Code fz="xs">{screenStatus.ip}</Code>
+              )}
+              {screenStatus.last_cast_at > 0 && (
+                <Text size="xs" c="dimmed">
+                  last cast {Math.round(Date.now() / 1000 - screenStatus.last_cast_at)}s ago
+                </Text>
+              )}
+            </Group>
+          ) : (
+            <Text size="sm" c="dimmed">
+              {screensStatus ? 'Not active (no chromecast_ip or casting disabled)' : 'Caster not running'}
+            </Text>
+          )}
+          {updatedAgo !== null && (
+            <Text size="xs" c="dimmed" ml="auto">updated {updatedAgo}s ago</Text>
+          )}
+        </Group>
+
+        {/* Log buffer */}
+        <div style={{
+          background:   'var(--mantine-color-dark-8)',
+          border:       '1px solid var(--mantine-color-dark-5)',
+          borderRadius: 6,
+          padding:      '0.5rem 0.65rem',
+          minHeight:    48,
+          maxHeight:    160,
+          overflowY:    'auto',
+        }}>
+          <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em', marginBottom: 4 }}>
+            Recent warnings / errors
+          </Text>
+          {filteredLogs.length === 0 ? (
+            <Text size="xs" c="dimmed" style={{ opacity: 0.5 }}>No warnings or errors for this screen.</Text>
+          ) : (
+            filteredLogs.map((r, i) => (
+              <div key={i} style={{
+                display:      'flex',
+                gap:          '0.4rem',
+                fontSize:     11,
+                lineHeight:   1.5,
+                color:        r.level === 'ERROR'
+                  ? 'var(--mantine-color-red-4)'
+                  : 'var(--mantine-color-yellow-4)',
+                fontFamily:   'monospace',
+                borderBottom: i < filteredLogs.length - 1
+                  ? '1px solid var(--mantine-color-dark-6)'
+                  : 'none',
+                padding:      '1px 0',
+              }}>
+                <span style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }}>{r.ts}</span>
+                <span style={{ flexShrink: 0, fontWeight: 700 }}>{r.level}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.msg}</span>
+              </div>
+            ))
+          )}
+        </div>
+
+      </Stack>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Screens
+// ---------------------------------------------------------------------------
+
 function ScreensTab({
   draft, onChange,
 }: {
@@ -1273,6 +1455,20 @@ function ScreensTab({
   )
   const [scanState, setScanState] = useState<'idle' | 'scanning' | 'done' | 'error'>('idle')
   const [scanResults, setScanResults] = useState<{ name: string; ip: string }[]>([])
+
+  const { data: screensStatus } = useQuery<ScreensStatusData>({
+    queryKey: ['screens-status'],
+    queryFn: () => apiFetch<ScreensStatusData>('/api/admin/screens/status'),
+    refetchInterval: 10_000,
+    staleTime: 9_000,
+  })
+
+  const { data: logsData } = useQuery<{ records: LogRecord[] }>({
+    queryKey: ['admin-logs'],
+    queryFn: () => apiFetch<{ records: LogRecord[] }>('/api/admin/logs'),
+    refetchInterval: 5_000,
+    staleTime: 4_000,
+  })
 
   function selectScreen(id: string) {
     setSelectedId(id)
@@ -1560,6 +1756,13 @@ function ScreensTab({
               onChange={cfg => updateScreenWidgets(screenWidgets.map(x => x.id === w.id ? { ...x, config: cfg } : x))}
             />
           ))}
+
+          {/* Diagnostics */}
+          <ScreenDiagnosticsBox
+            screenId={currentScreen.id}
+            screensStatus={screensStatus}
+            logsData={logsData}
+          />
         </>
       )}
     </Stack>
