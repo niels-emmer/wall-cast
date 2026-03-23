@@ -45,15 +45,21 @@ services:
   # and re-casts on drop. Re-reads config on every check cycle — adding or
   # removing a screen's chromecast_ip takes effect without restarting.
   #
+  # Dynamic IP recovery: set chromecast_name on each screen (the device's
+  # friendly name shown in Settings → Device name on the TV). When the caster
+  # finds a device unreachable, it calls the scanner sidecar to locate it by
+  # name and automatically updates chromecast_ip in the config.
+  #
   # Setup (one-time):
-  #   1. Find Chromecast IPs:
+  #   1. Find Chromecast IPs and names:
   #        docker run --rm --network=host python:3.12-slim \
   #          sh -c 'pip install -q catt && catt scan'
-  #   2. Add chromecast_ip to each screen in wall-cast.yaml (or via /#admin → Screens)
+  #   2. Add chromecast_ip (and chromecast_name for auto-recovery) to each
+  #      screen in wall-cast.yaml (or via /#admin → Screens)
   #   3. Set SERVER_URL in your .env file to this machine's LAN IP
   #      e.g. SERVER_URL=http://192.168.1.10
   #      ⚠ Do NOT use http://localhost/ — the TV resolves localhost as itself
-  #   4. Set DHCP reservations for all IPs so they never change
+  #   4. Optionally: set DHCP reservations so IPs stay stable between reboots
   #
   # Chromecast scanner sidecar — runs `catt scan` on demand via GET /scan on
   # port 8765. Needs host networking for mDNS discovery. The backend proxies
@@ -80,8 +86,11 @@ services:
       WALL_CONFIG_PATH: /config/wall-cast.yaml
       SERVER_URL: "${SERVER_URL:-http://localhost}"
       CHECK_INTERVAL: "60"
+      SCANNER_URL: "http://localhost:8765/scan"
     depends_on:
       frontend:
+        condition: service_started
+      scanner:
         condition: service_started
 
   # Assistant: polls backend data, cross-correlates across sources, and pushes
