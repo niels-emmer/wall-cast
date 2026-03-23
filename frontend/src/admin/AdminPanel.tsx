@@ -1138,10 +1138,6 @@ function GeneralTab({
 
   return (
     <Stack gap="md">
-      <LocationSection draft={draft} onChange={onChange} />
-      <GarbageSection draft={draft} onChange={onChange} />
-      <NetworkSection draft={draft} onChange={onChange} />
-
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Display language</SectionTitle>
         <SegmentedControl
@@ -1152,11 +1148,16 @@ function GeneralTab({
         />
       </Paper>
 
+      <LocationSection draft={draft} onChange={onChange} />
+
       <FadeSpeedSection draft={draft} onChange={onChange} />
 
       {newsWidget && (
         <NewsSection newsConfig={newsWidget.config} onChange={updateNewsConfig} />
       )}
+
+      <GarbageSection draft={draft} onChange={onChange} />
+      <NetworkSection draft={draft} onChange={onChange} />
     </Stack>
   )
 }
