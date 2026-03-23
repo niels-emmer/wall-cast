@@ -3,10 +3,13 @@
   "configurations": [
     {
       "name": "wall-cast",
-      "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "up", "--build"],
-      "port": 80,
-      "autoPort": false
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "frontend",
+      "port": 5173,
+      "env": {
+        "VITE_BACKEND_URL": "http://192.168.101.252"
+      }
     },
     {
       "name": "frontend-dev",

@@ -15,8 +15,9 @@ What it does:
   1. Navigates to each screen URL on the live VPS (http://192.168.101.252)
   2. Pins the rotator widget to a specific slot so every widget type appears
   3. Injects anonymisation JS: replaces PII text, LAN IPs, and public IPs
-  4. Takes a 1920×1080 screenshot
-  5. Produces 6 PNGs:   screenshot-{1-4}.png  (display screens)
+  4. Replaces the live log section (screenshot 5) with fake plausible entries
+  5. Takes a 1920×1080 screenshot
+  6. Produces 6 PNGs:   screenshot-{1-4}.png  (display screens)
                         screenshot-5.png       (landing page)
                         screenshot-6.png       (admin panel, Screens tab)
 
@@ -50,13 +51,19 @@ DISPLAY_SHOTS = [
 TEXT_REPLACEMENTS = [
     # ── Person names ──
     ("Niels",    "Liam"),
-    ("Sophie",   "Emma"),
+    ("Phileine", "Sophie"),
+    ("Genevra",  "Claire"),
+    ("Arthur",   "Noah"),
+    ("Genesis",  "Emma"),
     # ── Calendar event titles ──
-    ("Delivery G medicine",  "Pick up prescription"),
-    ("Bring back books",     "Library return due"),
-    ("Genesis dance class",  "Evening yoga class"),
-    ("Orthodontist",         "Doctor appointment"),
-    ("School trip",          "Field trip"),
+    ("Delivery G medicine",     "Pick up prescription"),
+    ("Bring back books",        "Library return due"),
+    ("Genesis dance class",     "Evening yoga class"),
+    ("Orthodontist",            "Doctor appointment"),
+    ("School trip",             "Field trip"),
+    ("Schoolvoetbal toernooi",  "Soccer tournament"),
+    ("Beilen",                  "Riverside"),
+    ("Presearch weekly update", "Weekly team standup"),
     # ── Street addresses ──
     ("Keizersgracht", "Main Street"),
     ("Prinsengracht",  "Park Avenue"),
@@ -70,6 +77,52 @@ TEXT_REPLACEMENTS = [
 # Public IPv4s shown in the network widget are replaced by a documentation-
 # range address (RFC 5737). Any non-RFC-1918 / non-loopback IP qualifies.
 FAKE_PUBLIC_IP = "203.0.113.42"
+
+# Generic names used to overwrite Mantine Checkbox labels in the admin People section.
+# Order matches the order people appear in the config. Extend if needed.
+GENERIC_PEOPLE_NAMES = ["Liam", "Sophie", "Claire", "Noah", "Emma", "Oliver", "Ava"]
+
+# Replaces ALL Mantine Checkbox labels inside the "People on this screen" section
+# with the supplied generic names.  Works regardless of encoding or timing issues
+# because it targets DOM elements by position rather than by text content.
+REPLACE_PEOPLE_LABELS_JS = """
+(names) => {
+  // Find the container that holds the "People on this screen" heading
+  let peopleContainer = null;
+  for (const el of document.querySelectorAll('*')) {
+    if (el.childNodes.length === 1 &&
+        el.childNodes[0].nodeType === Node.TEXT_NODE &&
+        /people on this screen/i.test(el.textContent)) {
+      // Walk up to find the enclosing Paper/section div
+      peopleContainer = el.parentElement;
+      while (peopleContainer && !peopleContainer.querySelector('input[type="checkbox"]')) {
+        peopleContainer = peopleContainer.parentElement;
+      }
+      break;
+    }
+  }
+  if (!peopleContainer) return;
+
+  const labels = Array.from(peopleContainer.querySelectorAll('[class*="Checkbox-label"]'));
+  labels.forEach((label, i) => {
+    const hasFamily = label.textContent.includes('currently family');
+    label.textContent = (names[i] || ('Person ' + (i + 1))) +
+                        (hasFamily ? ' (currently family)' : '');
+  });
+}
+"""
+
+# Fake plausible log entries to replace the live log buffer on the landing page.
+# The live logs contain real hostnames, screen names, and other identifying info.
+# Format: [timestamp, level, logger-name, message]
+FAKE_LOG_ENTRIES = [
+    ["10:14:22", "WARNING", "app.routers.news",     "Feed fetch failed (HackerNews): Connection timeout"],
+    ["10:15:01", "WARNING", "caster",               "Screen 'bedroom' not found — falling back to first screen"],
+    ["10:16:44", "ERROR",   "app.routers.calendar", "CalDAV fetch failed: timeout after 10s"],
+    ["10:17:30", "WARNING", "caster",               "Reconnecting to 192.168.1.42 after 15s idle"],
+    ["10:18:05", "WARNING", "app.routers.traffic",  "TomTom API returned 429 — using cached data"],
+    ["10:18:59", "WARNING", "caster",               "Heartbeat missed — recasting to 192.168.1.101"],
+]
 
 # ── JavaScript helpers ─────────────────────────────────────────────────────────
 
@@ -115,6 +168,55 @@ REPLACE_JS = """
     }
   }
   walk(document.body);
+}
+"""
+
+# Receives fake log entries as arg; finds the live log buffer on the landing page
+# (identified by its "Recent warnings / errors" heading) and replaces every log
+# row with the supplied fake entries.  This prevents real hostnames and message
+# content from appearing in the screenshot.
+REPLACE_LOGS_JS = """
+(entries) => {
+  // Find the heading div that contains only the label text
+  const heading = Array.from(document.querySelectorAll('div')).find(d =>
+    d.childNodes.length === 1 &&
+    d.childNodes[0].nodeType === Node.TEXT_NODE &&
+    d.textContent.trim() === 'Recent warnings / errors'
+  );
+  if (!heading) return;
+  const container = heading.parentElement;
+  if (!container) return;
+
+  // Remove all existing rows (keep only the heading)
+  while (container.children.length > 1) container.removeChild(container.lastChild);
+
+  const amber = 'rgba(251,191,36,1)';
+  const red   = '#f87171';
+  const muted = 'rgba(230,237,243,0.45)';
+
+  entries.forEach(([ts, level, name, msg], i) => {
+    const row = document.createElement('div');
+    row.style.cssText = [
+      'display:flex', 'gap:0.5rem', 'font-size:0.75rem', 'line-height:1.5',
+      'font-family:monospace',
+      'color:' + (level === 'ERROR' ? red : amber),
+      'border-bottom:' + (i < entries.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none'),
+      'padding:0.15rem 0',
+    ].join(';');
+
+    function mkSpan(text, css) {
+      const s = document.createElement('span');
+      s.textContent = text;
+      if (css) s.style.cssText = css;
+      return s;
+    }
+
+    row.appendChild(mkSpan(ts,    'color:' + muted + ';flex-shrink:0'));
+    row.appendChild(mkSpan(level, 'flex-shrink:0;font-weight:700'));
+    row.appendChild(mkSpan(name,  'color:' + muted + ';flex-shrink:0'));
+    row.appendChild(mkSpan(msg,   'overflow:hidden;text-overflow:ellipsis;white-space:nowrap'));
+    container.appendChild(row);
+  });
 }
 """
 
@@ -211,12 +313,12 @@ async def main() -> None:
 
         # ── Display screenshots 1–4 ────────────────────────────────────────────
         for shot in DISPLAY_SHOTS:
-            n          = shot["n"]
-            screen     = shot["screen"]
-            main_slot  = shot["main_slot"]
+            n           = shot["n"]
+            screen      = shot["screen"]
+            main_slot   = shot["main_slot"]
             bottom_slot = shot["bottom_slot"]
-            desc       = shot["desc"]
-            out        = OUT_DIR / f"screenshot-{n}.png"
+            desc        = shot["desc"]
+            out         = OUT_DIR / f"screenshot-{n}.png"
 
             print(f"[{n}/6] /?screen={screen}  ({desc})")
 
@@ -239,7 +341,10 @@ async def main() -> None:
         print("[5/6] /  (landing page)")
         page = await context.new_page()
         await page.goto(BASE_URL, wait_until="load", timeout=20000)
-        await page.wait_for_timeout(2500)
+        # Wait for the page to fully settle, then inject fake log entries regardless
+        # of whether the live log section is currently empty or populated.
+        await page.wait_for_timeout(3000)
+        await page.evaluate(REPLACE_LOGS_JS, FAKE_LOG_ENTRIES)
         await anonymise(page)
         await page.screenshot(path=str(OUT_DIR / "screenshot-5.png"), type="png")
         print("       ✓ screenshot-5.png\n")
@@ -249,14 +354,31 @@ async def main() -> None:
         print("[6/6] /#admin  (Screens tab)")
         page = await context.new_page()
         await page.goto(f"{BASE_URL}/#admin", wait_until="load", timeout=20000)
-        await page.wait_for_timeout(2500)
+        # Wait for the admin config (people, screens) to load from the API
+        await page.wait_for_function(
+            "() => document.querySelector('[class*=\"Tabs-tab\"]') !== null",
+            timeout=10000,
+        )
+        await page.wait_for_timeout(1500)
         await page.evaluate("""() => {
             const btn = Array.from(document.querySelectorAll('button'))
               .find(b => b.textContent.trim() === 'Screens');
             if (btn) btn.click();
         }""")
-        await page.wait_for_timeout(1000)
+        # Wait until the People checkboxes are in the DOM, then anonymise twice
+        # (second pass catches anything that rendered just after the first pass)
+        await page.wait_for_function(
+            "() => document.querySelectorAll('input[type=\"checkbox\"]').length > 0",
+            timeout=8000,
+        )
+        await page.wait_for_timeout(500)
         await anonymise(page)
+        # Targeted pass: overwrite Mantine Checkbox labels in the People section
+        # by DOM position — handles names with special chars or unusual encoding.
+        await page.evaluate(REPLACE_PEOPLE_LABELS_JS, GENERIC_PEOPLE_NAMES)
+        await page.wait_for_timeout(200)
+        await anonymise(page)   # final pass for any remaining text nodes
+
         await page.screenshot(path=str(OUT_DIR / "screenshot-6.png"), type="png")
         print("       ✓ screenshot-6.png\n")
         await page.close()
