@@ -1294,11 +1294,13 @@ function ScreensTab({
     }
   }
 
-  function pickScanResult(ip: string) {
+  function pickScanResult(ip: string, name: string) {
     if (!currentScreen) return
     onChange({
       ...multiDraft,
-      screens: multiDraft.screens.map(s => s.id === currentScreen.id ? { ...s, chromecast_ip: ip } : s),
+      screens: multiDraft.screens.map(s =>
+        s.id === currentScreen.id ? { ...s, chromecast_ip: ip, chromecast_name: name } : s
+      ),
     })
     setScanState('idle')
     setScanResults([])
@@ -1429,19 +1431,33 @@ function ScreensTab({
               </Group>
 
               <Stack gap="xs">
-                <TextInput
-                  label="Chromecast IP"
-                  description="Leave blank to disable auto-casting"
-                  placeholder="192.168.1.42"
-                  value={currentScreen.chromecast_ip ?? ''}
-                  onChange={e => onChange({
-                    ...multiDraft,
-                    screens: multiDraft.screens.map(s => s.id === currentScreen.id ? { ...s, chromecast_ip: e.target.value } : s),
-                  })}
-                  size="sm"
-                  w={200}
-                  ff="monospace"
-                />
+                <Group gap="md" align="flex-end">
+                  <TextInput
+                    label="Chromecast IP"
+                    description="Leave blank to disable auto-casting"
+                    placeholder="192.168.1.42"
+                    value={currentScreen.chromecast_ip ?? ''}
+                    onChange={e => onChange({
+                      ...multiDraft,
+                      screens: multiDraft.screens.map(s => s.id === currentScreen.id ? { ...s, chromecast_ip: e.target.value } : s),
+                    })}
+                    size="sm"
+                    w={200}
+                    ff="monospace"
+                  />
+                  <TextInput
+                    label="Chromecast name"
+                    description="Device name for IP auto-recovery"
+                    placeholder="Living Room TV"
+                    value={(currentScreen as any).chromecast_name ?? ''}
+                    onChange={e => onChange({
+                      ...multiDraft,
+                      screens: multiDraft.screens.map(s => s.id === currentScreen.id ? { ...s, chromecast_name: e.target.value } : s),
+                    })}
+                    size="sm"
+                    w={220}
+                  />
+                </Group>
                 {scanState !== 'scanning' && (
                   <Button
                     variant="subtle"
@@ -1482,7 +1498,7 @@ function ScreensTab({
                           <td style={{ padding: '6px 12px 6px 0', fontSize: 13 }}>{d.name}</td>
                           <td style={{ padding: '6px 12px 6px 0', fontSize: 13, fontFamily: 'monospace', color: 'var(--mantine-color-cyan-4)' }}>{d.ip}</td>
                           <td style={{ padding: '6px 0', textAlign: 'right' }}>
-                            <Button size="xs" variant="subtle" color="cyan" onClick={() => pickScanResult(d.ip)}>
+                            <Button size="xs" variant="subtle" color="cyan" onClick={() => pickScanResult(d.ip, d.name)}>
                               Use
                             </Button>
                           </td>
