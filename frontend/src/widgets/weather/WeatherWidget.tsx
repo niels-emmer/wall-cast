@@ -4,29 +4,21 @@ import { useLang } from '../../i18n/use-lang'
 import type { SunData } from '../../types/api'
 import type { Translations } from '../../i18n/translations'
 import { fs, sp, col, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { WeatherIcon, SunriseIcon, SunsetIcon, DaylightIcon } from './WeatherIcons'
 
 interface Props {
   config: Record<string, unknown>
 }
 
-const WMO_SYMBOLS: Record<number, string> = {
-  0:  '☀',  1:  '🌤', 2:  '⛅', 3:  '☁',
-  45: '🌫', 48: '🌫',
-  51: '🌦', 53: '🌦', 55: '🌧',
-  61: '🌧', 63: '🌧', 65: '🌧',
-  71: '🌨', 73: '🌨', 75: '❄',
-  80: '🌦', 81: '🌧', 82: '⛈',
-  95: '⛈', 96: '⛈', 99: '⛈',
-}
 function wmo(code: number, t: Translations) {
-  return { symbol: WMO_SYMBOLS[code] ?? '?', label: t.wmoLabels[code] ?? '?' }
+  return { label: t.wmoLabels[code] ?? '?' }
 }
 
 const divider = <div style={dividerStyle} />
 
 // ── Hourly column — fills available height, content distributed evenly ────────
-function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
-  hour: string; symbol: string; temp: number; precip: number; accent?: boolean
+function HourlyCol({ hour, code, temp, precip, accent = false }: {
+  hour: string; code: number; temp: number; precip: number; accent?: boolean
 }) {
   return (
     <div style={{
@@ -48,7 +40,7 @@ function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
       }}>
         {hour}
       </span>
-      <span style={{ fontSize: fs.icon, lineHeight: 1 }}>{symbol}</span>
+      <span style={{ fontSize: fs.icon, lineHeight: 1 }}><WeatherIcon code={code} /></span>
       <span style={{
         fontSize:           fs.lg,
         fontWeight:         700,
@@ -68,8 +60,8 @@ function HourlyCol({ hour, symbol, temp, precip, accent = false }: {
 }
 
 // ── Daily column — fills available height, content distributed evenly ─────────
-function DailyCol({ label, symbol, hi, lo, accent = false }: {
-  label: string; symbol: string; hi: number; lo: number; accent?: boolean
+function DailyCol({ label, code, hi, lo, accent = false }: {
+  label: string; code: number; hi: number; lo: number; accent?: boolean
 }) {
   return (
     <div style={{
@@ -92,7 +84,7 @@ function DailyCol({ label, symbol, hi, lo, accent = false }: {
       }}>
         {label}
       </span>
-      <span style={{ fontSize: fs.icon, lineHeight: 1 }}>{symbol}</span>
+      <span style={{ fontSize: fs.icon, lineHeight: 1 }}><WeatherIcon code={code} /></span>
       <span style={{
         fontSize:           fs.lg,
         fontWeight:         700,
@@ -118,15 +110,15 @@ function SunBlock({ d, t }: { d: SunData; t: Translations }) {
   const mono: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
 
   const cols = [
-    { emoji: '🌅', label: t.sunrise, time: d.sunrise },
-    { emoji: '🌇', label: t.sunset,  time: d.sunset  },
+    { Icon: SunriseIcon, label: t.sunrise, time: d.sunrise },
+    { Icon: SunsetIcon,  label: t.sunset,  time: d.sunset  },
   ]
 
   return (
     <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2em' }}>
       {/* Two columns: sunrise | sunset */}
       <div style={{ display: 'flex', gap: '1.6em', alignItems: 'flex-end' }}>
-        {cols.map(({ emoji, label, time }) => (
+        {cols.map(({ Icon, label, time }) => (
           <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: sp.innerGap }}>
             <span style={{
               fontSize:      fs.xs,
@@ -134,7 +126,7 @@ function SunBlock({ d, t }: { d: SunData; t: Translations }) {
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
             }}>
-              {emoji} {label}
+              <Icon /> {label}
             </span>
             <span style={{
               fontSize:   fs.md,
@@ -154,7 +146,7 @@ function SunBlock({ d, t }: { d: SunData; t: Translations }) {
         color:         muted,
         letterSpacing: '0.05em',
       }}>
-        ☀ {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m {t.daylight}
+        <DaylightIcon /> {d.day_length_h}h {String(d.day_length_m).padStart(2, '0')}m {t.daylight}
       </span>
     </div>
   )
@@ -179,7 +171,7 @@ export function WeatherWidget({ config }: Props) {
   const now      = new Date()
   const startIdx = Math.max(0, data.hourly.time.findIndex(ts => new Date(ts) >= now))
   const cur      = data.current_weather
-  const { symbol: curSymbol, label: curLabel } = wmo(cur.weathercode, t)
+  const { label: curLabel } = wmo(cur.weathercode, t)
 
   return (
     <div style={shellStyle}>
@@ -187,7 +179,7 @@ export function WeatherWidget({ config }: Props) {
       {/* ── Title + Current ── */}
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.75em', flexShrink: 0 }}>
         <div style={titleStyle}>{t.weatherTitle}</div>
-        <span style={{ fontSize: fs.hero, lineHeight: 1 }}>{curSymbol}</span>
+        <span style={{ fontSize: fs.hero, lineHeight: 1 }}><WeatherIcon code={cur.weathercode} /></span>
         <span style={{
           fontSize:           fs.hero,
           fontWeight:         900,
@@ -215,12 +207,11 @@ export function WeatherWidget({ config }: Props) {
           {Array.from({ length: 7 }, (_, i) => {
             const idx  = startIdx + i
             const hour = `${String(new Date(data.hourly.time[idx]).getHours()).padStart(2, '0')}:00`
-            const { symbol } = wmo(data.hourly.weathercode[idx], t)
             return (
               <HourlyCol
                 key={idx}
                 hour={hour}
-                symbol={symbol}
+                code={data.hourly.weathercode[idx]}
                 temp={Math.round(data.hourly.temperature_2m[idx])}
                 precip={data.hourly.precipitation_probability[idx]}
                 accent={i === 0}
@@ -241,7 +232,7 @@ export function WeatherWidget({ config }: Props) {
               <DailyCol
                 key={ts}
                 label={i === 0 ? t.today : t.daysShort[d.getDay()]}
-                symbol={wmo(data.daily.weathercode[i], t).symbol}
+                code={data.daily.weathercode[i]}
                 hi={Math.round(data.daily.temperature_2m_max[i])}
                 lo={Math.round(data.daily.temperature_2m_min[i])}
                 accent={i === 0}
