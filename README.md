@@ -117,8 +117,6 @@ The casting server is now available at **`http://<host-ip>`**. To set up and con
 
 In the admin panel, go to **Screens** → select a screen → **Screen settings**. Click **Scan network** to discover Chromecast devices on your LAN, then click a device row to pre-fill the IP. Hit **Save**.
 
-> **Tip:** Set DHCP reservations for the host machine and all Chromecast devices in your router so their IPs never change across reboots.
-
 The display is cast to the TV within ~15 seconds of startup and re-casts automatically if the session drops.
 
 To stop: `docker compose down`
