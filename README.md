@@ -1,14 +1,12 @@
 # wall-cast
 
-**A self-hosted home display that casts personalised information to Chromecast-connected screens around your house.**
+**A self-hosted home display that casts personalised information to Android TV sets, Android TV boxes, and Chromecast-connected screens around your house.**
 
 Put the weather, family calendar, bin collection schedule, and live travel times on the TV in the living room. Put a different mix — with the kids' school schedule, the rain radar, and bus / tram departures — on the screen in their room. All from one Docker stack, hot-reloading, no cloud, no subscription.
 
 **This is not a digital signage system.** It's a lightweight, family-oriented display: *my* weather, *our* schedule, *the* waste collection. It runs entirely on a Docker host on your home LAN — a Raspberry Pi, a NAS, a spare PC — and casts the display to whichever Chromecasts or Google TVs you point it at.
 
-> **Requirement:** A Linux Docker host on your home network (a Raspberry Pi 4 works well). The Chromecasts must be on the same LAN segment as the host.
-
-It is fully AI-coded and designed to be extended. Fork it, tell Claude what you want, and iterate from there.
+It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you want](docs/prompt-a-feature.md), and iterate from there.
 
 ---
 
