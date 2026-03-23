@@ -83,7 +83,7 @@ export function RotatorWidget({ config }: WidgetProps) {
               position: 'absolute',
               inset: 0,
               opacity: active ? 1 : 0,
-              transition: 'opacity 0.8s ease',
+              transition: 'opacity var(--rotator-fade-duration, 0.8s) ease',
               pointerEvents: active ? 'auto' : 'none',
             }}
           >
