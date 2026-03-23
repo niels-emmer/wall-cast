@@ -125,6 +125,92 @@ def _write_config(path: Path, data: dict[str, Any]) -> None:
         pass
 
 
+_DEFAULT_RULES: list[dict[str, Any]] = [
+    {
+        "id": "garbage-reminder",
+        "title": "Garbage pickup reminder",
+        "description": "Alert when bin collection is approaching",
+        "enabled": True,
+        "condition": {"variable": "garbage.hours_until_pickup", "operator": "<=", "value": 18, "unit": "h"},
+    },
+    {
+        "id": "bus-delay",
+        "title": "Bus delay alert",
+        "description": "Alert when your bus is delayed or cancelled",
+        "enabled": True,
+        "condition": {"variable": "bus.delay_minutes", "operator": ">=", "value": 5, "unit": "min"},
+    },
+    {
+        "id": "traffic-delay",
+        "title": "Traffic delay",
+        "description": "Alert when commute is significantly delayed",
+        "enabled": True,
+        "condition": {"variable": "traffic.delay_pct", "operator": ">=", "value": 25, "unit": "%"},
+    },
+    {
+        "id": "calendar-reminder",
+        "title": "Calendar reminder",
+        "description": "Remind before upcoming calendar events",
+        "enabled": True,
+        "condition": {"variable": "calendar.minutes_until_event", "operator": "<=", "value": 30, "unit": "min"},
+    },
+    {
+        "id": "weather-warning",
+        "title": "Weather warning",
+        "description": "Alert for severe weather warnings",
+        "enabled": True,
+        "condition": {"variable": "weather.warning_level", "operator": "in", "value": ["oranje", "rood"], "unit": None},
+    },
+]
+
+# Maps old flat rule keys to the default rule ID and condition value field
+_FLAT_RULE_MAP = {
+    "garbage_notify_hours_before": ("garbage-reminder", "garbage.hours_until_pickup"),
+    "bus_delay_threshold_min":     ("bus-delay",         "bus.delay_minutes"),
+    "traffic_delay_threshold_pct": ("traffic-delay",     "traffic.delay_pct"),
+    "calendar_reminder_min":       ("calendar-reminder", "calendar.minutes_until_event"),
+}
+
+
+def _migrate_rules(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Convert old flat assistant.rules dict to new Rule list format.
+
+    Returns (updated_data, changed). If already in new format (list), returns unchanged.
+    """
+    assistant = data.get("shared", {}).get("assistant")
+    if not isinstance(assistant, dict):
+        return data, False
+    rules = assistant.get("rules")
+    if not isinstance(rules, dict):
+        return data, False  # already a list or absent — nothing to do
+
+    logger.info("Migrating flat assistant.rules to Rule list format")
+
+    # Build new rules list from defaults, overriding values from old flat keys
+    new_rules = []
+    for tpl in _DEFAULT_RULES:
+        rule = {**tpl, "condition": dict(tpl["condition"])}
+        rid = rule["id"]
+        # Find the matching old flat key and carry its value over
+        for flat_key, (target_id, _var) in _FLAT_RULE_MAP.items():
+            if target_id == rid and flat_key in rules:
+                rule["condition"]["value"] = int(rules[flat_key])
+        new_rules.append(rule)
+
+    # Deep-copy with updated rules
+    new_data = {
+        **data,
+        "shared": {
+            **data["shared"],
+            "assistant": {
+                **assistant,
+                "rules": new_rules,
+            },
+        },
+    }
+    return new_data, True
+
+
 def _migrate_flat(raw: dict[str, Any]) -> dict[str, Any]:
     """Convert old flat single-screen config to multi-screen format."""
     logger.info("Migrating flat config to multi-screen format")
@@ -185,6 +271,11 @@ def load_config() -> dict[str, Any]:
         data = _migrate_flat(data)
         _write_config(path, data)
         logger.info("Flat config migrated and written back to %s", path)
+
+    data, changed = _migrate_rules(data)
+    if changed:
+        _write_config(path, data)
+        logger.info("Rules migrated to new format and written back to %s", path)
 
     return data
 

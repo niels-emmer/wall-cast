@@ -1,8 +1,7 @@
 """
 Weather warning alerts (shared).
 
-Fires for rood (red) and oranje (orange) KNMI warnings via MeteoAlarm.
-Geel (yellow) warnings are skipped by default — too frequent to be actionable.
+Fires for warning levels in rule.condition.value (default: ["oranje", "rood"]).
 """
 
 import state
@@ -12,8 +11,8 @@ _PRIORITY = {"rood": "urgent", "oranje": "high"}
 _TAGS     = {"rood": ["rotating_light"], "oranje": ["warning"]}
 
 
-def check(warnings_data: dict, rules_cfg: dict) -> list[Notification]:
-    notify_levels = {"rood", "oranje"}
+def check(rule: dict, warnings_data: dict) -> list[Notification]:
+    notify_levels = set(rule.get("condition", {}).get("value") or ["oranje", "rood"])
     notifications: list[Notification] = []
 
     for w in warnings_data.get("warnings", []):
@@ -21,8 +20,8 @@ def check(warnings_data: dict, rules_cfg: dict) -> list[Notification]:
         if level not in notify_levels:
             continue
 
-        phenomenon  = w.get("phenomenon", "Weather event")
-        valid_from  = w.get("valid_from", "")
+        phenomenon = w.get("phenomenon", "Weather event")
+        valid_from = w.get("valid_from", "")
         key = f"warning:{phenomenon}:{valid_from}"
         if state.has_fired(key):
             continue
@@ -35,13 +34,11 @@ def check(warnings_data: dict, rules_cfg: dict) -> list[Notification]:
         if description:
             msg += f" {description}"
         if valid_until:
-            until_str = valid_until[:16].replace("T", " ")
-            msg += f" Until {until_str}."
+            msg += f" Until {valid_until[:16].replace('T', ' ')}."
 
         notifications.append(Notification(
             title=f"Weather: {level.capitalize()} — {phenomenon}",
             message=msg,
-            person_id=None,
             priority=_PRIORITY.get(level, "default"),
             tags=_TAGS.get(level, ["cloud"]),
         ))

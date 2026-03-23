@@ -1,7 +1,7 @@
 """
 Calendar event reminders (per person).
 
-Fires `calendar_reminder_min` minutes before any timed event.
+Fires rule.condition.value minutes before any timed event (default 30 min).
 All-day events are skipped — they don't have a meaningful start time.
 """
 
@@ -20,8 +20,6 @@ def parse_event_dt(event: dict) -> datetime | None:
     if not d or not t:
         return None
     try:
-        # API returns local time strings without tz; treat as local and convert to UTC.
-        # astimezone() picks up the system timezone (set via TZ env var or host default).
         return datetime.fromisoformat(f"{d}T{t}:00").astimezone(timezone.utc)
     except Exception:
         return None
@@ -34,10 +32,10 @@ def _all_events(calendar_data: dict) -> list[dict]:
     return events
 
 
-def check(person: dict, calendar_data: dict, rules_cfg: dict) -> list[Notification]:
-    person_id   = person["id"]
-    person_name = person.get("name", person_id)
-    reminder_min = int(rules_cfg.get("calendar_reminder_min", 30))
+def check(rule: dict, person: dict, calendar_data: dict) -> list[Notification]:
+    person_id    = person["id"]
+    person_name  = person.get("name", person_id)
+    reminder_min = int(rule.get("condition", {}).get("value", 30))
 
     now = datetime.now(timezone.utc)
     notifications: list[Notification] = []

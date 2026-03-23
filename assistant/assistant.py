@@ -10,7 +10,7 @@ Configuration is read from the same wall-cast.yaml used by the rest of the
 stack. All assistant settings live under shared.assistant — if that block is
 absent or assistant.enabled is false, this service does nothing.
 
-Example config:
+Example config (new format):
   shared:
     assistant:
       enabled: true
@@ -23,19 +23,61 @@ Example config:
 
       ai:
         provider: none             # none | ollama | openai
-        # ollama_url: http://host.docker.internal:11434
-        # ollama_model: llama3.2:3b
 
       rules:
-        garbage_notify_hours_before: 18
-        bus_delay_threshold_min: 5
-        traffic_delay_threshold_pct: 25
-        calendar_reminder_min: 30
+        - id: garbage-reminder
+          title: Garbage pickup reminder
+          enabled: true
+          condition:
+            variable: garbage.hours_until_pickup
+            operator: "<="
+            value: 18
+            unit: h
+        - id: bus-delay
+          title: Bus delay alert
+          enabled: true
+          condition:
+            variable: bus.delay_minutes
+            operator: ">="
+            value: 5
+            unit: min
+        - id: traffic-delay
+          title: Traffic delay
+          enabled: true
+          condition:
+            variable: traffic.delay_pct
+            operator: ">="
+            value: 25
+            unit: "%"
+        - id: calendar-reminder
+          title: Calendar reminder
+          enabled: true
+          condition:
+            variable: calendar.minutes_until_event
+            operator: "<="
+            value: 30
+            unit: min
+        - id: weather-warning
+          title: Weather warning
+          enabled: true
+          condition:
+            variable: weather.warning_level
+            operator: in
+            value: [oranje, rood]
 
-Per-person notification routing (optional):
+Per-person rules (optional, under each person in shared.people):
   shared:
     people:
       - id: alice
+        rules:
+          - id: alice-bus-custom
+            title: Alice's bus (low threshold)
+            enabled: true
+            condition:
+              variable: bus.delay_minutes
+              operator: ">="
+              value: 3
+              unit: min
         notify:
           ntfy_topic: wall-cast-alice   # overrides global topic for Alice's alerts
 """
@@ -43,18 +85,13 @@ Per-person notification routing (optional):
 import os
 import time
 
-import httpx
 import yaml
 
 import state
 from ai import formatter as ai_fmt
 from notify import ntfy as notify_ntfy
 from rules import Notification
-from rules import bus as rule_bus
-from rules import calendar as rule_calendar
-from rules import garbage as rule_garbage
-from rules import traffic as rule_traffic
-from rules import weather as rule_weather
+from rules.engine import REQUIRES_PERSON, _cached_fetch, run_rule
 
 CONFIG_PATH = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
 
@@ -67,18 +104,6 @@ def load_config() -> dict:
             return yaml.safe_load(f) or {}
     except Exception as exc:
         print(f"[assistant] Config read error: {exc}", flush=True)
-        return {}
-
-
-# ── Data fetching ─────────────────────────────────────────────────────────────
-
-def _fetch(client: httpx.Client, url: str, params: dict | None = None) -> dict:
-    try:
-        r = client.get(url, params=params, timeout=15.0)
-        r.raise_for_status()
-        return r.json()
-    except Exception as exc:
-        print(f"[assistant] Fetch error {url}: {exc}", flush=True)
         return {}
 
 
@@ -123,27 +148,44 @@ def run_cycle(cfg: dict) -> None:
     assistant_cfg = shared.get("assistant", {})
     notify_cfg    = assistant_cfg.get("notify", {})
     ai_cfg        = assistant_cfg.get("ai", {})
-    rules_cfg     = assistant_cfg.get("rules", {})
     backend_url   = assistant_cfg.get("backend_url", "http://backend:8000").rstrip("/")
     garbage_cfg   = shared.get("garbage", {})
     people        = shared.get("people", [])
 
+    # Rules must be a list (new format); silently ignore old flat dict
+    rules_raw  = assistant_cfg.get("rules", [])
+    rules_list: list[dict] = rules_raw if isinstance(rules_raw, list) else []
+
+    # Partition generic rules into global (person-agnostic) and person-aware
+    global_rules       = [r for r in rules_list
+                          if not REQUIRES_PERSON.get(r.get("condition", {}).get("variable", ""), False)]
+    person_aware_rules = [r for r in rules_list
+                          if REQUIRES_PERSON.get(r.get("condition", {}).get("variable", ""), False)]
+
+    import httpx
     with httpx.Client() as client:
+        data_cache: dict = {}
 
-        # ── Shared: garbage ───────────────────────────────────────────────────
-        if garbage_cfg.get("postcode") and garbage_cfg.get("huisnummer"):
-            data = _fetch(client, f"{backend_url}/api/garbage", {
-                "postcode":   garbage_cfg["postcode"],
-                "huisnummer": str(garbage_cfg["huisnummer"]),
-                "days_ahead": 3,
-            })
-            for n in rule_garbage.check(data, rules_cfg):
-                _dispatch(n, None, notify_cfg, ai_cfg, str(data))
+        # Pre-fetch calendar data for all people upfront —
+        # needed by both calendar reminders and bus cross-correlation.
+        cal_data_by_person: dict[str, dict] = {}
+        for person in people:
+            pid     = person.get("id")
+            cal_ids = person.get("calendar_ids") or []
+            if pid and cal_ids:
+                cal_data_by_person[pid] = _cached_fetch(
+                    client, data_cache,
+                    f"{backend_url}/api/calendar",
+                    {"calendar_ids": cal_ids},
+                )
 
-        # ── Shared: weather warnings ──────────────────────────────────────────
-        data = _fetch(client, f"{backend_url}/api/warnings")
-        for n in rule_weather.check(data, rules_cfg):
-            _dispatch(n, None, notify_cfg, ai_cfg, str(data))
+        # ── Global rules (garbage, weather, …) ───────────────────────────────
+        for rule in global_rules:
+            if not rule.get("enabled", True):
+                continue
+            for n in run_rule(rule, None, client, data_cache, cal_data_by_person,
+                              backend_url, garbage_cfg):
+                _dispatch(n, None, notify_cfg, ai_cfg)
 
         # ── Per-person rules ──────────────────────────────────────────────────
         for person in people:
@@ -151,41 +193,14 @@ def run_cycle(cfg: dict) -> None:
             if not pid:
                 continue
 
-            # Calendar — needed for reminders AND bus cross-correlation
-            cal_ids = person.get("calendar_ids") or []
-            cal_data: dict = {}
-            if cal_ids:
-                cal_data = _fetch(
-                    client,
-                    f"{backend_url}/api/calendar",
-                    {"calendar_ids": cal_ids},
-                )
-                for n in rule_calendar.check(person, cal_data, rules_cfg):
-                    _dispatch(n, person, notify_cfg, ai_cfg, str(cal_data))
-
-            # Bus (cross-correlated with calendar — only alerts when travelling)
-            bus_cfg_p = person.get("bus") or {}
-            if bus_cfg_p.get("stop_city") and bus_cfg_p.get("stop_name"):
-                bus_data = _fetch(client, f"{backend_url}/api/bus", {
-                    "stop_city": bus_cfg_p["stop_city"],
-                    "stop_name": bus_cfg_p["stop_name"],
-                })
-                if cal_data:
-                    for n in rule_bus.check(person, bus_data, cal_data, rules_cfg):
-                        _dispatch(n, person, notify_cfg, ai_cfg, str(bus_data))
-
-            # Traffic / commute
-            traf_cfg_p = person.get("traffic") or {}
-            if traf_cfg_p.get("home_address") and traf_cfg_p.get("work_address"):
-                params: dict = {
-                    "home": traf_cfg_p["home_address"],
-                    "work": traf_cfg_p["work_address"],
-                }
-                if traf_cfg_p.get("route_roads"):
-                    params["route_roads"] = traf_cfg_p["route_roads"]
-                traf_data = _fetch(client, f"{backend_url}/api/traffic", params)
-                for n in rule_traffic.check(person, traf_data, rules_cfg):
-                    _dispatch(n, person, notify_cfg, ai_cfg, str(traf_data))
+            # Generic person-aware rules + rules defined on this person
+            all_rules = person_aware_rules + (person.get("rules") or [])
+            for rule in all_rules:
+                if not rule.get("enabled", True):
+                    continue
+                for n in run_rule(rule, person, client, data_cache, cal_data_by_person,
+                                  backend_url, garbage_cfg):
+                    _dispatch(n, person, notify_cfg, ai_cfg)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

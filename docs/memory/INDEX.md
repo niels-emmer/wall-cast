@@ -230,6 +230,18 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Travel time: TomTom Routing API — free key (`TOMTOM_API_KEY`), 5 min TTL, traffic-aware
 - TomTom Geocoding: `api.tomtom.com/search/2/geocode/{query}.json` — resolves home/work addresses to coords on first request, cached for process lifetime
 
+## In-Progress Work
+
+### Rules System Rewrite
+See `records/rules-rewrite-plan.md` for the full plan and status.
+- Replacing flat `assistant.rules` dict with a structured `Rule[]` list
+- Generic (shared) and personal (per-person) rules
+- Variable catalogue, generic rule engine in assistant
+- Admin panel: rule list UI + rule editor modal
+- **Current batch:** Batches A–D complete. Waiting for Phase 5c (rule editor modal) with user.
+- **Stop before:** Phase 5c (rule editor modal) — implement with user
+- **Status:** All code written and verified in Vite dev preview. Needs deploy + server YAML migration to show populated rules.
+
 ## Open Items
 
 See `records/future-ideas.md` for the full backlog with detailed notes on each.

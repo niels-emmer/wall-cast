@@ -1,9 +1,8 @@
 """
 Commute delay alerts (per person).
 
-Fires at most once per day when the calculated travel time exceeds
-`traffic_delay_threshold_pct` percent above the undelayed baseline.
-Requires TomTom API key to be set for the backend's travel time feature.
+Fires at most once per day when commute delay meets the rule condition.
+Variable: traffic.delay_pct (% above normal) or traffic.delay_minutes (absolute).
 """
 
 from datetime import datetime, timezone
@@ -12,10 +11,13 @@ import state
 from rules import Notification
 
 
-def check(person: dict, traffic_data: dict, rules_cfg: dict) -> list[Notification]:
+def check(rule: dict, person: dict, traffic_data: dict) -> list[Notification]:
     person_id   = person["id"]
     person_name = person.get("name", person_id)
-    threshold_pct = int(rules_cfg.get("traffic_delay_threshold_pct", 25))
+
+    condition = rule.get("condition", {})
+    variable  = condition.get("variable", "traffic.delay_pct")
+    threshold = int(condition.get("value", 25))
 
     travel = traffic_data.get("travel")
     if not travel:
@@ -29,8 +31,13 @@ def check(person: dict, traffic_data: dict, rules_cfg: dict) -> list[Notificatio
         return []   # not meaningfully delayed
 
     delay_pct = (delay_min / normal_min) * 100
-    if delay_pct < threshold_pct:
-        return []
+
+    if variable == "traffic.delay_minutes":
+        if delay_min < threshold:
+            return []
+    else:  # traffic.delay_pct
+        if delay_pct < threshold:
+            return []
 
     today = datetime.now(timezone.utc).date().isoformat()
     key   = f"traffic:{person_id}:{today}"

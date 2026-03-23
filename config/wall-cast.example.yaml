@@ -58,6 +58,15 @@ shared:
     #   notify:             # assistant notification routing (optional)
     #     ntfy_topic: wall-cast-bob   # personal ntfy topic (overrides shared default)
     #     # matrix_id: "@bob:matrix.example.com"   # future: Matrix DM
+    #   rules:              # personal assistant rules (in addition to shared rules)
+    #     - id: bob-bus-threshold
+    #       title: Bob's bus alert
+    #       enabled: true
+    #       condition:
+    #         variable: bus.delay_minutes
+    #         operator: ">="
+    #         value: 3
+    #         unit: min
 
   # ── Assistant: proactive notifications ──────────────────────────────────────
   # Standalone sidecar that polls backend data and pushes smart notifications.
@@ -80,10 +89,45 @@ shared:
   #     # openai_api_key: sk-...  # better: set OPENAI_API_KEY in .env
   #
   #   rules:
-  #     garbage_notify_hours_before: 18   # alert when pickup is within 18 h
-  #     bus_delay_threshold_min: 5        # alert if bus delay >= 5 min
-  #     traffic_delay_threshold_pct: 25   # alert if commute is 25% above normal
-  #     calendar_reminder_min: 30         # remind 30 min before calendar events
+  #     - id: garbage-reminder
+  #       title: Garbage pickup reminder
+  #       enabled: true
+  #       condition:
+  #         variable: garbage.hours_until_pickup
+  #         operator: "<="
+  #         value: 18
+  #         unit: h
+  #     - id: bus-delay
+  #       title: Bus delay alert
+  #       enabled: true
+  #       condition:
+  #         variable: bus.delay_minutes
+  #         operator: ">="
+  #         value: 5
+  #         unit: min
+  #     - id: traffic-delay
+  #       title: Traffic delay
+  #       enabled: true
+  #       condition:
+  #         variable: traffic.delay_pct
+  #         operator: ">="
+  #         value: 25
+  #         unit: "%"
+  #     - id: calendar-reminder
+  #       title: Calendar reminder
+  #       enabled: true
+  #       condition:
+  #         variable: calendar.minutes_until_event
+  #         operator: "<="
+  #         value: 30
+  #         unit: min
+  #     - id: weather-warning
+  #       title: Weather warning
+  #       enabled: true
+  #       condition:
+  #         variable: weather.warning_level
+  #         operator: in
+  #         value: [oranje, rood]
 
   widgets:
     - id: news

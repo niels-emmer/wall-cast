@@ -2,7 +2,7 @@
 Garbage pickup reminders.
 
 Fires once per collection type per pickup date when the collection is within
-`garbage_notify_hours_before` hours (default 18 — i.e. the evening before).
+the threshold hours (rule.condition.value; default 18 h → next-day alert).
 """
 
 import state
@@ -16,9 +16,8 @@ _LABEL = {
 }
 
 
-def check(data: dict, rules_cfg: dict) -> list[Notification]:
-    hours_before = int(rules_cfg.get("garbage_notify_hours_before", 18))
-    # Translate hours into a days_until threshold:
+def check(rule: dict, data: dict) -> list[Notification]:
+    hours_before = int(rule.get("condition", {}).get("value", 18))
     # 18 h → notify when pickup is tomorrow (days_until == 1)
     # ≤ 12 h → notify same-day only (days_until == 0)
     threshold_days = 1 if hours_before > 12 else 0
@@ -42,7 +41,6 @@ def check(data: dict, rules_cfg: dict) -> list[Notification]:
         notifications.append(Notification(
             title="Garbage collection",
             message=f"{label} is being collected {when} ({col_date}).",
-            person_id=None,
             priority="default",
             tags=["wastebasket"],
         ))

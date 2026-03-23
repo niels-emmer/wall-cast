@@ -26,6 +26,9 @@ import type {
   PersonRssFeed,
   ScreenSection,
   WidgetConfig,
+  Rule,
+  RuleCondition,
+  RuleVariable,
 } from '../types/config'
 import { isMultiScreen } from '../types/config'
 import { apiFetch } from '../lib/api'
@@ -916,6 +919,94 @@ function LocationSection({
 }
 
 // ---------------------------------------------------------------------------
+// Rule helpers
+// ---------------------------------------------------------------------------
+
+function useRuleVariables(): RuleVariable[] {
+  const { data } = useQuery<RuleVariable[]>({
+    queryKey: ['rule-variables'],
+    queryFn: () => apiFetch<RuleVariable[]>('/api/admin/rule-variables'),
+    staleTime: Infinity,
+  })
+  return data ?? []
+}
+
+function formatCondition(condition: RuleCondition, variables: RuleVariable[]): string {
+  const varMeta = variables.find(v => v.id === condition.variable)
+  const label   = varMeta?.label ?? condition.variable
+  const op      = condition.operator
+  const val     = Array.isArray(condition.value)
+    ? condition.value.join(', ')
+    : String(condition.value)
+  const unit    = condition.unit ? ` ${condition.unit}` : ''
+  return op === 'in' ? `${label}: ${val}` : `${label} ${op} ${val}${unit}`
+}
+
+function RuleList({
+  rules,
+  onChangeRules,
+  variables,
+  onAddRule,
+}: {
+  rules: Rule[]
+  onChangeRules: (rules: Rule[]) => void
+  variables: RuleVariable[]
+  onAddRule?: () => void  // Phase 5c — passed undefined until modal is ready
+}) {
+  function toggleEnabled(idx: number) {
+    const updated = rules.map((r, i) => i === idx ? { ...r, enabled: !r.enabled } : r)
+    onChangeRules(updated)
+  }
+
+  function removeRule(idx: number) {
+    onChangeRules(rules.filter((_, i) => i !== idx))
+  }
+
+  return (
+    <Stack gap={6}>
+      {rules.length === 0 && (
+        <Text size="sm" c="dimmed">No rules configured.</Text>
+      )}
+      {rules.map((rule, idx) => (
+        <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Checkbox
+            checked={rule.enabled}
+            onChange={() => toggleEnabled(idx)}
+            size="sm"
+            style={{ flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Text size="sm" fw={500}>{rule.title}</Text>
+            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {formatCondition(rule.condition, variables)}
+            </Text>
+          </div>
+          <ActionIcon
+            variant="subtle"
+            color="red"
+            size="sm"
+            onClick={() => removeRule(idx)}
+            style={{ flexShrink: 0 }}
+          >
+            ✕
+          </ActionIcon>
+        </div>
+      ))}
+      <Button
+        variant="subtle"
+        color="gray"
+        size="xs"
+        onClick={onAddRule}
+        disabled={!onAddRule}
+        style={{ alignSelf: 'flex-start', marginTop: 4 }}
+      >
+        + Add rule
+      </Button>
+    </Stack>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab: Assistant
 // ---------------------------------------------------------------------------
 
@@ -925,10 +1016,11 @@ function AssistantTab({
   draft: AdminConfig
   onChange: (d: AdminConfig) => void
 }) {
-  const ac = getAssistant(draft)
-  const notify  = ac.notify  ?? {}
-  const ai      = ac.ai      ?? {}
-  const rules   = ac.rules   ?? {}
+  const ac        = getAssistant(draft)
+  const notify    = ac.notify  ?? {}
+  const ai        = ac.ai      ?? {}
+  const rules     = Array.isArray(ac.rules) ? ac.rules : []
+  const variables = useRuleVariables()
 
   function update(patch: Partial<AssistantConfig>) {
     onChange(setAssistantInDraft(draft, { ...ac, ...patch }))
@@ -1064,48 +1156,11 @@ function AssistantTab({
       {/* Rules */}
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Rules</SectionTitle>
-        <Stack gap="sm">
-          <NumberInput
-            label="Garbage — notify hours before pickup"
-            description="Alert when collection is within this many hours"
-            value={rules.garbage_notify_hours_before ?? 18}
-            onChange={v => update({ rules: { ...rules, garbage_notify_hours_before: Number(v) } })}
-            min={1}
-            max={48}
-            size="sm"
-            w={220}
-          />
-          <NumberInput
-            label="Bus — delay threshold (minutes)"
-            description="Only alert if delay is at least this many minutes"
-            value={rules.bus_delay_threshold_min ?? 5}
-            onChange={v => update({ rules: { ...rules, bus_delay_threshold_min: Number(v) } })}
-            min={1}
-            max={60}
-            size="sm"
-            w={220}
-          />
-          <NumberInput
-            label="Traffic — delay threshold (%)"
-            description="Alert when commute is this % above normal"
-            value={rules.traffic_delay_threshold_pct ?? 25}
-            onChange={v => update({ rules: { ...rules, traffic_delay_threshold_pct: Number(v) } })}
-            min={5}
-            max={200}
-            size="sm"
-            w={220}
-          />
-          <NumberInput
-            label="Calendar reminder (minutes before)"
-            description="Send reminder this many minutes before an event"
-            value={rules.calendar_reminder_min ?? 30}
-            onChange={v => update({ rules: { ...rules, calendar_reminder_min: Number(v) } })}
-            min={1}
-            max={120}
-            size="sm"
-            w={220}
-          />
-        </Stack>
+        <RuleList
+          rules={rules}
+          onChangeRules={r => update({ rules: r })}
+          variables={variables}
+        />
       </Paper>
     </Stack>
   )
@@ -1780,6 +1835,7 @@ function PeopleTab({
   draft: AdminConfig
   onChange: (d: AdminConfig) => void
 }) {
+  const ruleVariables = useRuleVariables()
   const multi = isMultiScreen(draft)
   if (!multi) {
     return (
@@ -2061,6 +2117,18 @@ function PeopleTab({
                 w={200}
               />
             </Group>
+          </Paper>
+
+          <Paper p="md" radius="sm" withBorder>
+            <SectionTitle>Personal rules</SectionTitle>
+            <Text size="sm" c="dimmed" mb="sm">
+              Rules that apply only to {currentPerson.name || 'this person'}, in addition to the shared rules.
+            </Text>
+            <RuleList
+              rules={currentPerson.rules ?? []}
+              onChangeRules={r => updatePerson({ rules: r })}
+              variables={ruleVariables}
+            />
           </Paper>
 
           <Paper p="md" radius="sm" withBorder>

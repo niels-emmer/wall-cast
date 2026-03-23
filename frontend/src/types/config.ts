@@ -45,6 +45,10 @@ export interface PersonRssFeed {
   label?: string
 }
 
+export interface PersonNotify {
+  ntfy_topic?: string
+}
+
 export interface Person {
   id: string
   name: string
@@ -53,6 +57,8 @@ export interface Person {
   rss_feeds?: PersonRssFeed[]
   traffic?: PersonTraffic
   bus?: PersonBus
+  notify?: PersonNotify
+  rules?: Rule[]
 }
 
 export interface GarbageConfig {
@@ -79,11 +85,31 @@ export interface AssistantAiConfig {
   // openai_api_key — set OPENAI_API_KEY in .env, never stored in YAML
 }
 
-export interface AssistantRulesConfig {
-  garbage_notify_hours_before?: number
-  bus_delay_threshold_min?: number
-  traffic_delay_threshold_pct?: number
-  calendar_reminder_min?: number
+export interface RuleCondition {
+  variable: string          // e.g. "bus.delay_minutes"
+  operator: string          // ">=" | "<=" | ">" | "<" | "==" | "in"
+  value: number | string | string[]
+  unit?: string | null      // "min" | "h" | "%" | null
+}
+
+export interface Rule {
+  id: string
+  title: string
+  description?: string
+  enabled: boolean
+  condition: RuleCondition
+}
+
+/** Catalogue entry returned by GET /api/admin/rule-variables */
+export interface RuleVariable {
+  id: string
+  label: string
+  api_endpoint: string
+  requires_person: boolean
+  type: 'number' | 'boolean' | 'enum'
+  default_unit: string | null
+  operators: string[]
+  enum_values?: string[]
 }
 
 export interface AssistantConfig {
@@ -92,7 +118,7 @@ export interface AssistantConfig {
   backend_url?: string
   notify?: AssistantNotifyConfig
   ai?: AssistantAiConfig
-  rules?: AssistantRulesConfig
+  rules?: Rule[]
 }
 
 export interface SharedSection {
