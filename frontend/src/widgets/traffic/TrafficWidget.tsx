@@ -223,7 +223,7 @@ export function TrafficWidget({ config }: WidgetProps) {
       {/* Traffic jams header + total km */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <span style={sectionLabelStyle}>{t.trafficJams}</span>
-        {totalJamKm > 0 && (
+        {data.jams.length > 0 && (
           <span style={{ fontSize: fs.sm, color: 'var(--color-text)', opacity: 0.6, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {totalJamKm} {t.km}
           </span>
