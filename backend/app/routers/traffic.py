@@ -174,11 +174,17 @@ def _parse_jams(
                 else:
                     on_route = False
 
+                distance_km = round(distance_m / 1000, 1)
+
+                # Skip zero-length off-route jams — phantom/informational entries.
+                if not on_route and distance_km == 0:
+                    continue
+
                 jams.append({
                     "road": road_final,
                     "from": jam.get("from", ""),
                     "to": jam.get("to", ""),
-                    "distance_km": round(distance_m / 1000, 1),
+                    "distance_km": distance_km,
                     "delay_min": max(1, round(delay_s / 60)),
                     "type": incident_type,
                     "on_route": on_route,
