@@ -2475,8 +2475,9 @@ function PeopleTab({
           <Paper p="md" radius="sm" withBorder>
             <SectionTitle>Assistant</SectionTitle>
             <Text size="sm" c="dimmed" mb="md">
-              Notifications for {currentPerson.name || 'this person'}, on top of the shared rules.
-              Personal notifications are sent to this person's own ntfy topic.
+              {currentPerson.name || 'This person'} can receive notifications on their phone via the{' '}
+              <Anchor href="https://ntfy.sh" target="_blank" size="sm">ntfy app</Anchor>.
+              They will receive all family-wide alerts, plus personal alerts based on the rules below.
             </Text>
 
             <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={4} style={{ letterSpacing: '0.07em' }}>
