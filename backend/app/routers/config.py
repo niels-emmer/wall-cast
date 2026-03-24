@@ -249,8 +249,8 @@ async def set_screen_casting(body: dict[str, Any]) -> None:
 @router.post("/admin/notify/test", status_code=204)
 async def test_notification() -> None:
     """Send a test notification to the system ntfy topic."""
-    cfg      = wall_config.get_config()
-    shared   = cfg.get("shared", cfg)
+    raw      = wall_config.get_raw_config()
+    shared   = raw.get("shared", {})
     assistant = shared.get("assistant", {})
     notify   = assistant.get("notify", {})
     ntfy_url = notify.get("ntfy_url", "").rstrip("/")
