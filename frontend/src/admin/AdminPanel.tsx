@@ -1471,21 +1471,23 @@ function AssistantTab({
         <Text size="sm" c="dimmed" mb="sm">
           Send a test message to the system ntfy topic to verify your notification setup.
         </Text>
-        <Button
-          variant="subtle"
-          color="cyan"
-          size="sm"
-          onClick={handleSendTest}
-          loading={testSending}
-          disabled={!notify.ntfy_url}
-        >
-          Send test message
-        </Button>
-        {testResult && (
-          <Text size="xs" c={testResult.ok ? 'teal' : 'red'} mt="xs">
-            {testResult.msg}
-          </Text>
-        )}
+        <Group gap="sm" align="center">
+          <Button
+            variant="subtle"
+            color="cyan"
+            size="sm"
+            onClick={handleSendTest}
+            loading={testSending}
+            disabled={!notify.ntfy_url}
+          >
+            Send test message
+          </Button>
+          {testResult && (
+            <Text size="sm" c={testResult.ok ? 'teal' : 'red'} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {testResult.ok ? '✅' : '❌'} {testResult.msg}
+            </Text>
+          )}
+        </Group>
       </Paper>
 
       <RuleEditorModal
