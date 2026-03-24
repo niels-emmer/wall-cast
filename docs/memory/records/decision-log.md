@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-03-23 — Icon Libraries
+
+### Weather icons: Meteocons static SVGs via `<img>`
+**Decision**: Replace hand-drawn inline SVGs in `WeatherIcons.tsx` with Meteocons static SVGs (`@bybas/weather-icons` dev branch, MIT). Served from `frontend/public/icons/weather/` as `<img>` tags.
+**Rationale**: The hand-drawn SVGs were functional but not visually clear. Meteocons are a purpose-built, beautiful weather icon set. Static SVG variant (no SMIL animations) is Chromecast-safe. `<img>` approach is simpler than `vite-plugin-svgr` and Meteocons already carry their own colour palette, so `currentColor` recolouring isn't needed.
+
+### Garbage icons: Phosphor Icons React
+**Decision**: Replace hand-drawn inline SVGs in `GarbageWidget.tsx` with `@phosphor-icons/react` — `Leaf` (GFT), `Recycle` (PMD), `TrashSimple` (restafval).
+**Rationale**: Phosphor renders pure inline SVGs, matching the existing Chromecast-compatible approach. Clean, consistent icon set with fill/regular weight variants to visually distinguish container types by colour and weight.
+
+## 2026-03-23 — Traffic Route Corridor
+
+### `on_route` filtered by TomTom polyline proximity
+**Decision**: Mark a jam on-route only if its road name is in `route_roads` AND its `fromLoc` coordinates are within 25 km of the TomTom route polyline.
+**Rationale**: Road-name-only matching flagged jams on the entire length of a road (e.g. A28 near Groningen when commuting Smilde→'s-Hertogenbosch). ANWB jams carry `fromLoc: {lat,lon}`; TomTom route response already returns `legs[0].points`. Haversine point-to-polyline check costs negligible CPU and requires no extra API calls. 25 km corridor is generous enough for Dutch highway geometry while excluding geographically distant sections of the same road.
+
 ## 2026-03-15 — Initial Architecture
 
 ### Casting approach: URL cast, no SDK

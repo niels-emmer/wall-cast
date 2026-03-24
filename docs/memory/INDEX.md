@@ -133,6 +133,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 ### Weather widget
 - `HourlyCol` and `DailyCol` both use `flex: 1, minHeight: 0, justifyContent: 'space-evenly'` to share equal height
 - `SunBlock` is a subcomponent with `marginLeft: 'auto'` pushed to the far right of the current-weather row
+- Icons: Meteocons static SVGs (MIT, `@bybas/weather-icons` dev branch) served from `frontend/public/icons/weather/`. Loaded via `<img>` tags (not inline SVG). 13 files cover all WMO codes. No SMIL animations — safe on older Chromecasts.
 
 ### News ticker
 - Uses Web Animations API (not CSS animations) — the track element is animated with `element.animate()`
@@ -161,14 +162,18 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Timezone: `Europe/Amsterdam` via Python `zoneinfo` (stdlib, no extra dep)
 - Event `color` field maps colorId (1–11) to hex; `null` when no colour set → widget falls back to `rgba(255,255,255,0.3)` dot
 - `docker-compose.dev.yml` has `env_file` block so `GOOGLE_CALENDAR_ID` and `GOOGLE_SA_KEY_FILE` are available in dev
+- Timed today events that have already ended are hidden from the `today` list. All-day events are always shown. Removal happens at the next cache refresh (≤10 min lag).
+- `googleapiclient.http` logger is set to ERROR at module level to suppress the 403 WARNING the library emits when a shared calendar's `calendarList` entry is inaccessible. The events fetch still succeeds — the 403 is non-fatal.
 
 ### Traffic widget
 - ANWB incidents API structure: `roads[] → segments[] → jams[]` — jams are nested two levels under roads (NOT at segment level directly)
-- Jam fields: `road`, `from`, `to`, `distance` (meters), `delay` (seconds), `incidentType`
+- Jam fields: `road`, `from`, `to`, `fromLoc: {lat,lon}`, `toLoc: {lat,lon}`, `distance` (meters), `delay` (seconds), `incidentType`
 - Valid `incidentType` values seen: `stationary-traffic`, `queuing-traffic`, `slow-traffic`, `road-closed`, `radar`
 - Home/work addresses read from YAML widget config (`home_address`, `work_address`) or env var fallback; geocoded via TomTom Search API on first request, cached forever in `_coords` dict
 - Travel time displayed as `H:MM` (e.g. `3:13`), delay as `+H:MM`; uses `fmtDuration()` in TrafficWidget.tsx
 - `TOMTOM_API_KEY` is in `.env` (gitignored) — must be added manually on each server
+- `on_route` uses route-corridor proximity: a jam is on-route only if its road name is in `route_roads` AND its `fromLoc` is within `ON_ROUTE_CORRIDOR_KM` (25 km) of the TomTom route polyline (`legs[0].points`). Falls back to road-name-only when TomTom hasn't responded yet.
+- Zero-length (`distance=0`) off-route jams are discarded — they are phantom/informational ANWB entries.
 
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
@@ -177,6 +182,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - JSON path: `raw["data"]["ophaaldagen"]["data"]` — do NOT include `afvaldata` param (breaks the response)
 - Status check: `raw.get("response") != "OK"` (not `"status"`)
 - Fit-to-box: `ResizeObserver` on the list container measures first card height and slices `collections` to only show complete cards
+- Icons use `@phosphor-icons/react`: `Leaf` (fill, green) for GFT, `Recycle` (fill, orange) for PMD, `TrashSimple` (regular, grey) for restafval
 
 ### KNMI warnings widget
 - API: `feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands` — public Atom/CAP feed, no key, 15 min TTL
