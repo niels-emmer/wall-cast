@@ -206,6 +206,8 @@ export function TrafficWidget({ config }: WidgetProps) {
     </div>
   )
 
+  const totalJamKm = Math.round(data.jams.reduce((sum, j) => sum + (j.distance_km || 0), 0))
+
   return (
     <div style={shell}>
       {title}
@@ -219,11 +221,11 @@ export function TrafficWidget({ config }: WidgetProps) {
       )}
 
       {/* Traffic jams header + total km */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <span style={sectionLabelStyle}>{t.trafficJams}</span>
-        {data.jams.length > 0 && (
-          <span style={{ fontSize: fs.xs, color: 'var(--color-muted)', fontVariantNumeric: 'tabular-nums' }}>
-            {data.jams.reduce((sum, j) => sum + j.distance_km, 0).toFixed(1)} {t.km}
+        {totalJamKm > 0 && (
+          <span style={{ fontSize: fs.sm, color: 'var(--color-text)', opacity: 0.6, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {totalJamKm} {t.km}
           </span>
         )}
       </div>
