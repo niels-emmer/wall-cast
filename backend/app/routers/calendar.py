@@ -170,6 +170,13 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
     for item in deduped:
         ev = _parse(item)
         if ev["date"] == today_str:
+            # Drop timed events that have already finished today.
+            if not ev["all_day"]:
+                end_raw = item.get("end", {}).get("dateTime")
+                if end_raw:
+                    end_dt = datetime.fromisoformat(end_raw).astimezone(_TZ)
+                    if end_dt <= now:
+                        continue
             today_events.append(ev)
         elif ev["date"] > today_str:
             if upcoming_count >= 8:
