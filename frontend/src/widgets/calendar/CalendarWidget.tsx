@@ -130,7 +130,7 @@ export function CalendarWidget({ config }: WidgetProps) {
 
   const shell = shellStyle
   const divider = <div style={dividerStyle} />
-  const title = <div style={titleStyle}>Family</div>
+  const title = <div style={titleStyle}>Calendar</div>
 
   const sectionLabel = (text: string, sub?: string): React.ReactNode => (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexShrink: 0 }}>
