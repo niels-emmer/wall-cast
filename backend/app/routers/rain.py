@@ -1,21 +1,23 @@
 """
-Proxy to buienalarm.nl rain forecast API.
-Returns 2-hour rain intensity forecast in 5-minute intervals (25 readings).
+Rain forecast proxy — 3-hour outlook in 15-minute slots.
 
-API: https://cdn-secure.buienalarm.nl/api/3.4/forecast.php
-Response: {
-  "start": <unix timestamp>,
-  "start_human": "HH:MM",
-  "delta": 300,           # seconds between readings
-  "precip": [float, ...]  # mm/hour for each 5-min slot (25 entries)
-  "levels": {"light": 0.25, "moderate": 1, "heavy": 2.5}
-}
+Source: open-meteo.com minutely_15 (free, no key, no Cloudflare issues).
+Previously used buienalarm.nl (cdn-secure) which started silently timing out
+behind Cloudflare from server/datacenter IPs.
+
+open-meteo minutely_15.precipitation is in mm per 15-minute interval.
+Multiply × 4 to get mm/hour for display.
+
+Response shape (unchanged from previous API — frontend compatible):
+  forecast: [{time: "_NOW_" | "HH:MM", mm_per_hour: float}, ...]  — 12 slots × 15 min = 3 h
+  levels:   {light: 0.25, moderate: 1.0, heavy: 2.5}
 """
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -29,25 +31,31 @@ router = APIRouter(tags=["rain"])
 _cache: dict[str, Any] = {}
 _cache_ts: float = 0.0
 
-BUIENALARM_URL = (
-    "https://cdn-secure.buienalarm.nl/api/3.4/forecast.php"
-    "?lat={lat}&lon={lon}&region=nl&unit=mm/u"
+OPENMETEO_RAIN_URL = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude={lat}&longitude={lon}"
+    "&minutely_15=precipitation"
+    "&timezone={tz}"
+    "&forecast_minutely_15=12"
 )
 
+# Fixed thresholds in mm/hour — match previous buienalarm levels
+RAIN_LEVELS = {"light": 0.25, "moderate": 1.0, "heavy": 2.5}
 
-def _build_forecast(data: dict) -> list[dict]:
-    """Convert buienalarm response into a time-stamped list."""
-    start_ts = data["start"]
-    delta = data.get("delta", 300)
-    precip = data.get("precip", [])
+
+def _build_forecast(data: dict, tz: ZoneInfo) -> list[dict]:
+    """Convert open-meteo minutely_15 response to time-stamped mm/hour list."""
+    m15 = data.get("minutely_15", {})
+    times = m15.get("time", [])
+    precip = m15.get("precipitation", [])
 
     result = []
-    for i, mm in enumerate(precip):
-        slot_ts = start_ts + i * delta
-        slot_time = datetime.fromtimestamp(slot_ts, tz=timezone.utc).strftime("%H:%M")
+    for i, (t_str, mm_15min) in enumerate(zip(times, precip)):
+        slot_dt = datetime.fromisoformat(t_str).replace(tzinfo=tz)
+        label = "_NOW_" if i == 0 else slot_dt.strftime("%H:%M")
         result.append({
-            "time": slot_time,
-            "mm_per_hour": round(float(mm), 2),
+            "time": label,
+            "mm_per_hour": round(float(mm_15min) * 4, 2),
         })
     return result
 
@@ -61,10 +69,12 @@ async def get_rain() -> dict:
 
     cfg = wall_config.get_config()
     location = cfg.get("location", {})
-    lat = location.get("lat", 0.0)
-    lon = location.get("lon", 0.0)
+    lat = location.get("lat", 52.3676)
+    lon = location.get("lon", 4.9041)
+    tz_name = settings.timezone
+    tz = ZoneInfo(tz_name)
 
-    url = BUIENALARM_URL.format(lat=lat, lon=lon)
+    url = OPENMETEO_RAIN_URL.format(lat=lat, lon=lon, tz=tz_name.replace("/", "%2F"))
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url)
@@ -76,11 +86,9 @@ async def get_rain() -> dict:
         raise HTTPException(status_code=502, detail="Rain API unavailable")
 
     raw = resp.json()
-    forecast = _build_forecast(raw)
     _cache = {
-        "forecast": forecast,
-        "levels": raw.get("levels", {}),
-        "start_human": raw.get("start_human", ""),
+        "forecast": _build_forecast(raw, tz),
+        "levels": RAIN_LEVELS,
     }
     _cache_ts = time.monotonic()
     return _cache
