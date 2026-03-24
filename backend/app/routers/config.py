@@ -246,6 +246,36 @@ async def set_screen_casting(body: dict[str, Any]) -> None:
     wall_config.save_config(raw)
 
 
+@router.post("/admin/notify/test", status_code=204)
+async def test_notification() -> None:
+    """Send a test notification to the system ntfy topic."""
+    cfg      = wall_config.get_config()
+    shared   = cfg.get("shared", cfg)
+    assistant = shared.get("assistant", {})
+    notify   = assistant.get("notify", {})
+    ntfy_url = notify.get("ntfy_url", "").rstrip("/")
+    ntfy_topic = notify.get("ntfy_topic", "wall-cast-alerts")
+
+    if not ntfy_url:
+        raise HTTPException(status_code=400, detail="No ntfy_url configured in assistant.notify")
+
+    url = f"{ntfy_url}/{ntfy_topic}"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                url,
+                content="This is a test notification from wall-cast. ✅".encode(),
+                headers={
+                    "Title":    "wall-cast test",
+                    "Priority": "default",
+                    "Tags":     "white_check_mark",
+                },
+            )
+            resp.raise_for_status()
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"ntfy send failed: {exc}")
+
+
 @router.post("/admin/casting/recast", status_code=204)
 async def recast_screen(body: dict[str, Any]) -> None:
     """Drop a signal file that tells the caster to force-recast this screen immediately."""

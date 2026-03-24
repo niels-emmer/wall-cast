@@ -248,6 +248,14 @@ See `records/rules-rewrite-plan.md` for the full plan and status.
 - **Stop before:** Phase 5c (rule editor modal) — implement with user
 - **Status:** All code written and verified in Vite dev preview. Needs deploy + server YAML migration to show populated rules.
 
+### ntfy routing (2026-03-24)
+- **System topic** (`assistant.notify.ntfy_topic`): receives all global notifications.
+- **Personal topic** (`people[].notify.ntfy_topic`): set per-person in admin panel People tab.
+  - Personal notifications → personal topic only.
+  - Global notifications → system topic + fan-out to all registered personal topics.
+- **Test button** in admin AssistantTab → `POST /api/admin/notify/test` → sends to system topic.
+- Admin panel: People tab "Personal rules" box renamed to "Assistant"; ntfy topic field added at bottom.
+
 ## Open Items
 
 See `records/future-ideas.md` for the full backlog with detailed notes on each.

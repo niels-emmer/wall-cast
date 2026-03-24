@@ -115,30 +115,39 @@ def _dispatch(
     notify_cfg: dict,
     ai_cfg: dict,
     context: str = "",
+    all_people: list[dict] | None = None,
 ) -> None:
-    ntfy_url      = notify_cfg.get("ntfy_url", "")
-    default_topic = notify_cfg.get("ntfy_topic", "wall-cast-alerts")
+    ntfy_url     = notify_cfg.get("ntfy_url", "")
+    system_topic = notify_cfg.get("ntfy_topic", "wall-cast-alerts")
 
     if not ntfy_url:
         print(f"[assistant] No ntfy_url — skipping: {notification.title}", flush=True)
         return
 
-    # Per-person topic override
-    topic = default_topic
-    if person:
-        topic = (person.get("notify") or {}).get("ntfy_topic", default_topic)
-
-    # Optional AI reformatting
+    # AI reformatting done once, reused for all topics
     message = ai_fmt.format_message(notification.title, notification.message, context, ai_cfg)
 
-    notify_ntfy.send(
-        ntfy_url=ntfy_url,
-        topic=topic,
-        title=notification.title,
-        message=message,
-        priority=notification.priority,
-        tags=notification.tags,
-    )
+    if person:
+        # Personal notification — send only to this person's topic (system topic as fallback)
+        topic = (person.get("notify") or {}).get("ntfy_topic", system_topic)
+        notify_ntfy.send(
+            ntfy_url=ntfy_url, topic=topic,
+            title=notification.title, message=message,
+            priority=notification.priority, tags=notification.tags,
+        )
+    else:
+        # Global notification — system topic + every registered personal topic
+        topics: list[str] = [system_topic]
+        for p in (all_people or []):
+            personal = (p.get("notify") or {}).get("ntfy_topic")
+            if personal and personal not in topics:
+                topics.append(personal)
+        for topic in topics:
+            notify_ntfy.send(
+                ntfy_url=ntfy_url, topic=topic,
+                title=notification.title, message=message,
+                priority=notification.priority, tags=notification.tags,
+            )
 
 
 # ── Main cycle ────────────────────────────────────────────────────────────────
@@ -185,7 +194,7 @@ def run_cycle(cfg: dict) -> None:
                 continue
             for n in run_rule(rule, None, client, data_cache, cal_data_by_person,
                               backend_url, garbage_cfg):
-                _dispatch(n, None, notify_cfg, ai_cfg)
+                _dispatch(n, None, notify_cfg, ai_cfg, all_people=people)
 
         # ── Per-person rules ──────────────────────────────────────────────────
         for person in people:

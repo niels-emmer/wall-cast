@@ -53,9 +53,8 @@ shared:
     #   bus:                # bus stop — used on any screen Bob is assigned to
     #     stop_city: Amsterdam
     #     stop_name: Leidseplein
-    #   notify:             # assistant notification routing (optional)
-    #     ntfy_topic: wall-cast-bob   # personal ntfy topic (overrides shared default)
-    #     # matrix_id: "@bob:matrix.example.com"   # future: Matrix DM
+    #   notify:             # personal ntfy topic (set via People tab in admin panel)
+    #     ntfy_topic: wall-cast-bob   # personal notifications go here; global notifications also fan out here
     #   rules:              # personal assistant rules (in addition to shared rules)
     #     - id: bob-bus-threshold
     #       title: Bob's bus alert
@@ -77,7 +76,7 @@ shared:
   #
   #   notify:
   #     ntfy_url: https://ntfy.example.com
-  #     ntfy_topic: wall-cast-alerts    # global topic; overridable per person
+  #     ntfy_topic: wall-cast-alerts    # system topic — global notifications go here + fan out to all personal topics
   #
   #   ai:
   #     provider: none            # none | ollama | openai

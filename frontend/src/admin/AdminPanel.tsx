@@ -1283,6 +1283,26 @@ function AssistantTab({
   const [ruleModal,      setRuleModal]      = useState(false)
   const [editingRule,    setEditingRule]    = useState<Rule | undefined>()
   const [editingRuleIdx, setEditingRuleIdx] = useState(-1)
+  const [testSending,    setTestSending]    = useState(false)
+  const [testResult,     setTestResult]     = useState<{ ok: boolean; msg: string } | null>(null)
+
+  async function handleSendTest() {
+    setTestSending(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/notify/test', { method: 'POST' })
+      if (res.ok) {
+        setTestResult({ ok: true, msg: 'Test message sent successfully.' })
+      } else {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        setTestResult({ ok: false, msg: err.detail ?? 'Failed to send.' })
+      }
+    } catch {
+      setTestResult({ ok: false, msg: 'Network error.' })
+    } finally {
+      setTestSending(false)
+    }
+  }
 
   function update(patch: Partial<AssistantConfig>) {
     onChange(setAssistantInDraft(draft, { ...ac, ...patch }))
@@ -1432,6 +1452,10 @@ function AssistantTab({
       {/* Rules */}
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Rules</SectionTitle>
+        <Text size="sm" c="dimmed" mb="sm">
+          Rules determine when the assistant sends a message. Each rule checks a live
+          value and fires a notification when the condition is met.
+        </Text>
         <RuleList
           rules={rules}
           onChangeRules={r => update({ rules: r })}
@@ -1439,6 +1463,29 @@ function AssistantTab({
           onAddRule={openAddRule}
           onEditRule={openEditRule}
         />
+      </Paper>
+
+      {/* Test */}
+      <Paper p="md" radius="sm" withBorder>
+        <SectionTitle>Test</SectionTitle>
+        <Text size="sm" c="dimmed" mb="sm">
+          Send a test message to the system ntfy topic to verify your notification setup.
+        </Text>
+        <Button
+          variant="subtle"
+          color="cyan"
+          size="sm"
+          onClick={handleSendTest}
+          loading={testSending}
+          disabled={!notify.ntfy_url}
+        >
+          Send test message
+        </Button>
+        {testResult && (
+          <Text size="xs" c={testResult.ok ? 'teal' : 'red'} mt="xs">
+            {testResult.msg}
+          </Text>
+        )}
       </Paper>
 
       <RuleEditorModal
@@ -2424,16 +2471,33 @@ function PeopleTab({
           </Paper>
 
           <Paper p="md" radius="sm" withBorder>
-            <SectionTitle>Personal rules</SectionTitle>
-            <Text size="sm" c="dimmed" mb="sm">
-              Rules that apply only to {currentPerson.name || 'this person'}, in addition to the shared rules.
+            <SectionTitle>Assistant</SectionTitle>
+            <Text size="sm" c="dimmed" mb="md">
+              Notifications for {currentPerson.name || 'this person'}, on top of the shared rules.
+              Personal notifications are sent to this person's own ntfy topic.
             </Text>
+
+            <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={4} style={{ letterSpacing: '0.07em' }}>
+              Rules
+            </Text>
+            <Text size="sm" c="dimmed" mb="sm">Send a message when:</Text>
             <RuleList
               rules={currentPerson.rules ?? []}
               onChangeRules={r => updatePerson({ rules: r })}
               variables={ruleVariables}
               onAddRule={openAddPersonRule}
               onEditRule={openEditPersonRule}
+            />
+
+            <Divider my="md" />
+
+            <TextInput
+              label="Personal ntfy topic"
+              description="Personal notifications go here. Global notifications also fan out to this topic."
+              placeholder="wall-cast-alice"
+              value={currentPerson.notify?.ntfy_topic ?? ''}
+              onChange={e => updatePerson({ notify: { ...currentPerson.notify, ntfy_topic: e.target.value || undefined } })}
+              size="sm"
             />
           </Paper>
 

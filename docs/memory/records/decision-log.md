@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-03-24 — ntfy personal topics + test button
+
+### ntfy routing: global fan-out + per-person topics
+**Decision**: Global (shared rule) notifications now fan out to the system topic AND all personal topics registered under `people[].notify.ntfy_topic`. Personal (per-person rule) notifications still go only to that person's topic.
+**Rationale**: A global alert (e.g. garbage pickup) is relevant to everyone in the household. Previously only the system topic received it; personal subscribers would miss it unless they also subscribed to the system topic.
+
+### Admin UX improvements
+- AssistantTab → Rules section: added description text; added Test paper with "Send test message" button (`POST /api/admin/notify/test` → system topic).
+- PeopleTab → "Personal rules" box renamed to "Assistant"; added description, "Send a message when:" prefix before rules, and a personal ntfy topic field at the bottom.
+
 ## 2026-03-24 — Rain API switch
 
 ### Rain source: buienalarm → open-meteo minutely_15
