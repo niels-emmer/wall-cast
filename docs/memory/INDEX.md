@@ -61,7 +61,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Admin panel (3 tabs) | ✅ | `/#admin` — General, Screens (with scan button), People |
 | i18n (nl/en) | ✅ | `language: nl/en` in YAML; all widget labels translated via `useLang()` hook |
 | Weather widget | ✅ | WEER title + current + 7h hourly + 7-day daily + sunrise/sunset/daylight |
-| Rain SVG chart | ✅ | REGEN title, bezier area chart, Dutch labels, HTML overlay labels |
+| Rain SVG chart | ✅ | REGEN title, bezier area chart, Dutch labels, HTML overlay labels — 12 × 15-min slots (3h) via open-meteo minutely_15 |
 | News RSS ticker | ✅ | Infinite scroll, Web Animations API |
 | Sunrise/sunset block | ✅ | Embedded top-right of weather widget (Op/Onder + daglichttijd) |
 | Breaking news (ntfy) | ✅ | SSE direct to browser, interspersed every ~3 items |
@@ -225,7 +225,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 
 ### API sources
 - Weather: `api.open-meteo.com/v1/forecast` — no key, 15 min TTL
-- Rain: `cdn-secure.buienalarm.nl/api/3.4/forecast.php` — replaced dead gpsgadget endpoint, 5 min TTL
+- Rain: `api.open-meteo.com/v1/forecast` minutely_15 — switched from buienalarm.nl (Cloudflare started timing out from server IPs). 12 × 15-min slots = 3h lookahead, mm/15min × 4 → mm/hour. 5 min TTL
 - News: `feedparser` parsing RSS URLs from config, 10 min TTL
 - Sun: `api.sunrise-sunset.org/json` — no key, 6 h TTL
 - Garbage: `api.mijnafvalwijzer.nl` — public key, 1 h TTL per days_ahead value

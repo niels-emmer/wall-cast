@@ -1,5 +1,11 @@
 # Decision Log
 
+## 2026-03-24 — Rain API switch
+
+### Rain source: buienalarm → open-meteo minutely_15
+**Decision**: Replace `cdn-secure.buienalarm.nl/api/3.4/forecast.php` with `api.open-meteo.com/v1/forecast?minutely_15=precipitation`.
+**Rationale**: buienalarm is behind Cloudflare and began silently timing out all requests from server/datacenter IPs (TCP+TLS handshake succeeds, but HTTP response is never sent). A browser UA does not help. open-meteo is already used for weather, has no Cloudflare or key requirements, and is reliable. Granularity changes from 5-min to 15-min intervals; lookahead increases from 2h to 3h. Response shape (`forecast[].mm_per_hour`, `levels`) is unchanged — frontend required no changes.
+
 ## 2026-03-23 — Icon Libraries
 
 ### Weather icons: Meteocons static SVGs via `<img>`
