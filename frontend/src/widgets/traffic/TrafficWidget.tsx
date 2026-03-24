@@ -206,7 +206,7 @@ export function TrafficWidget({ config }: WidgetProps) {
     </div>
   )
 
-  const totalJamKm = Math.round(data.jams.filter(j => j.on_route).reduce((sum, j) => sum + (j.distance_km || 0), 0))
+  const totalJamKm = Math.round(data.jams.reduce((sum, j) => sum + (j.distance_km || 0), 0))
 
   return (
     <div style={shell}>
