@@ -1454,7 +1454,8 @@ function AssistantTab({
         <SectionTitle>Rules</SectionTitle>
         <Text size="sm" c="dimmed" mb="sm">
           Rules determine when the assistant sends a message. Each rule checks a live
-          value and fires a notification when the condition is met.
+          value and fires a notification when the condition is met.{' '}
+          These are family rules — sent to all registered people.
         </Text>
         <RuleList
           rules={rules}
