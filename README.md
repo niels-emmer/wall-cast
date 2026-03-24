@@ -35,7 +35,6 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 - **People & Calendars** — assign household members to screens; family members appear on all screens automatically
 - **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, assistant, and Chromecast IPs; built-in LAN scanner to discover devices
 - **Assistant** — proactive push notifications via ntfy: bin day reminders, bus delay alerts cross-correlated with your calendar, commute delay warnings, and weather alerts; optional AI (Ollama/OpenAI) rewrites messages into natural language
-- **Network widget** — shows WAN status, external connectivity, LAN host count, and a Cloudflare speedtest; optionally integrates with a Zyxel VMG8825 router
 - **Dark theme** — pure black background, bold white type, cyan accent
 - **Dutch / English** — all widget labels switch with `language: en/nl`
 - **Rotate widget** — cycle multiple widgets in one grid cell on a configurable interval
