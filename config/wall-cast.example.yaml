@@ -64,6 +64,14 @@ shared:
     #         operator: ">="
     #         value: 3
     #         unit: min
+    #     - id: bob-bus-departure
+    #       title: Bus departing soon
+    #       enabled: true
+    #       condition:
+    #         variable: bus.minutes_until_departure
+    #         operator: "<="
+    #         value: 8
+    #         unit: min
 
   # ── Assistant: proactive notifications ──────────────────────────────────────
   # Standalone sidecar that polls backend data and pushes smart notifications.
@@ -125,6 +133,66 @@ shared:
   #         variable: weather.warning_level
   #         operator: in
   #         value: [oranje, rood]
+  #     - id: temperature-alert
+  #       title: Freezing temperatures
+  #       enabled: true
+  #       condition:
+  #         variable: weather.temperature
+  #         operator: "<="
+  #         value: 0
+  #         unit: °C
+  #     - id: wind-alert
+  #       title: Strong wind
+  #       enabled: true
+  #       condition:
+  #         variable: weather.wind_speed
+  #         operator: ">="
+  #         value: 60
+  #         unit: km/h
+  #     - id: rain-imminent
+  #       title: Rain in 15 minutes
+  #       enabled: true
+  #       condition:
+  #         variable: rain.minutes_until_rain
+  #         operator: "<="
+  #         value: 15
+  #         unit: min
+  #     - id: polestar-low-range
+  #       title: Polestar low range
+  #       enabled: true
+  #       condition:
+  #         variable: polestar.range_km
+  #         operator: "<="
+  #         value: 50
+  #         unit: km
+  #     - id: polestar-not-plugged
+  #       title: Polestar not plugged in at night
+  #       enabled: true
+  #       condition:
+  #         variable: polestar.is_plugged_in
+  #         operator: "=="
+  #         value: false
+  #     - id: air-quality-poor
+  #       title: Poor air quality
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.aqi
+  #         operator: ">="
+  #         value: 60
+  #     - id: birch-pollen-high
+  #       title: High birch pollen
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pollen_birch
+  #         operator: in
+  #         value: [high, very_high]
+  #     - id: grass-pollen-high
+  #       title: High grass pollen
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pollen_grass
+  #         operator: in
+  #         value: [high, very_high]
 
   widgets:
     - id: news

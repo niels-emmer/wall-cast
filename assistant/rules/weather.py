@@ -1,8 +1,13 @@
 """
-Weather warning alerts (shared).
+Weather alerts (shared).
 
-Fires for warning levels in rule.condition.value (default: ["oranje", "rood"]).
+Variables:
+  weather.warning_level — MeteoAlarm severity (enum: geel/oranje/rood)
+  weather.temperature   — current outdoor temperature (°C)
+  weather.wind_speed    — current wind speed (km/h)
 """
+
+from datetime import datetime, timezone
 
 import state
 from rules import Notification
@@ -45,3 +50,54 @@ def check(rule: dict, warnings_data: dict) -> list[Notification]:
         state.mark_fired(key)
 
     return notifications
+
+
+def check_current(rule: dict, weather_data: dict) -> list[Notification]:
+    """Handle weather.temperature and weather.wind_speed rules."""
+    condition = rule.get("condition", {})
+    variable  = condition.get("variable", "")
+    operator  = condition.get("operator", ">=")
+    try:
+        threshold = float(condition.get("value", 0))
+    except (TypeError, ValueError):
+        return []
+
+    cw = weather_data.get("current_weather", {})
+    if variable == "weather.temperature":
+        value = cw.get("temperature")
+        name  = "temperature"
+        unit  = "°C"
+        tags  = ["thermometer"]
+    elif variable == "weather.wind_speed":
+        value = cw.get("windspeed")  # open-meteo uses "windspeed" (no underscore)
+        name  = "wind speed"
+        unit  = " km/h"
+        tags  = ["wind_face"]
+    else:
+        return []
+
+    if value is None:
+        return []
+
+    ops: dict[str, bool] = {
+        ">=": float(value) >= threshold,
+        "<=": float(value) <= threshold,
+        ">":  float(value) >  threshold,
+        "<":  float(value) <  threshold,
+        "==": float(value) == threshold,
+    }
+    if not ops.get(operator, False):
+        return []
+
+    hour = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+    key  = f"{variable}:{operator}:{threshold}:{hour}"
+    if state.has_fired(key):
+        return []
+
+    state.mark_fired(key)
+    return [Notification(
+        title=f"Weather: {name.capitalize()}",
+        message=f"Current {name} is {value}{unit} ({operator} {threshold}{unit}).",
+        priority="default",
+        tags=tags,
+    )]
