@@ -6,7 +6,8 @@ export function useNetwork() {
   return useQuery<NetworkData>({
     queryKey: ['network'],
     queryFn: () => apiFetch<NetworkData>('/api/network'),
-    refetchInterval: 30 * 1000,
+    // Retry quickly while the backend is still initializing (wan not yet available)
+    refetchInterval: (query) => (!query.state.data?.wan ? 5 * 1000 : 30 * 1000),
     staleTime: 25 * 1000,
   })
 }
