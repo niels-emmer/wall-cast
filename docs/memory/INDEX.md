@@ -174,6 +174,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - `TOMTOM_API_KEY` is in `.env` (gitignored) — must be added manually on each server
 - `on_route` uses route-corridor proximity: a jam is on-route only if its road name is in `route_roads` AND its `fromLoc` is within `ON_ROUTE_CORRIDOR_KM` (25 km) of the TomTom route polyline (`legs[0].points`). Falls back to road-name-only when TomTom hasn't responded yet.
 - Zero-length (`distance=0`) off-route jams are discarded — they are phantom/informational ANWB entries.
+- Total jam km shown right-aligned in the TRAFFIC JAMS section header — counts ALL jams (on-route and off-route); only rendered when `jams.length > 0`
 
 ### Garbage widget
 - API: `api.mijnafvalwijzer.nl` — public key baked in, no auth needed
@@ -218,6 +219,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Cache TTL: 30 s. Speedtest runs async so it never blocks the main probe responses.
 - WAN uptime: separate `status` OID call after the main `cardpage_status` query
 - LAN host count: `lanhosts` OID; wifi detected by "Wi-Fi" in `X_ZYXEL_ConnectionType`
+- **Post-deploy recovery**: `use-network.ts` uses `refetchInterval: (query) => (!query.state.data?.wan ? 5_000 : 30_000)` — polls every 5 s while `wan` is null (backend still initializing), then settles to 30 s. Prevents "No router / --" persisting after a redeploy.
 
 ### Widget registry
 - `BASE_REGISTRY` in `base-registry.ts` holds all widgets except `rotate`

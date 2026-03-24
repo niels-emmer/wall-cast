@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-03-24 — Traffic total km + network post-deploy recovery
+
+### Traffic: total jam km in section header
+**Decision**: Show the sum of `distance_km` across all jams right-aligned in the TRAFFIC JAMS header row. Counts all jams (on-route and off-route). Rendered only when `jams.length > 0` (not gated on the sum being > 0, since jams can legitimately report 0 km each).
+**Rationale**: Gives a quick at-a-glance severity indicator without taking any extra vertical space. Counting all jams (not just on-route) provides total network congestion context; on-route jams are already visually flagged with the ON ROUTE badge.
+
+### Network widget: fast retry when WAN data is uninitialized
+**Decision**: `use-network.ts` uses a dynamic `refetchInterval`: 5 s while `wan` is null, 30 s once populated.
+**Rationale**: After a redeploy, `server-hello` triggers a page reload immediately, but the backend's WAN check hasn't completed yet so the first `/api/network` response has `wan: null`. Without this fix, the widget showed "No router / --" for up to 30 s (the normal poll interval), requiring a power cycle to recover. The dynamic interval self-heals within 5–10 s without any manual intervention.
+
 ## 2026-03-24 — ntfy personal topics + test button
 
 ### ntfy routing: global fan-out + per-person topics
