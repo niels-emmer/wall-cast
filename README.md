@@ -178,13 +178,13 @@ curl -H "Title: Power outage" \
 ┌─── Docker host ──────────────────────────────────────────────────────┐
 │                                                                       │
 │  ┌──────────────────┐  /api/*   ┌───────────────────────────────┐   │
-│  │  frontend        │──────────▶│  backend  (FastAPI :8000)     │   │
+│  │  frontend        │--------->│  backend  (FastAPI :8000)     │   │
 │  │  nginx :80       │           │                               │   │
 │  │  React SPA       │           │  GET /api/config?screen=      │   │
 │  └──────────────────┘           │  GET /api/config/stream (SSE) │   │
 │                                 │  PUT /api/admin/config        │   │
-│                                 │  GET /api/admin/scan ────────▶│───┼──▶ scanner :8765
-│                                 │  GET /api/weather, rain, …    │   │
+│                                 │  GET /api/admin/scan -------->│---+-->  scanner :8765
+│                                 │  GET /api/weather, rain, ...  │   │
 │                                 └───────────────┬───────────────┘   │
 │                                                 │ reads/writes       │
 │                                        config/wall-cast.yaml         │
@@ -193,19 +193,19 @@ curl -H "Title: Power outage" \
 │  │  caster          │           │  scanner                      │   │
 │  │  reads config    │           │  HTTP :8765                   │   │
 │  │  catt cast_site  │           │  catt scan (mDNS)             │   │
-│  │  → each screen   │           └───────────────────────────────┘   │
+│  │  -> each screen  │           └───────────────────────────────┘   │
 │  └────────┬─────────┘                                                │
 │                                                                       │
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │  assistant                                                   │   │
-│  │  polls GET /api/garbage, /api/calendar, /api/bus, …         │   │
-│  │  runs rules → deduplicates → pushes ntfy notifications  ────┼───┼──▶ ntfy / phone
+│  │  polls GET /api/garbage, /api/calendar, /api/bus, ...        │   │
+│  │  runs rules -> deduplicates -> pushes ntfy notifications  ---┼---+-->  ntfy / phone
 │  └──────────────────────────────────────────────────────────────┘   │
 └───────────┼──────────────────────────────────────────────────────────┘
             │ DashCast receiver
-            ▼
+            v
    Chromecast / Google TV  (same LAN)
-   loads /?screen=<id>  ←  SSE keeps page live
+   loads /?screen=<id>  <--  SSE keeps page live
    browser subscribes to ntfy SSE directly (no proxy)
 ```
 
