@@ -180,6 +180,30 @@ Live clock with seconds and date. Purely client-side — no API calls.
 
 ---
 
+### `info`
+
+Static key/value display. Useful for pinning any fixed information (passwords, contact numbers, room notes) onto a screen. Purely client-side — no API calls.
+
+```yaml
+- id: info-panel
+  type: info
+  col: 1
+  row: 4
+  col_span: 4
+  row_span: 4
+  config:
+    title: "WiFi"           # optional header label
+    items:
+      - label: Network
+        value: MyWifi
+      - label: Password
+        value: hunter2
+```
+
+**Display:** Optional muted uppercase title with divider, followed by label/value rows distributed evenly in the available height. Labels are muted, values are white.
+
+---
+
 ### `weather`
 
 Current conditions, 7-hour hourly forecast, and 7-day daily forecast. Data from [open-meteo.com](https://open-meteo.com) — no API key required. Sunrise/sunset times are fetched from [sunrise-sunset.org](https://sunrise-sunset.org/api) and displayed in the top-right of the widget.
@@ -210,7 +234,7 @@ Hourly and daily rows share equal height in the widget.
 
 ### `rain`
 
-2-hour rain intensity forecast in 5-minute intervals, rendered as a bezier area chart. Data from [buienalarm.nl](https://buienalarm.nl).
+3-hour rain intensity forecast in 15-minute intervals, rendered as a bezier area chart. Data from [open-meteo.com](https://open-meteo.com) (minutely_15 precipitation) — no API key required.
 
 ```yaml
 - id: rain
@@ -491,6 +515,26 @@ Current outdoor air quality and a 4-day pollen forecast. Data from [open-meteo.c
 
 ---
 
+### `warnings`
+
+Active KNMI weather warnings for the Netherlands, sourced from [MeteoAlarm](https://meteoalarm.org) (Atom/CAP feed) — no API key required. **Automatically hidden when there are no active warnings**, making it a good fit inside a `rotate` widget.
+
+```yaml
+- id: warnings
+  type: warnings
+  col: 5
+  row: 1
+  col_span: 8
+  row_span: 7
+  config: {}   # no configuration — location not needed; warnings cover the whole country
+```
+
+**Display:** Title. One card per active warning, sorted by severity (rood → oranje → geel). Each card shows the severity level badge (colour-coded), phenomenon (e.g. "Onweer"), affected regions, and a "valid until" timestamp. No warnings → widget calls `onSkip()` so the enclosing `rotate` widget advances past it automatically.
+
+**Backend cache:** 15 min.
+
+---
+
 ### `rotate`
 
 Cycles through a list of child widgets, showing one at a time. Used to display multiple widgets in a single grid cell.
@@ -597,6 +641,7 @@ All data sources refresh automatically — the display never needs a manual relo
 | Polestar | Every 5 minutes |
 | Calendar | Every 10 minutes |
 | Traffic | Every 5 minutes |
+| KNMI warnings | Every 15 minutes |
 | Air quality | Every 1 hour |
 | Config (YAML) | Instant (SSE push on file save) |
 | Breaking news (ntfy) | Instant (persistent SSE connection) |
@@ -609,11 +654,11 @@ Most data sources used by wall-cast are fully public and require no authenticati
 
 | Service | Widget | Key required | Cost | How to get |
 |---------|--------|-------------|------|-----------|
-| [open-meteo.com](https://open-meteo.com) | `weather`, `airquality` | No | Free | — |
+| [open-meteo.com](https://open-meteo.com) | `weather`, `rain`, `airquality` | No | Free | — |
 | [sunrise-sunset.org](https://sunrise-sunset.org/api) | `weather` | No | Free | — |
-| [buienalarm.nl](https://buienalarm.nl) | `rain` | No | Free | — |
 | [mijnafvalwijzer.nl](https://www.mijnafvalwijzer.nl) | `garbage` | No (public key baked in) | Free | — |
 | RSS feeds | `news` | No | Free | — |
+| [MeteoAlarm](https://meteoalarm.org) | `warnings` | No | Free | — |
 | [ANWB incidents](https://www.anwb.nl/verkeer) | `traffic` (jam list) | No | Free | — |
 | [TomTom Routing API](https://developer.tomtom.com/routing-api) | `traffic` (travel time) | **Yes** | Free tier: 2,500 req/day | See below |
 | [Google Calendar API](https://developers.google.com/calendar) | `calendar` | **Yes** (service account) | Free | See below |
