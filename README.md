@@ -12,8 +12,6 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 
 ## What it looks like
 
-<!-- Screenshots: 2×2 grid of cast screens, then a row with landing page + admin panel -->
-
 <p align="center">
   <img src="docs/screenshots/screenshot-1.png" width="49%" alt="Clock, 7-day weather forecast and rain radar" />
   <img src="docs/screenshots/screenshot-2.png" width="49%" alt="Clock, family calendar and waste collection schedule" />
@@ -47,7 +45,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 |--------|------|-------------|---------|
 | **Clock** | L | Client-side | Every second |
 | **Weather** | L | [open-meteo.com](https://open-meteo.com) — current, hourly, 7-day | 15 min |
-| **Rain forecast** | S | [buienalarm.nl](https://buienalarm.nl) — rain chart for next 2 h | 5 min |
+| **Rain forecast** | S | [open-meteo.com](https://open-meteo.com) — rain chart for next 3 h | 5 min |
 | **News ticker** | Full | RSS feeds (configurable list) | 10 min |
 | **Sunrise/sunset** | — | [sunrise-sunset.org](https://sunrise-sunset.org/api) — embedded in weather widget | 6 h |
 | **Garbage** | S | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) — upcoming collection (NL) | 1 h |
@@ -61,6 +59,8 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
 
 *Size guide — **S**: designed for the small bottom slot (~4×4 cells); **L**: designed for the large main slot (~8×7 cells); **Full**: full-width single-row strip; **Any**: container, inherits size from its grid position.*
+
+---
 
 ## Quick start
 
@@ -79,9 +79,9 @@ cp .env.example .env
 
 Edit `.env` and set the required values:
 
-**`UID` / `GID`** — file ownership for config files written by the backend. Run `id -u && id -g` on the host to get your values. Default `1000` is fine on most Linux installs.
+**`UID` / `GID`** — file ownership for config files written by the backend. Run `id -u && id -g` on the host. Default `1000` is fine on most Linux installs.
 
-**`SERVER_URL`** — the LAN address of this Docker host, as seen from the Chromecasts. Use `ip addr` (Linux) to find it. Must be an IP, not `localhost` — the TV resolves localhost as itself.
+**`SERVER_URL`** — the LAN address of this Docker host, as seen from the Chromecasts. Use `ip addr` to find it. Must be an IP, not `localhost`.
 
 ```
 SERVER_URL=http://192.168.1.10
@@ -89,17 +89,15 @@ SERVER_URL=http://192.168.1.10
 
 **`TIMEZONE`** — IANA timezone name, e.g. `Europe/Amsterdam`. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 
-The remaining settings are optional — only fill in the ones for widgets you plan to use:
+Optional — only fill in what you need:
 
-**`GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID`** *(calendar widget)* — requires a Google service account. Create one at [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials, enable the Calendar API, and download the JSON key to `config/google-sa.json`. Share your Google Calendar with the service account — find the service account email in **Admin → General → Calendar**. The Calendar ID is under Settings → your calendar → *Integrate calendar*.
-
-**`TOMTOM_API_KEY`** *(traffic widget)* — free key from [developer.tomtom.com](https://developer.tomtom.com) (no credit card). Home/work address and route roads are set in the admin panel.
-
-**`VERTREKTIJD_API_KEY`** *(bus / tram widget, Netherlands only)* — free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). Stop city and name are set in the admin panel.
-
-**`POLESTAR_USERNAME` / `POLESTAR_PASSWORD`** *(Polestar widget)* — the credentials you use to log in to the Polestar app or [my.polestar.com](https://my.polestar.com).
-
-**`ROUTER_PASSWORD`** *(network widget, optional)* — password for the Zyxel VMG8825 router admin interface. Router URL and username are set in the admin panel (General → Network widget). Without this the widget still shows connectivity, DNS, and speedtest results.
+| Variable | Widget | Where to get it |
+|---|---|---|
+| `GOOGLE_SA_KEY_FILE` / `GOOGLE_CALENDAR_ID` | Calendar | [Service account setup](docs/people-and-calendars.md#service-account-setup) |
+| `TOMTOM_API_KEY` | Traffic | Free key at [developer.tomtom.com](https://developer.tomtom.com) (no credit card) |
+| `VERTREKTIJD_API_KEY` | Bus / tram | Free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html) |
+| `POLESTAR_USERNAME` / `POLESTAR_PASSWORD` | Polestar | Your [my.polestar.com](https://my.polestar.com) credentials |
+| `ROUTER_PASSWORD` | Network | Zyxel VMG8825 admin password (optional) |
 
 ### 3. Run
 
@@ -111,11 +109,11 @@ The config file (`config/wall-cast.yaml`) is created automatically on first run 
 
 ### 4. Configure
 
-The casting server is now available at **`http://<host-ip>`**. To set up and configure your server, click **Configure**. (Alternatively, go directly to **`http://<host-ip>/#admin`** for the admin panel.)
+The casting server is now available at **`http://<host-ip>`**. Click **Configure** (or go to **`http://<host-ip>/#admin`**) to open the admin panel.
 
 ### 5. Enable casting
 
-In the admin panel, go to **Screens** → select a screen → **Screen settings**. Click **Scan network** to discover Chromecast devices on your LAN, then click a device row to pre-fill the IP. Hit **Save**.
+**Screens** → select a screen → **Screen settings** → **Scan network** → click a device row to pre-fill the IP → **Save**.
 
 The display is cast to the TV within ~15 seconds of startup and re-casts automatically if the session drops.
 
@@ -123,257 +121,54 @@ To stop: `docker compose down`
 
 ## Updating
 
-Pull the latest release and rebuild:
-
 ```bash
-git pull
-docker compose up --build -d
+git pull && docker compose up --build -d
 ```
 
 Check [Releases](https://github.com/niels-emmer/wall-cast/releases) for what changed.
 
+---
+
 ## Configuration
 
-All settings live in **`config/wall-cast.yaml`**. The file is gitignored and auto-created on first run — it will never block a `git pull`. Edit and save; the display reacts within ~1 second with no restart required.
+All settings live in **`config/wall-cast.yaml`** — gitignored, auto-created on first run, hot-reloads within ~1 second of saving. It will never block a `git pull`.
 
-See [`config/wall-cast.example.yaml`](config/wall-cast.example.yaml) for an annotated template with all options.
+The config uses a `shared + screens[]` schema. `shared` settings apply to every screen; each screen can override or extend them. See [`config/wall-cast.example.yaml`](config/wall-cast.example.yaml) for an annotated template and [`docs/config-reference.md`](docs/config-reference.md) for the full field reference.
 
-Full reference: [docs/config-reference.md](docs/config-reference.md)
+### Admin panel
 
-### Via admin panel
+Open `/#admin`. Four tabs:
 
-Open the admin panel by clicking **Settings** on the home page, or by navigating to `/#admin`. It has four tabs:
-
-- **General** — home location (lat/lon/name, with a Geolocate button), garbage collection address (postcode/house number, Netherlands), display language, news feed URLs, and network widget settings
-- **Screens** — add/rename/delete/enable/disable screens; set Chromecast IP (use the **Scan network** button to discover devices); set screen ID, layout, clock options, rotator intervals; assign people to the screen; configure weather and calendar options per slot
-- **People** — add household members; mark as family (appears on all screens automatically); add Google Calendar IDs; set commute addresses (home, work, route roads with autocomplete and auto-lookup) and bus / tram stop; add per-person RSS feeds; add per-person notification rules — used on any screen the person is assigned to
-- **Assistant** — enable the notification assistant; configure ntfy server and topic; set AI provider (Ollama or OpenAI) and model; add, edit, and toggle notification rules using the condition builder (generic rules shared across everyone; per-person rules live in the People tab)
+- **General** — location, garbage address, language, news feeds, network widget settings
+- **Screens** — add/rename/delete/enable screens; set Chromecast IP; assign people; configure layout and widget options
+- **People** — add household members; mark as family; add calendar IDs; set commute and bus stop; add per-person notification rules
+- **Assistant** — ntfy server/topic; AI provider; family-wide notification rules
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
-### Via YAML
-
-The config uses a `shared + screens[]` schema. Settings in `shared` apply to every screen; each screen can override or extend them.
-
-```yaml
-shared:
-  location: { lat, lon, name }  # weather, rain, sunrise/sunset
-  language: en                  # en or nl
-  garbage: { postcode, huisnummer }
-  people: [ ... ]               # household members with calendar IDs, commute, bus / tram stop
-  widgets: [ ... ]              # widgets on every screen (e.g. news ticker)
-
-screens:
-  - id: living-room
-    name: Living Room
-    enabled: true               # set to false to stop casting without deleting the entry
-    chromecast_ip: "192.168.1.42"
-    people: [alice, bob]        # which people's calendars/commute/bus appear here
-    layout: { columns: 12, rows: 8 }
-    widgets: [ ... ]            # screen-specific widgets
-```
-
-See [`config/wall-cast.example.yaml`](config/wall-cast.example.yaml) for a full annotated template and [`docs/config-reference.md`](docs/config-reference.md) for the complete field reference.
-
-Each screen is accessible at `/?screen=<id>`. The caster service opens this URL on the Chromecast automatically.
+---
 
 ## People & Calendars
 
-The **People** system lets you assign household members to screens so each screen shows the right calendars. Family members (marked as such) appear on every screen; everyone else only on the screens they're assigned to.
+Assign household members to screens so each screen shows the right calendars. Family members appear on all screens automatically; others only on screens they're assigned to.
 
-### Step 1 — Add people
-
-Open `http://<host-ip>/#admin` → **People** tab → **+ Add person**.
-
-For each person, enter their name, optionally tick **Family (all screens)**, and add their Google Calendar IDs. Then go to **Screens**, select a screen, and tick which people belong on it.
-
-### Step 2 — Find the Google Calendar ID
-
-| Calendar type | Where to find the ID |
-|---|---|
-| **Primary Gmail calendar** | Simply your Gmail address, e.g. `yourname@gmail.com` |
-| **Shared / group calendar** | Google Calendar → Settings → click the calendar → *Integrate calendar* → copy the **Calendar ID** |
-
-### Step 3 — Share the calendar with the service account
-
-The backend reads calendars via a Google service account. It can only read calendars that have been explicitly shared with it.
-
-1. Open [Google Calendar](https://calendar.google.com) → Settings → click the calendar
-2. Scroll to **Share with specific people and groups** → **+ Add people**
-3. Enter the **service account email** — find it in **Admin → General → Calendar** (it ends in `@...iam.gserviceaccount.com`)
-4. Set permission to **See all event details** (read-only is sufficient)
-5. Click **Send**
-
-Repeat for every calendar you want to display.
-
-> Changes take effect on the next calendar fetch (up to 10 minutes, or restart the backend to force an immediate refresh).
+→ **[Full setup guide: docs/people-and-calendars.md](docs/people-and-calendars.md)**
 
 ---
 
-## Breaking news (ntfy)
+## Assistant & Notifications
 
-If you run a [ntfy](https://ntfy.sh) instance, you can push messages directly onto the screen from anywhere — phone, script, or automation.
+The assistant watches your data and pushes proactive notifications to your phone via [ntfy](https://ntfy.sh). Rules are configured in the admin panel or YAML. Supports family-wide and per-person rules, optional AI message formatting (Ollama / OpenAI), and deduplication.
+
+ntfy also powers **breaking news**: push a message from your phone or a script and it appears instantly on screen in the news ticker.
 
 ```bash
-# Basic message
-curl -d "Server is back online" https://ntfy.example.com/wall-cast
-
-# With a headline title
 curl -H "Title: Power outage" \
-     -d "Grid restored at 14:32 after 47-minute outage" \
+     -d "Grid restored at 14:32" \
      https://ntfy.example.com/wall-cast
 ```
 
-The message appears as a **`BREAKING`** item (red badge, amber title, blinking dot) interspersed in the news ticker every ~3 items. It stays visible until a new message arrives.
-
-Configure in the news widget:
-```yaml
-ntfy_url: https://ntfy.example.com
-ntfy_topic: wall-cast
-```
-
-The browser subscribes directly to the ntfy SSE endpoint — no backend proxy needed.
-
----
-
-## Assistant
-
-The assistant is a standalone sidecar service that watches your data and pushes proactive notifications to your phone via [ntfy](https://ntfy.sh). It runs entirely on the Docker host — no cloud connection required beyond your ntfy instance.
-
-### How it works
-
-Rules are defined in the admin panel (or directly in YAML). Each rule has a single condition: a variable, an operator, and a threshold. When the condition is met, a notification is pushed to ntfy.
-
-**Family rules** fire for the whole household — notifications go to the shared system topic and are fanned out to every person's individual topic as well.
-**Personal rules** (variables marked *personal* below) require a person context and fire per-person — notifications go only to that person's ntfy topic.
-
-### Available variables
-
-| Variable | Type | Scope | Description |
-|----------|------|-------|-------------|
-| `garbage.hours_until_pickup` | number | family | Hours until the next collection |
-| `weather.warning_level` | enum | family | Active KNMI warning level: `geel` / `oranje` / `rood` |
-| `weather.temperature` | number | family | Current temperature (°C) |
-| `weather.wind_speed` | number | family | Current wind speed (km/h) |
-| `rain.mm_now` | number | family | Current rain intensity (mm/hour) |
-| `rain.minutes_until_rain` | number | family | Minutes until rain starts (0 = raining now, 999 = none in 3 h) |
-| `polestar.battery_pct` | number | family | Battery level (%) |
-| `polestar.range_km` | number | family | Estimated range (km) |
-| `polestar.is_plugged_in` | boolean | family | Whether the car is plugged in |
-| `airquality.aqi` | number | family | European AQI (good ≤20 · fair ≤40 · moderate ≤60 · poor ≤80) |
-| `airquality.pollen_birch` | enum | family | Birch pollen level: `none` / `low` / `moderate` / `high` / `very_high` |
-| `airquality.pollen_grass` | enum | family | Grass pollen level: `none` / `low` / `moderate` / `high` / `very_high` |
-| `calendar.minutes_until_event` | number | personal | Minutes until that person's next calendar event |
-| `bus.delay_minutes` | number | personal | Bus delay (minutes) — only fires when person has a calendar event within 90 min |
-| `bus.cancelled` | boolean | personal | Bus service cancelled — cross-correlated with calendar |
-| `bus.minutes_until_departure` | number | personal | Minutes until that person's next bus departure |
-| `traffic.delay_minutes` | number | personal | Commute delay (minutes above normal) |
-| `traffic.delay_pct` | number | personal | Commute delay as percentage above normal travel time |
-
-### Setup
-
-**1. Install ntfy**
-
-Install the [ntfy app](https://ntfy.sh) (Android / iOS) and subscribe to your topic. Self-hosted ntfy works fine — point `ntfy_url` at your instance.
-
-**2. Enable in the admin panel**
-
-Open `/#admin` → **Assistant** tab:
-
-- Tick **Enable assistant**
-- Enter your **ntfy server URL** and **topic** under Notifications
-- Add rules under **Rules** using the condition builder — these are family-wide rules sent to all registered people
-- Click **Save**
-
-For personal rules, go to the **People** tab → select a person → **Assistant** section:
-- Enter that person's **ntfy topic** (they subscribe to this on their phone)
-- Add personal rules (bus, traffic, calendar)
-
-**3. Configure YAML directly (optional)**
-
-```yaml
-shared:
-  assistant:
-    enabled: true
-    check_interval: 300          # seconds between rule evaluation cycles
-
-    notify:
-      ntfy_url: https://ntfy.example.com
-      ntfy_topic: wall-cast-alerts   # system topic; global rules fan out here too
-
-    rules:
-      - id: garbage-reminder
-        title: Garbage pickup reminder
-        enabled: true
-        condition:
-          variable: garbage.hours_until_pickup
-          operator: "<="
-          value: 18
-          unit: h
-      - id: heavy-rain
-        title: Heavy rain alert
-        enabled: true
-        condition:
-          variable: rain.mm_now
-          operator: ">="
-          value: 5
-          unit: mm/h
-
-  people:
-    - id: niels
-      name: Niels
-      notify:
-        ntfy_topic: wall-cast-niels   # personal topic; global rules are also delivered here
-      rules:
-        - id: niels-bus-delay
-          title: Bus delay alert
-          enabled: true
-          condition:
-            variable: bus.delay_minutes
-            operator: ">="
-            value: 5
-            unit: min
-```
-
-**4. Start the service**
-
-```bash
-docker compose up --build assistant -d
-```
-
-The assistant logs each notification it sends:
-
-```
-[assistant] ntfy → wall-cast-alerts: 'Garbage collection'
-[assistant] ntfy → wall-cast-niels: 'Bus delay — Leidseplein'
-```
-
-### AI formatting (optional)
-
-By default the assistant sends concise template messages. Enable an AI provider to rewrite them into natural language.
-
-| Provider | Config |
-|----------|--------|
-| **None** (default) | Template strings — no extra setup |
-| **Ollama** (self-hosted) | Set `provider: ollama`, `ollama_url`, and `ollama_model` (e.g. `llama3.2:3b`) |
-| **OpenAI** | Set `provider: openai`, `OPENAI_API_KEY` in `.env`, optionally `openai_model` |
-
-```yaml
-    ai:
-      provider: ollama
-      ollama_url: http://host.docker.internal:11434
-      ollama_model: llama3.2:3b
-```
-
-With AI enabled, a bus delay notification might become:
-
-> *"Heads up Niels — the line 2 at 08:45 is running 8 minutes late, and you've got your dentist appointment at 09:30."*
-
-AI is **additive only** — if the AI call fails the assistant falls back to the template automatically.
-
-### Deduplication
-
-The assistant tracks sent notifications in `/config/assistant-state.json`. Each rule fires at most once per event — you won't get the same bin-day reminder every 5 minutes. State survives container restarts. Old entries are pruned automatically after 7 days.
+→ **[Full docs: docs/assistant.md](docs/assistant.md)**
 
 ---
 
@@ -414,19 +209,11 @@ The assistant tracks sent notifications in `/config/assistant-state.json`. Each 
    browser subscribes to ntfy SSE directly (no proxy)
 ```
 
-**Five Docker services:**
-
-- **frontend** — nginx:alpine on port 80; serves the Vite-built React SPA; proxies `/api/*` to the backend with `proxy_buffering off` for SSE
-- **backend** — python:3.12-slim (internal, not exposed on the host); FastAPI; reads/writes `config/wall-cast.yaml`; proxies all external API calls with caching
-- **caster** — python:3.12-slim with `network_mode: host` (required to reach Chromecasts on the LAN); reads `chromecast_ip` from each screen in the config; uses `catt cast_site` with the DashCast receiver; polls every 60 s and re-casts if the session drops
-- **scanner** — python:3.12-slim with `network_mode: host` on port 8765; runs `catt scan` on demand via mDNS; backend proxies `GET /api/admin/scan` to it via `host.docker.internal`
-- **assistant** — python:3.12-slim; polls the backend `/api/*` endpoints every 5 min; runs configurable rules; pushes notifications via ntfy; state persisted in `/config/assistant-state.json`; fully opt-in via `shared.assistant.enabled`
+Five Docker services: **frontend** (nginx, port 80), **backend** (FastAPI, internal), **caster** (host network, `catt cast_site`), **scanner** (host network, mDNS), **assistant** (ntfy notifications, opt-in).
 
 ---
 
 ## Development
-
-For fast iteration without rebuilding Docker images:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
@@ -436,41 +223,26 @@ docker compose -f docker-compose.dev.yml up --build
 - **Backend** (FastAPI + live reload): http://localhost:8000
 - **API docs** (Swagger): http://localhost:8000/api/docs
 
-Or run the frontend standalone (fastest):
+Or run the frontend standalone (fastest — requires backend on port 8000):
 
 ```bash
 cd frontend && npm install && npm run dev
 ```
 
-(Requires the backend running on port 8000.)
-
 ## Extending the project
 
-This project is fully AI-coded and designed to be extended by prompting. See [docs/prompt-a-feature.md](docs/prompt-a-feature.md) for a framework — a prompt structure that lets you describe a feature in plain language and have Claude implement it end-to-end: branch, config, admin UI, widget code, tests, docs, commit, and PR.
+This project is fully AI-coded and designed to be extended by prompting. See [docs/prompt-a-feature.md](docs/prompt-a-feature.md) for a prompt structure that lets you describe a feature in plain language and have Claude implement it end-to-end.
 
-### Adding widgets
-
-See [docs/adding-a-widget.md](docs/adding-a-widget.md) for a step-by-step guide and [docs/widget-style-guide.md](docs/widget-style-guide.md) for the design token system used across all widgets.
-
-The widget registry is in `frontend/src/widgets/index.ts`. Any component registered there is immediately available in the YAML config.
+- Adding a widget: [docs/adding-a-widget.md](docs/adding-a-widget.md)
+- Widget design system: [docs/widget-style-guide.md](docs/widget-style-guide.md)
 
 ## Security
 
-- **nginx is the only public port** (80) — the backend is never exposed on the host
-- All external API calls are **proxied server-side** — no CORS leakage, responses cached
-- `server_tokens off` and security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) set in nginx
-- **No authentication by design** — intended for local networks only
-- Backend runs as your host UID/GID (set in `.env`) so config files are always owned by the right user
+- **nginx is the only public port** — the backend is never exposed on the host
+- No authentication by design — intended for local networks only
+- Backend runs as your host UID/GID so config files are always owned by the right user
 
-If your host is internet-facing, add `allow`/`deny` rules in `nginx.conf`:
-
-```nginx
-location / {
-    allow 192.168.0.0/16;
-    allow 10.0.0.0/8;
-    deny all;
-}
-```
+If your host is internet-facing, add `allow`/`deny` rules in `nginx.conf` to restrict by IP range.
 
 ## Project layout
 
@@ -479,37 +251,27 @@ wall-cast/
 ├── config/
 │   ├── wall-cast.yaml          ← gitignored; auto-created on first run
 │   └── wall-cast.example.yaml  ← annotated template (tracked in git)
-├── backend/
-│   ├── app/
-│   │   ├── main.py             FastAPI app + lifespan
-│   │   ├── wall_config.py      YAML loader + auto-create/migrate + SSE broadcaster
-│   │   └── routers/            one file per API endpoint (weather, rain, news, sun,
-│   │                           garbage, polestar, calendar, traffic, warnings, bus,
-│   │                           network, airquality, config, status)
-│   └── requirements.txt
-├── frontend/
-│   └── src/
-│       ├── App.tsx             CSS grid layout + admin routing
-│       ├── admin/              admin panel UI (/#admin)
-│       ├── i18n/               translations (nl/en) + useLang() hook
-│       ├── widgets/            one directory per widget type
-│       │   ├── index.ts        ← widget registry
-│       │   └── styles.ts       ← design token system (font sizes, spacing, colour)
-│       └── hooks/              one hook per data source
+├── backend/app/
+│   ├── main.py                 FastAPI app + lifespan
+│   ├── wall_config.py          YAML loader + SSE broadcaster
+│   └── routers/                one file per API endpoint
+├── frontend/src/
+│   ├── App.tsx                 CSS grid layout + admin routing
+│   ├── admin/                  admin panel UI (/#admin)
+│   ├── widgets/
+│   │   ├── index.ts            ← widget registry
+│   │   └── styles.ts           ← design token system
+│   └── hooks/                  one hook per data source
 ├── caster/
-│   ├── cast.py                 smart multi-screen caster + keepalive loop
-│   └── scanner.py              HTTP :8765; mDNS-based Chromecast discovery
+│   ├── cast.py                 multi-screen caster + keepalive loop
+│   └── scanner.py              HTTP :8765; mDNS Chromecast discovery
 ├── assistant/
-│   ├── assistant.py            main polling loop; reads config, runs rules, dispatches
-│   ├── rules/                  engine.py dispatches rules by variable; one file per
-│   │                           data domain extracts variable values (garbage, bus, …)
+│   ├── assistant.py            polling loop; runs rules; dispatches
+│   ├── rules/                  engine + one file per data domain
 │   ├── notify/ntfy.py          push to ntfy via HTTP POST
-│   ├── ai/formatter.py         optional AI message rewriting (Ollama / OpenAI)
-│   └── state.py                deduplication state (JSON, persisted to /config)
+│   ├── ai/formatter.py         optional AI message rewriting
+│   └── state.py                deduplication (JSON, persisted)
 ├── docs/
-│   ├── config-reference.md
-│   ├── adding-a-widget.md
-│   └── widget-style-guide.md
 ├── docker-compose.yml          production
 └── docker-compose.dev.yml      development
 ```
@@ -518,56 +280,31 @@ wall-cast/
 
 ## Credits
 
-### Built with AI
-
-This project was conceived, architected, and coded in collaboration with [Claude](https://claude.ai) (Anthropic) using [Claude Code](https://claude.ai/claude-code). Architecture, widget implementation, backend routing, CSS layout, debugging, and documentation — all prompted into existence.
-
 ### Data sources
 
 | Source | Used for |
 |--------|----------|
-| [open-meteo.com](https://open-meteo.com) | Weather forecasts and air quality / pollen — free, no API key |
-| [buienalarm.nl](https://buienalarm.nl) | Rain intensity forecast (2 h) |
-| [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, and daylight duration |
+| [open-meteo.com](https://open-meteo.com) | Weather forecasts, rain, air quality / pollen |
+| [sunrise-sunset.org](https://sunrise-sunset.org/api) | Sunrise, sunset, daylight duration |
 | [mijnafvalwijzer.nl](https://mijnafvalwijzer.nl) | Waste collection schedule (NL) |
 | [vertrektijd.info](https://vertrektijd.info) | Real-time bus / tram departures (NL) |
 | [ANWB](https://anwb.nl) | Traffic incidents |
 | [TomTom Routing API](https://developer.tomtom.com) | Travel time |
 | [MeteoAlarm](https://meteoalarm.org) | KNMI weather warnings |
 | [pypolestar](https://github.com/pypolestar/pypolestar) | Polestar vehicle data |
-| [ntfy.sh](https://ntfy.sh) | Self-hosted push notifications (breaking news) |
+| [ntfy.sh](https://ntfy.sh) | Push notifications |
 
-### Libraries and tools
+### Built with
 
-**Backend**
-
-| Library | Role |
-|---------|------|
-| [FastAPI](https://fastapi.tiangolo.com) | Web framework + SSE |
-| [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) | Settings management |
-| [pyyaml](https://pyyaml.org) | YAML config loading |
-| [watchfiles](https://watchfiles.helpmanual.io) | Config file watcher |
-| [httpx](https://www.python-httpx.org) | Async HTTP client |
-| [feedparser](https://feedparser.readthedocs.io) | RSS feed parsing |
-| [catt](https://github.com/skorokithakis/catt) | Cast any URL to Chromecast via DashCast |
-
-**Frontend**
-
-| Library | Role |
-|---------|------|
-| [React](https://react.dev) | UI framework |
-| [Vite](https://vitejs.dev) | Build tool + dev server |
-| [TypeScript](https://www.typescriptlang.org) | Type safety |
-| [TanStack Query](https://tanstack.com/query) | Data fetching and caching |
-| [Mantine](https://mantine.dev) | Admin panel UI components |
-| [Tailwind CSS](https://tailwindcss.com) | Utility CSS (non-layout) |
-
-**Infrastructure**
-
-| Tool | Role |
-|------|------|
-| [nginx:alpine](https://nginx.org) | Static file serving + API proxy |
-| [Docker Compose](https://docs.docker.com/compose/) | Multi-service orchestration |
+| | |
+|---|---|
+| [FastAPI](https://fastapi.tiangolo.com) | Backend framework + SSE |
+| [React](https://react.dev) + [Vite](https://vitejs.dev) | Frontend |
+| [TanStack Query](https://tanstack.com/query) | Data fetching |
+| [Mantine](https://mantine.dev) | Admin panel components |
+| [catt](https://github.com/skorokithakis/catt) | Cast to Chromecast via DashCast |
+| [nginx:alpine](https://nginx.org) | Static serving + API proxy |
+| [Claude](https://claude.ai) + [Claude Code](https://claude.ai/claude-code) | Everything above |
 
 ---
 
