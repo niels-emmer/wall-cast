@@ -30,6 +30,16 @@ Per-screen status
 After each cycle the caster writes /config/caster-status.json with the last
 known status of every active screen.  The backend serves this via
 GET /api/admin/screens/status.
+
+Post-cast verification
+----------------------
+After every cast attempt the caster sleeps CAST_VERIFY_DELAY seconds (default
+10) and re-checks is_casting().  On some devices (e.g. Google Home Hub Mini)
+catt cast_site exits with code 0 but the session silently fails — for example
+after the user triggered a "Hey Google" voice command that returned the device
+to its native UI.  If the verify check returns False, last_cast_at is reset to
+0 so the cooldown does not block the next cycle from retrying.  Set
+CAST_VERIFY_DELAY=0 to disable verification (reverts to pre-v1.x behaviour).
 """
 
 import json
@@ -43,12 +53,13 @@ import urllib.request
 
 import yaml
 
-CONFIG_PATH    = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
-SERVER_URL     = os.environ.get("SERVER_URL", "http://localhost").rstrip("/")
-CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "60"))
-CAST_COOLDOWN  = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasting
-HEARTBEAT_PATH = os.environ.get("CASTER_HEARTBEAT_PATH", "/config/caster-heartbeat.txt")
-SCANNER_URL    = os.environ.get("SCANNER_URL", "http://localhost:8765/scan")
+CONFIG_PATH        = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
+SERVER_URL         = os.environ.get("SERVER_URL", "http://localhost").rstrip("/")
+CHECK_INTERVAL     = int(os.environ.get("CHECK_INTERVAL", "60"))
+CAST_COOLDOWN      = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasting
+CAST_VERIFY_DELAY  = int(os.environ.get("CAST_VERIFY_DELAY", "10"))  # s to wait before verifying; 0=disabled
+HEARTBEAT_PATH     = os.environ.get("CASTER_HEARTBEAT_PATH", "/config/caster-heartbeat.txt")
+SCANNER_URL        = os.environ.get("SCANNER_URL", "http://localhost:8765/scan")
 
 CAST_PORT   = 8009  # CastV2 control port — open on every Chromecast / Google TV
 _CONFIG_DIR = os.path.dirname(CONFIG_PATH) or "."
@@ -272,6 +283,22 @@ def main() -> None:
                 status_str = "starting"
                 cast(ip, s["url"], sid)
                 last_cast_at[sid] = now
+
+                # Post-cast verification: some devices (e.g. Google Home Hub Mini)
+                # accept the cast command silently but never start the session — for
+                # instance after a "Hey Google" voice command.  Check after a short
+                # delay and clear last_cast_at so the cooldown does not block the
+                # next retry cycle if the cast didn't take.
+                if CAST_VERIFY_DELAY > 0:
+                    print(f"[caster] {sid} verifying cast in {CAST_VERIFY_DELAY}s…", flush=True)
+                    time.sleep(CAST_VERIFY_DELAY)
+                    if is_casting(ip):
+                        print(f"[caster] {sid} cast verified", flush=True)
+                        status_str = "casting"
+                    else:
+                        print(f"[caster] {sid} cast unverified — resetting cooldown, will retry next cycle", flush=True)
+                        last_cast_at[sid] = 0
+                        status_str = "cast_failed"
 
             screen_statuses[sid] = {
                 "status":       status_str,

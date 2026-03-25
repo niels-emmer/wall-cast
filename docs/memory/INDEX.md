@@ -73,7 +73,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Rotate widget | ✅ | Cycles child widgets in one grid cell, configurable interval; skips slots that call onSkip() |
 | Bus widget | ✅ | vertrektijd.info live departures; cancelled services shown |
 | Visual harmony | ✅ | Shared design token system in `frontend/src/widgets/styles.ts` — 7 font tiers, unified shell gap/card padding/radius across all widgets. See `docs/widget-style-guide.md`. |
-| Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on genuine drop; cooldown prevents false-negative recast loop |
+| Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on genuine drop; cooldown prevents false-negative recast loop; post-cast verification catches silent failures (e.g. after "Hey Google") |
 | Network widget | ✅ | WAN status, connectivity, DNS, LAN host count, speedtest; Zyxel VMG8825 DAL API; router password via `ROUTER_PASSWORD` env var |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
@@ -110,6 +110,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - `SERVER_URL` env var sets the base; screen URL is `{SERVER_URL}/?screen={id}`
 - `network_mode: host` required for mDNS LAN discovery
 - **Cooldown guard**: `catt status` gives a false negative right after `cast_site` completes — `is_casting()` returns `False` even though the page is loading. Without a guard this caused a recast loop every 60 s, constantly reloading the display. `cast.py` tracks `last_cast_at` per IP and skips the recast if it was cast within `CAST_COOLDOWN` seconds (default 300 s, configurable via env var). Only genuinely stale sessions (no cast for > 5 min) are restarted.
+- **Post-cast verification**: after every cast attempt, sleeps `CAST_VERIFY_DELAY` seconds (default 10) then calls `is_casting()`. If the cast silently failed (e.g. Google Home Hub Mini rejected the cast after a "Hey Google" voice command), `last_cast_at` is reset to 0 so the cooldown guard does not block the next retry. Status is set to `cast_failed` — visible in the admin panel. Set `CAST_VERIFY_DELAY=0` to disable.
 
 ### Scanner sidecar
 - Separate `scanner` service with `network_mode: host` on port 8765 — host network needed for mDNS
