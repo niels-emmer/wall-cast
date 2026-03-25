@@ -39,7 +39,7 @@ catt cast_site exits with code 0 but the session silently fails — for example
 after the user triggered a "Hey Google" voice command that returned the device
 to its native UI.  If the verify check returns False, last_cast_at is reset to
 0 so the cooldown does not block the next cycle from retrying.  Set
-CAST_VERIFY_DELAY=0 to disable verification (reverts to pre-v1.x behaviour).
+CAST_VERIFY_DELAY=0 in docker-compose.yml to disable verification.
 """
 
 import json

@@ -110,7 +110,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - `SERVER_URL` env var sets the base; screen URL is `{SERVER_URL}/?screen={id}`
 - `network_mode: host` required for mDNS LAN discovery
 - **Cooldown guard**: `catt status` gives a false negative right after `cast_site` completes — `is_casting()` returns `False` even though the page is loading. Without a guard this caused a recast loop every 60 s, constantly reloading the display. `cast.py` tracks `last_cast_at` per IP and skips the recast if it was cast within `CAST_COOLDOWN` seconds (default 300 s, configurable via env var). Only genuinely stale sessions (no cast for > 5 min) are restarted.
-- **Post-cast verification**: after every cast attempt, sleeps `CAST_VERIFY_DELAY` seconds (default 10) then calls `is_casting()`. If the cast silently failed (e.g. Google Home Hub Mini rejected the cast after a "Hey Google" voice command), `last_cast_at` is reset to 0 so the cooldown guard does not block the next retry. Status is set to `cast_failed` — visible in the admin panel. Set `CAST_VERIFY_DELAY=0` to disable.
+- **Post-cast verification**: after every cast attempt, sleeps `CAST_VERIFY_DELAY` seconds (default 10) then calls `is_casting()`. If the cast silently failed (e.g. Google Home Hub Mini rejected the cast after a "Hey Google" voice command), `last_cast_at` is reset to 0 so the cooldown guard does not block the next retry. Status is set to `cast_failed` — visible in the admin panel. Set `CAST_VERIFY_DELAY=0` in `docker-compose.yml` to disable.
 
 ### Scanner sidecar
 - Separate `scanner` service with `network_mode: host` on port 8765 — host network needed for mDNS
