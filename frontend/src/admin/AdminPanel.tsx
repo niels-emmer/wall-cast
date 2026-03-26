@@ -1697,13 +1697,16 @@ function ScreenDiagnosticsBox({
   screenId,
   screensStatus,
   logsData,
+  draftIp,
 }: {
   screenId: string
   screensStatus: ScreensStatusData | undefined
   logsData: { records: LogRecord[] } | undefined
+  draftIp?: string
 }) {
   const [recasting, setRecasting] = useState(false)
   const [recastDone, setRecastDone] = useState(false)
+  const queryClient = useQueryClient()
 
   const screenStatus = screensStatus?.screens?.[screenId]
   const updatedAgo   = screensStatus?.updated_at
@@ -1726,6 +1729,10 @@ function ScreenDiagnosticsBox({
       })
       setRecastDone(true)
       setTimeout(() => setRecastDone(false), 4000)
+      // Poll more aggressively after a recast so status updates quickly
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['screens-status'] }), 5000)
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['screens-status'] }), 12000)
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['screens-status'] }), 20000)
     } finally {
       setRecasting(false)
     }
@@ -1768,9 +1775,14 @@ function ScreenDiagnosticsBox({
                 flexShrink: 0,
               }} />
               <Text size="sm">{statusLabel}</Text>
-              {screenStatus.ip && (
+              {draftIp && draftIp !== screenStatus.ip ? (
+                <Group gap={4} align="center">
+                  <Code fz="xs">{draftIp}</Code>
+                  <Text size="xs" c="yellow">updated</Text>
+                </Group>
+              ) : screenStatus.ip ? (
                 <Code fz="xs">{screenStatus.ip}</Code>
-              )}
+              ) : null}
               {screenStatus.last_cast_at > 0 && (
                 <Text size="xs" c="dimmed">
                   last cast {Math.round(Date.now() / 1000 - screenStatus.last_cast_at)}s ago
@@ -1778,9 +1790,17 @@ function ScreenDiagnosticsBox({
               )}
             </Group>
           ) : (
-            <Text size="sm" c="dimmed">
-              {screensStatus ? 'Not active (no chromecast_ip or casting disabled)' : 'Caster not running'}
-            </Text>
+            <Group gap="xs" align="center">
+              <Text size="sm" c="dimmed">
+                {screensStatus ? 'Not active (no chromecast_ip or casting disabled)' : 'Caster not running'}
+              </Text>
+              {draftIp && (
+                <Group gap={4} align="center">
+                  <Code fz="xs">{draftIp}</Code>
+                  <Text size="xs" c="yellow">updated</Text>
+                </Group>
+              )}
+            </Group>
           )}
           {updatedAgo !== null && (
             <Text size="xs" c="dimmed" ml="auto">updated {updatedAgo}s ago</Text>
@@ -2155,6 +2175,7 @@ function ScreensTab({
             screenId={currentScreen.id}
             screensStatus={screensStatus}
             logsData={logsData}
+            draftIp={currentScreen.chromecast_ip ?? undefined}
           />
         </>
       )}
