@@ -230,13 +230,13 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
     layout: { columns: 12, rows: 8 },
     widgets: [
       {
-        id: `${id}-clock`,
+        id: 'clock',
         type: 'clock',
         col: 1, row: 1, col_span: 4, row_span: 3,
         config: { show_seconds: true, show_date: true },
       },
       {
-        id: `${id}-main-rotator`,
+        id: 'main-rotator',
         type: 'rotate',
         col: 5, row: 1, col_span: 8, row_span: 7,
         config: {
@@ -251,7 +251,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
         },
       },
       {
-        id: `${id}-bottom-rotator`,
+        id: 'bottom-rotator',
         type: 'rotate',
         col: 1, row: 4, col_span: 4, row_span: 4,
         config: {
@@ -1933,7 +1933,7 @@ function ScreensTab({
     setSelectedId(remaining[0]?.id ?? null)
   }
 
-  const currentScreen = selectedId ? multiDraft.screens.find(s => s.id === selectedId) ?? null : null
+  const currentScreen = selectedId !== null ? multiDraft.screens.find(s => s.id === selectedId) ?? null : null
   const screenWidgets = currentScreen ? getActiveWidgets(draft, currentScreen.id) : []
   const rotators = screenWidgets.filter(w => w.type === 'rotate')
   const allPeople = getPeople(draft)
@@ -1993,6 +1993,7 @@ function ScreensTab({
                   label="Screen ID"
                   description="Used in the cast URL — keep it URL-safe"
                   value={currentScreen.id}
+                  error={currentScreen.id === '' ? 'ID cannot be empty' : undefined}
                   onChange={e => {
                     const newId = e.target.value
                     setSelectedId(newId)

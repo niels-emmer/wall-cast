@@ -154,6 +154,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Extra fields (consumption, avg speed, trip meters) come back null from the API for this vehicle — rows are hidden when null
 - Service warning → amber alert tag; brake_fluid / coolant / oil warnings → red alert tags — all suppressed when `NO_WARNING` or `UNSPECIFIED`
 - `_no_warn = ("NO_WARNING", "UNSPECIFIED")` sentinel tuple used for all health field filtering
+- **gql task leak**: `pypolestar` uses `gql` WebSocket transport which spawns a persistent `ReconnectingAsyncClientSession._connection_loop()` background task. `async_logout()` does not cancel it, causing "Task was destroyed but pending" errors every cache cycle. Fix: snapshot `asyncio.all_tasks()` before `PolestarApi()`, then cancel/await all new tasks after `async_logout()`.
 
 ### Calendar widget
 - Uses `google-api-python-client` + `google-auth` (service account JSON at `GOOGLE_SA_KEY_FILE`, default `/config/google-sa.json`)
@@ -202,6 +203,8 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Admin state: `draft` is initialised from server data once (when `draft === null`). The `useEffect` that syncs `remoteConfig → draft` is guarded by `draft === null` so it only fires on first load. After save, `queryClient.setQueryData()` updates the cache directly — no refetch is triggered, so `remoteConfig` never changes and the useEffect never overwrites the user's ongoing edits. **Do NOT use `invalidateQueries` after admin saves** — it triggers a refetch that fires the useEffect and silently resets the draft.
 - Rotation slots: toggled per widget via `enabled` field on each slot in `config.widgets`
 - Rotator "Add slot" UI: `RotatorSection` has a `Select + Add` button at the bottom; only shows widget types not already in the rotator; uses `defaultSlotConfig()` helper to seed sensible defaults
+- **Screen ID field**: `currentScreen` is derived with `selectedId !== null` (not `selectedId ?`) — empty string is falsy and would otherwise make `currentScreen` null, crashing all code below that reads `currentScreen.id`. The TextInput shows an inline error when the ID is empty.
+- **Rotator widget IDs**: `makeDefaultScreen` uses plain `clock`, `main-rotator`, `bottom-rotator` — no screen-ID prefix. IDs only need to be unique within a screen's widget array. To migrate existing production configs: `sed -i -E 's/id: new-screen(-[0-9]+)?-main-rotator/id: main-rotator/g' config/wall-cast.yaml` (and equivalents for `bottom-rotator`, `clock`).
 
 ### i18n
 - `frontend/src/i18n/translations.ts` — `Translations` interface + `nl` and `en` objects; all widget labels, day/month names, WMO codes, and format functions live here

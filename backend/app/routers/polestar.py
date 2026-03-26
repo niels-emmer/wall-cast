@@ -32,7 +32,15 @@ async def get_polestar() -> dict:
         return _cache
 
     try:
+        import asyncio
         from pypolestar import PolestarApi  # type: ignore
+
+        # Snapshot existing tasks so we can clean up gql background tasks after.
+        # pypolestar uses gql's ReconnectingAsyncClientSession which spawns a
+        # persistent _connection_loop task; async_logout() closes the socket but
+        # does not cancel/await that task, causing "Task was destroyed but pending"
+        # noise every cache cycle.
+        _tasks_before = set(asyncio.all_tasks())
 
         api = PolestarApi(
             username=settings.polestar_username,
@@ -125,6 +133,14 @@ async def get_polestar() -> dict:
             await api.async_logout()
         except Exception:
             pass
+
+        # Cancel any background tasks spawned by gql that async_logout() left
+        # pending (the ReconnectingAsyncClientSession._connection_loop).
+        _leaked = set(asyncio.all_tasks()) - _tasks_before
+        for _t in _leaked:
+            _t.cancel()
+        if _leaked:
+            await asyncio.gather(*_leaked, return_exceptions=True)
 
         return _cache
 

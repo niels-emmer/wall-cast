@@ -1,5 +1,19 @@
 # Decision Log
 
+## 2026-03-25 — Rotator IDs, admin screen ID crash, polestar task leak
+
+### Rotator widget IDs: no screen-ID prefix
+**Decision**: `makeDefaultScreen` now generates widget IDs `clock`, `main-rotator`, `bottom-rotator` — no `${screenId}-` prefix.
+**Rationale**: Widget IDs only need to be unique within a screen's widget array (they are looked up as `x.id === w.id` within that screen's list). Using the screen ID as a prefix added no uniqueness value and became stale the moment a screen was renamed or re-ID'd via the admin panel — the widget IDs would keep the original `new-screen-` prefix forever. The admin panel `RotatorSection` header displays the widget ID, so stale names were visible noise. Simple positional names (`main-rotator`, `bottom-rotator`) are self-descriptive and permanently accurate. Existing screens in the YAML are unaffected; the bash migration `sed -i -E 's/id: new-screen(-[0-9]+)?-main-rotator/id: main-rotator/g'` (and equivalents for `bottom-rotator` and `clock`) is used to retrofit production configs.
+
+### Admin panel: clearing screen ID no longer crashes the panel
+**Decision**: `currentScreen` derivation changed from `selectedId ? find(...) : null` to `selectedId !== null ? find(...) : null`. Added `error={currentScreen.id === '' ? 'ID cannot be empty' : undefined}` to the Screen ID TextInput.
+**Rationale**: An empty string is falsy in JavaScript, so clearing the ID field set `selectedId = ''`, which made the falsy guard evaluate to `null`, which caused every reference to `currentScreen.id` below to throw. Changing to a null check (`!== null`) means an empty string still triggers the find, so `currentScreen` remains the correct screen object. The inline error state gives the user clear feedback that the field cannot be left empty, rather than a silent crash.
+
+### Polestar: cancel leaked gql background tasks after logout
+**Decision**: Snapshot `asyncio.all_tasks()` before creating `PolestarApi`, then after `async_logout()` cancel and await all tasks that weren't in the snapshot.
+**Rationale**: `pypolestar` uses `gql` with a WebSocket transport (`ReconnectingAsyncClientSession`). `async_init()` spawns a persistent `_connection_loop` background task designed to maintain and reconnect the WebSocket. `async_logout()` closes the socket but does not `cancel()` + `await` that background task, so asyncio sees the task get garbage-collected while still pending and logs "Task was destroyed but it is pending!" on every 5-minute cache cycle. The task-snapshot diff approach is surgical: it cancels exactly the tasks spawned during the API session without touching unrelated background tasks, and requires no knowledge of `pypolestar`/`gql` internals.
+
 ## 2026-03-24 — Traffic total km + network post-deploy recovery
 
 ### Traffic: total jam km in section header
