@@ -33,6 +33,8 @@ I have not once inspected the code. All new ideas are prompted into action and i
 
 **Agree on invariants early.** Some constraints don't change: Tailwind layout classes are unreliable in Vite production builds (all layout must use inline `style={{}}`), dark background, cyan accent. State these explicitly and Claude will maintain them across the whole session.
 
+**Encode invariants as hooks, not just prose.** Documenting rules in `CLAUDE.md` is necessary but prose fades from context in long sessions or when someone forks the repo. The `.claude/hooks/` scripts enforce the most critical rules — Tailwind layout classes, translation key parity, TypeScript correctness, Docker Compose validity, widget registration — automatically every time a file is written. The rule fires whether Claude remembers it or not. See [docs/claude-hooks.md](claude-hooks.md).
+
 ---
 
 ## The UI improvement loop

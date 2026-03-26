@@ -8,12 +8,13 @@ Widget and data source additions that make sense for a Dutch family info board. 
 
 | # | Widget | API key needed | Effort |
 |---|--------|---------------|--------|
+| — | KNMI weather warnings | None | ✅ done |
+| — | Air quality + pollen | None | ✅ done |
 | 1 | Countdown / event timer | None | Very low |
 | 2 | Energy prices (ENTSO-E) | None | Low |
 | 3 | Photo slideshow | None | Low–medium |
-| 4 | KNMI weather warnings | None | Low–medium ✅ done |
-| 5 | NS train departures | Free (register) | Medium |
-| 6 | Home Assistant sensors | HA long-lived token | Medium |
+| 4 | NS train departures | Free (register) | Medium |
+| 5 | Home Assistant sensors | HA long-lived token | Medium |
 
 ---
 
@@ -87,7 +88,13 @@ Photos directory added as a Docker volume in `docker-compose.yml`.
 
 ---
 
-## 4. KNMI weather warnings ✅ Done (v1, 2026-03-21)
+## Air quality + pollen ✅ Done
+
+Implemented as the `airquality` widget. Shows European AQI, PM2.5/PM10/NO₂/O₃, and a 4-day pollen forecast (birch, grass, alder, mugwort, ragweed) — all from open-meteo CAMS, no API key needed.
+
+---
+
+## KNMI weather warnings ✅ Done
 
 Implemented as the `warnings` widget. Shows active MeteoAlarm alerts for the Netherlands with colour-coded severity (geel / oranje / rood), phenomenon icon and Dutch label, region, and validity window.
 

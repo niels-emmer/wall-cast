@@ -57,11 +57,14 @@ API keys: `POLESTAR_USERNAME`/`PASSWORD`, `TOMTOM_API_KEY`, `VERTREKTIJD_API_KEY
 
 Registry: `frontend/src/widgets/index.ts`. To add a widget:
 1. `frontend/src/widgets/<name>/<Name>Widget.tsx`
-2. `backend/app/routers/<name>.py` (if external data needed)
-3. Register in `frontend/src/widgets/index.ts`
-4. Add type to `docs/config-reference.md`
+2. Add translation keys to `frontend/src/i18n/translations.ts` — both `nl` and `en` objects, identical keys
+3. `backend/app/routers/<name>.py` (if external data needed)
+4. Register in `frontend/src/widgets/index.ts`
+5. Add type to `docs/config-reference.md`
 
 Note: `BASE_REGISTRY` lives in `base-registry.ts`; `WIDGET_REGISTRY` in `index.ts` adds `rotate` on top — avoids circular import since RotatorWidget imports BASE_REGISTRY.
+
+Hooks in `.claude/settings.json` + `.claude/hooks/` enforce the rules above automatically (Tailwind classes, translation parity, TypeScript, compose validation, widget registry). See `docs/claude-hooks.md`.
 
 ## Key files
 

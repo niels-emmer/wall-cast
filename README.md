@@ -128,6 +128,10 @@ git pull && docker compose up --build -d
 
 Check [Releases](https://github.com/niels-emmer/wall-cast/releases) for what changed.
 
+**Your config is safe.** `config/wall-cast.yaml` is gitignored — `git pull` never touches it. New config keys introduced in a release are added automatically with their default values on next startup.
+
+**If the release notes mention a breaking change**, read the migration notes before running `docker compose up --build -d`. Breaking changes are rare and always documented in the release.
+
 ---
 
 ## Configuration

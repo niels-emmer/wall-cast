@@ -3,6 +3,13 @@
 > Architectural design document for extending wall-cast from a single-screen household display
 > into a multi-screen, per-person system — one backend, many Chromecasts, family + individual data.
 
+> **Implementation status (2026-03):**
+> Phases 1–3 are complete and shipped as part of the current release. The `shared + screens[]` YAML schema, per-widget params (calendar IDs, bus stops, traffic routes), the `?screen=` config endpoint, and the multi-screen admin panel are all live.
+>
+> Phase 4 (separate caster Docker services per screen) was superseded: the single `caster` service reads all screens from `wall-cast.yaml` and manages them in one loop, including DHCP re-discovery by device name. See `caster/cast.py`.
+>
+> The sections below are kept as architectural background — they explain the design decisions that shaped the current implementation.
+
 ---
 
 ## Vision
