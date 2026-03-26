@@ -42,8 +42,12 @@ _NL_DAYS   = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"]
 _NL_MONTHS = ["", "jan", "feb", "mrt", "apr", "mei", "jun",
                "jul", "aug", "sep", "okt", "nov", "dec"]
 
+_EN_DAYS   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_EN_MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-def _fetch_events(calendar_ids: list[str]) -> dict:
+
+def _fetch_events(calendar_ids: list[str], language: str = "nl") -> dict:
     """Synchronous Google API call — run via asyncio.to_thread."""
     from google.oauth2 import service_account          # type: ignore
     from googleapiclient.discovery import build        # type: ignore
@@ -51,6 +55,9 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
     now = datetime.now(_TZ)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_window      = start_of_today + timedelta(days=60)
+
+    days_labels   = _EN_DAYS   if language == "en" else _NL_DAYS
+    months_labels = _EN_MONTHS if language == "en" else _NL_MONTHS
 
     creds = service_account.Credentials.from_service_account_file(
         settings.google_sa_key_file,
@@ -192,21 +199,22 @@ def _fetch_events(calendar_ids: list[str]) -> dict:
         dt = datetime.fromisoformat(date_str)
         week_days.append({
             "date":       date_str,
-            "day_label":  _NL_DAYS[dt.weekday()],
-            "date_label": f"{dt.day} {_NL_MONTHS[dt.month]}",
+            "day_label":  days_labels[dt.weekday()],
+            "date_label": f"{dt.day} {months_labels[dt.month]}",
             "events":     week_by_date[date_str],
         })
 
     return {
         "today":       today_events,
         "week":        week_days,
-        "today_label": f"{_NL_DAYS[now.weekday()]} {now.day} {_NL_MONTHS[now.month]}",
+        "today_label": f"{days_labels[now.weekday()]} {now.day} {months_labels[now.month]}",
     }
 
 
 @router.get("/calendar")
 async def get_calendar(
     calendar_ids: list[str] = Query(default=[]),
+    language: str = Query(default="nl"),
 ) -> dict:
     global _cache, _cache_ts
 
@@ -217,13 +225,13 @@ async def get_calendar(
     if not ids or not settings.google_sa_key_file:
         raise HTTPException(status_code=503, detail="Calendar not configured")
 
-    cache_key = ":".join(sorted(ids))
+    cache_key = ":".join(sorted(ids)) + f":{language}"
 
     if cache_key in _cache and (time.monotonic() - _cache_ts.get(cache_key, 0)) < settings.calendar_cache_ttl:
         return _cache[cache_key]
 
     try:
-        data = await asyncio.to_thread(_fetch_events, ids)
+        data = await asyncio.to_thread(_fetch_events, ids, language)
         _cache[cache_key] = data
         _cache_ts[cache_key] = time.monotonic()
         return _cache[cache_key]

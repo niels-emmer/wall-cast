@@ -23,6 +23,7 @@ export interface Translations {
   rainTitle: string
   now: string           // time axis "now" label
   dry: string
+  peak: string          // "piek" / "peak" label in top-line summary
   noRainExpected: string
   rainLight: string
   rainMod: string
@@ -150,6 +151,7 @@ export const nl: Translations = {
   rainTitle: 'Regen',
   now: 'Nu',
   dry: 'Droog',
+  peak: 'piek',
   noRainExpected: 'geen neerslag verwacht',
   rainLight: 'licht',
   rainMod: 'matig',
@@ -292,6 +294,7 @@ export const en: Translations = {
   rainTitle: 'Rain',
   now: 'Now',
   dry: 'Dry',
+  peak: 'peak',
   noRainExpected: 'no rain expected',
   rainLight: 'light',
   rainMod: 'mod.',

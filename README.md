@@ -30,14 +30,15 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 - **Multi-screen** — one installation drives multiple Chromecasts, each with its own layout and content
 - **Hot-reload config** — save the YAML, every screen updates within ~1 second; no container restart needed
 - **Widget system** — mix and match widgets per screen; layout, spans, and config all in one YAML file
-- **People & Calendars** — assign household members to screens; family members appear on all screens automatically
+- **Per-screen personalisation** — assign people to screens; each screen shows only the calendars, commute routes, and bus stops relevant to the people on it; family members appear on all screens automatically
+- **Overview & control page** — the root URL (`/`) shows all screens with live casting status, backend health, and one-click navigation; no screen ID needed
 - **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, assistant, and Chromecast IPs; built-in LAN scanner to discover devices
+- **DHCP-resilient casting** — set a device's friendly name once; if the IP changes after a reboot, the caster scans the LAN, finds the device by name, and updates the config automatically
 - **Assistant** — proactive push notifications via ntfy: bin day reminders, bus delay alerts cross-correlated with your calendar, commute delay warnings, and weather alerts; optional AI (Ollama/OpenAI) rewrites messages into natural language
 - **Dark theme** — pure black background, bold white type, cyan accent
 - **Dutch / English** — all widget labels switch with `language: en/nl`
-- **Rotate widget** — cycle multiple widgets in one grid cell on a configurable interval
 - **Mostly no API keys** — most data sources are free and unauthenticated
-- **Modular** — add new widgets without touching core code; [step-by-step guide](docs/adding-a-widget.md) included
+- **Designed for agentic extension** — the codebase, `CLAUDE.md`, and the agent-memory system (`docs/memory/`) are structured so anyone can fork, describe a feature in plain language, and have Claude implement it end-to-end with full context; see [docs/prompt-a-feature.md](docs/prompt-a-feature.md)
 
 ## Widgets
 

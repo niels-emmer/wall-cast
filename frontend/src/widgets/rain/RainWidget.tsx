@@ -207,7 +207,7 @@ export function RainWidget({ config: _config }: Props) {
           fontWeight: hasRain ? 600 : 400,
         }}>
           {hasRain
-            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}piek ${peakMm.toFixed(1)} mm/h`
+            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}${t.peak} ${peakMm.toFixed(1)} mm/h`
             : t.dry}
         </span>
       </div>

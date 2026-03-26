@@ -126,7 +126,7 @@ export function CalendarWidget({ config }: WidgetProps) {
   const t = useLang()
   const fallbackColor = (config.calendar_color as string) ?? DEFAULT_ACCENT
   const calendarIds = config.calendar_ids as string[] | undefined
-  const { data, isError, isLoading } = useCalendar({ calendarIds })
+  const { data, isError, isLoading } = useCalendar({ calendarIds, language: t.locale.split('-')[0] })
 
   const shell = shellStyle
   const divider = <div style={dividerStyle} />
