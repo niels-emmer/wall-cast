@@ -236,6 +236,7 @@ This project is fully AI-coded and designed to be extended by prompting. See [do
 
 - Adding a widget: [docs/adding-a-widget.md](docs/adding-a-widget.md)
 - Widget design system: [docs/widget-style-guide.md](docs/widget-style-guide.md)
+- Claude Code hooks: [docs/claude-hooks.md](docs/claude-hooks.md) — the five quality-guard hooks shipped with this repo, and how to write your own
 
 ## Security
 
