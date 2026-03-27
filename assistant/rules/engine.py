@@ -49,7 +49,7 @@ def _cached_fetch(
 ) -> dict:
     """Fetch url with params, caching the result in data_cache."""
     cache_key = url + (
-        "?" + "&".join(f"{k}={v}" for k, v in sorted(str(x) for x in (params or {}).items()))
+        "?" + "&".join(f"{k}={v}" for k, v in sorted((params or {}).items()))
         if params else ""
     )
     if cache_key not in data_cache:

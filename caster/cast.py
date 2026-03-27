@@ -118,21 +118,35 @@ def is_reachable(ip: str) -> bool:
         return False
 
 
-def is_casting(ip: str) -> bool:
+def is_casting(ip: str) -> tuple[bool, bool]:
+    """Return (casting, reachable).
+
+    Some devices (e.g. Nest Hub, Google TV) report only volume info via
+    `catt status` even while actively running cast_site — they never expose
+    DashCast/PLAYING in the status output.  We distinguish three cases:
+      - confirmed casting  : output contains DashCast/PLAYING/BUFFERING/PAUSED
+      - device reachable   : output contains any text (device responded)
+      - device unreachable : command failed, timed out, or returned nothing
+    """
     try:
         r = subprocess.run(
             ["catt", "-d", ip, "status"],
             capture_output=True, text=True, timeout=10,
         )
         output = (r.stdout + r.stderr).strip()
-        matched = bool(re.search(r"DashCast|PLAYING|BUFFERING|PAUSED", output, re.IGNORECASE))
-        if not matched:
-            preview = output[:120].replace("\n", " ") if output else "<empty>"
-            print(f"[caster] Status check ({ip}): '{preview}' → not casting", flush=True)
-        return matched
+        confirmed = bool(re.search(r"DashCast|PLAYING|BUFFERING|PAUSED", output, re.IGNORECASE))
+        reachable = bool(output)
+        preview = output[:120].replace("\n", " ") if output else "<empty>"
+        if confirmed:
+            print(f"[caster] Status check ({ip}): '{preview}' → casting (confirmed)", flush=True)
+        elif reachable:
+            print(f"[caster] Status check ({ip}): '{preview}' → reachable (status unclear)", flush=True)
+        else:
+            print(f"[caster] Status check ({ip}): <empty> → unreachable", flush=True)
+        return confirmed, reachable
     except Exception as exc:
         print(f"[caster] Status check failed ({ip}): {exc}", flush=True)
-        return False
+        return False, False
 
 
 def cast(ip: str, url: str, sid: str) -> None:
@@ -339,7 +353,8 @@ def main() -> None:
 
             force_recast = check_recast_signal(sid)
 
-            if not force_recast and is_casting(ip):
+            _confirmed, _reachable = is_casting(ip)
+            if not force_recast and _confirmed:
                 print(f"[caster] {sid} OK", flush=True)
                 status_str = "casting"
 
@@ -389,13 +404,19 @@ def main() -> None:
                 if CAST_VERIFY_DELAY > 0:
                     print(f"[caster] {sid} verifying cast in {CAST_VERIFY_DELAY}s…", flush=True)
                     time.sleep(CAST_VERIFY_DELAY)
-                    if is_casting(ip):
+                    _v_confirmed, _v_reachable = is_casting(ip)
+                    if _v_confirmed:
                         print(f"[caster] {sid} cast verified", flush=True)
                         status_str = "casting"
+                    elif _v_reachable:
+                        # Device responded but doesn't expose DashCast in status
+                        # (common on Nest Hub / Google TV). Treat as casting — the
+                        # cooldown guard will re-cast if the session actually drops.
+                        print(f"[caster] {sid} cast unverifiable (device reachable) — trusting cooldown", flush=True)
+                        status_str = "casting"
                     else:
-                        print(f"[caster] {sid} cast unverified — will retry in {CAST_VERIFY_RETRY}s", flush=True)
-                        # Use a short cooldown rather than resetting to 0, which would
-                        # trigger an immediate re-cast on the very next cycle.
+                        # Device unreachable — cast genuinely failed, schedule retry.
+                        print(f"[caster] {sid} cast failed (device unreachable) — will retry in {CAST_VERIFY_RETRY}s", flush=True)
                         last_cast_at[sid] = now - CAST_COOLDOWN + CAST_VERIFY_RETRY
                         status_str = "cast_failed"
 
