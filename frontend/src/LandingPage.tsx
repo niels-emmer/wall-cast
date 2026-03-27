@@ -372,6 +372,12 @@ export default function LandingPage() {
               onToggle={toggleGlobal}
               loading={togglingGlobal}
             />
+            <Pill ok label="BACKEND OK" />
+            <Pill
+              ok={casterOk}
+              stale={casterStale}
+              label={casterLabel}
+            />
             <a
               href="/#admin"
               style={{
@@ -472,19 +478,11 @@ export default function LandingPage() {
           )}
         </div>
 
-        {/* ── Status ─────────────────────────────────────────────────────── */}
+        {/* ── Live server logs ────────────────────────────────────────── */}
         <div style={card}>
-          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>Status</div>
+          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>Live server logs</div>
           <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
-            Live health of the backend and caster, with a running feed of recent warnings and errors.
-          </div>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            <Pill ok label="BACKEND OK" />
-            <Pill
-              ok={casterOk}
-              stale={casterStale}
-              label={casterLabel}
-            />
+            Running feed of recent warnings and errors from the backend and caster.
           </div>
 
           {/* Log buffer */}
@@ -493,7 +491,7 @@ export default function LandingPage() {
             border:       `1px solid ${C.border}`,
             borderRadius: 6,
             padding:      '0.6rem 0.75rem',
-            maxHeight:    220,
+            height:       150,
             overflowY:    'auto',
           }}>
             <div style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: '0.4rem' }}>
