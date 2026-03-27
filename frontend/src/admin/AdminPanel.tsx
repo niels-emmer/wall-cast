@@ -1716,6 +1716,7 @@ function ScreenDiagnosticsBox({
   const [localStarting, setLocalStarting] = useState(false)
   const queryClient = useQueryClient()
 
+
   const { data: pairingStatus } = useQuery<PairingStatus>({
     queryKey: ['pairing-status', screenId],
     queryFn: () => apiFetch<PairingStatus>(`/api/admin/pairing/${screenId}`),
@@ -1796,11 +1797,25 @@ function ScreenDiagnosticsBox({
   const statusColor = STATUS_COLOR[statusKey] ?? 'gray'
   const statusLabel = STATUS_LABEL[statusKey] ?? statusKey
 
+  // Pairing status text for the inline row
+  const pairingStatusText = (() => {
+    if (localStarting || pairingState === 'starting') return { label: 'Pairing started…', color: 'dimmed' }
+    if (pairingState === 'waiting_pin') return { label: 'Waiting for PIN', color: 'cyan' }
+    if (pairingState === 'success') return { label: 'Paired successfully', color: 'green' }
+    if (pairingState === 'failed') return { label: pairingStatus?.session?.error ?? 'Pairing failed', color: 'red' }
+    if (isPaired) return { label: 'Paired', color: 'green' }
+    return { label: 'Not paired', color: 'dimmed' }
+  })()
+
+  // IP to display — prefer draftIp with an "updated" hint if it differs from the server-reported IP
+  const displayIp    = draftIp ?? screenStatus?.ip ?? null
+  const ipIsUpdated  = !!draftIp && draftIp !== screenStatus?.ip
+
   return (
     <Paper withBorder p="md" radius="md">
-      <Stack gap="sm">
+      <Stack gap="xs">
 
-        {/* Header row */}
+        {/* Header */}
         <Group justify="space-between" align="center">
           <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em' }}>
             Diagnostics
@@ -1810,9 +1825,13 @@ function ScreenDiagnosticsBox({
           )}
         </Group>
 
+        <Text size="xs" c="dimmed">Live caster status for this screen.</Text>
+
+        <div style={{ borderTop: '1px solid var(--mantine-color-dark-5)', margin: '2px 0' }} />
+
         {/* Status row */}
-        <Group gap="sm" align="center">
-          <Text size="sm" c="dimmed" style={{ minWidth: 52 }}>Status</Text>
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed" style={{ minWidth: 90 }}>Status</Text>
           {screenStatus ? (
             <Group gap="xs" align="center">
               <span style={{
@@ -1823,126 +1842,94 @@ function ScreenDiagnosticsBox({
                 flexShrink: 0,
               }} />
               <Text size="sm">{statusLabel}</Text>
-              {draftIp && draftIp !== screenStatus.ip ? (
-                <Group gap={4} align="center">
-                  <Code fz="xs">{draftIp}</Code>
-                  <Text size="xs" c="yellow">updated</Text>
-                </Group>
-              ) : screenStatus.ip ? (
-                <Code fz="xs">{screenStatus.ip}</Code>
-              ) : null}
               {screenStatus.last_cast_at > 0 && (
                 <Text size="xs" c="dimmed">
-                  last cast {Math.round(Date.now() / 1000 - screenStatus.last_cast_at)}s ago
+                  (last cast {Math.round(Date.now() / 1000 - screenStatus.last_cast_at)}s ago)
                 </Text>
               )}
             </Group>
           ) : (
-            <Group gap="xs" align="center">
-              <Text size="sm" c="dimmed">
-                {screensStatus ? 'Not active (no chromecast_ip or casting disabled)' : 'Caster not running'}
-              </Text>
-              {draftIp && (
-                <Group gap={4} align="center">
-                  <Code fz="xs">{draftIp}</Code>
-                  <Text size="xs" c="yellow">updated</Text>
-                </Group>
-              )}
-            </Group>
+            <Text size="sm" c="dimmed">
+              {screensStatus ? 'Not active' : 'Caster not running'}
+            </Text>
           )}
+        </Group>
+
+        {/* IP row */}
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed" style={{ minWidth: 90 }}>IP</Text>
+          {displayIp ? (
+            <Group gap={4} align="center">
+              <Code fz="xs">{displayIp}</Code>
+              {ipIsUpdated && <Text size="xs" c="yellow">updated</Text>}
+            </Group>
+          ) : (
+            <Text size="sm" c="dimmed">—</Text>
+          )}
+        </Group>
+
+        {/* Remote control row */}
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed" style={{ minWidth: 90 }}>Remote</Text>
+          <Text size="sm" c={pairingStatusText.color as any}>{pairingStatusText.label}</Text>
+        </Group>
+
+        <div style={{ borderTop: '1px solid var(--mantine-color-dark-5)', margin: '2px 0' }} />
+
+        {/* Action buttons */}
+        <Group gap="xs">
           <Button
             size="xs"
             variant="light"
             color={recastDone ? 'green' : 'blue'}
             loading={recasting}
-            ml="auto"
             onClick={handleRecast}
           >
             {recastDone ? 'Signal sent' : 'Re-cast now'}
           </Button>
+          {pairingState !== 'waiting_pin' && (
+            <Button
+              size="xs"
+              variant="light"
+              color={isPaired ? 'gray' : 'cyan'}
+              disabled={!canPair || pairingState === 'starting' || localStarting}
+              loading={localStarting || pairingState === 'starting'}
+              title={!canPair ? 'Set a Chromecast IP first' : undefined}
+              onClick={handleStartPairing}
+            >
+              {isPaired ? 'Re-pair' : 'Pair now'}
+            </Button>
+          )}
         </Group>
 
-        {/* Remote control — pairing */}
-        <div style={{ borderTop: '1px solid var(--mantine-color-dark-5)', paddingTop: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em', minWidth: 100 }}>
-              Remote control
-            </Text>
-
-            {/* Paired badge — only when idle */}
-            {isPaired && !pairingState && !localStarting && (
-              <span style={{
-                fontSize: 11, padding: '2px 7px', borderRadius: 4,
-                background: 'var(--mantine-color-green-9)',
-                color: 'var(--mantine-color-green-3)',
-                fontWeight: 600,
-              }}>
-                Paired
-              </span>
-            )}
-
-            {/* Pair / Re-pair button — always visible except during PIN entry */}
-            {pairingState !== 'waiting_pin' && (
-              <Button
-                size="xs"
-                variant="light"
-                color={isPaired ? 'gray' : 'cyan'}
-                disabled={!canPair || pairingState === 'starting' || localStarting}
-                loading={localStarting || pairingState === 'starting'}
-                title={!canPair ? 'Set a Chromecast IP first' : undefined}
-                onClick={handleStartPairing}
-              >
-                {isPaired ? 'Re-pair' : 'Pair now'}
-              </Button>
-            )}
-
-            {/* Status text — after the button */}
-            {localStarting && !pairingState && (
-              <Text size="xs" c="dimmed">Pairing started…</Text>
-            )}
-            {pairingState === 'starting' && (
-              <Text size="xs" c="dimmed">Pairing started…</Text>
-            )}
-            {pairingState === 'waiting_pin' && (
-              <Text size="xs" c="cyan" fw={500}>Confirm pairing PIN</Text>
-            )}
-            {pairingState === 'success' && (
-              <Text size="xs" c="green">Paired successfully</Text>
-            )}
-            {pairingState === 'failed' && (
-              <Text size="xs" c="red">
-                {pairingStatus?.session?.error ?? 'Pairing failed'}
-              </Text>
-            )}
+        {/* PIN input — shown when device is waiting for the PIN */}
+        {pairingState === 'waiting_pin' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text size="xs" c="dimmed">PIN shown on TV:</Text>
+            <TextInput
+              size="xs"
+              placeholder="e.g. 123456"
+              value={pinInput}
+              onChange={e => setPinInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmitPin()}
+              w={130}
+              ff="monospace"
+              autoFocus
+            />
+            <Button
+              size="xs"
+              variant="filled"
+              color="cyan"
+              loading={pinSubmitting}
+              disabled={!pinInput.trim()}
+              onClick={handleSubmitPin}
+            >
+              Confirm
+            </Button>
           </div>
+        )}
 
-          {/* PIN input — shown when device is waiting for the PIN */}
-          {pairingState === 'waiting_pin' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-              <Text size="xs" c="dimmed">PIN shown on TV:</Text>
-              <TextInput
-                size="xs"
-                placeholder="e.g. 123456"
-                value={pinInput}
-                onChange={e => setPinInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSubmitPin()}
-                w={130}
-                ff="monospace"
-                autoFocus
-              />
-              <Button
-                size="xs"
-                variant="filled"
-                color="cyan"
-                loading={pinSubmitting}
-                disabled={!pinInput.trim()}
-                onClick={handleSubmitPin}
-              >
-                Confirm
-              </Button>
-            </div>
-          )}
-        </div>
+        <div style={{ borderTop: '1px solid var(--mantine-color-dark-5)', margin: '2px 0' }} />
 
         {/* Log buffer */}
         <div style={{
