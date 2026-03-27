@@ -102,7 +102,7 @@ def run_rule(
         return rule_rain.check(rule, data)
 
     # ── Polestar ──────────────────────────────────────────────────────────────
-    if variable in ("polestar.range_km", "polestar.is_plugged_in"):
+    if variable in ("polestar.range_km", "polestar.is_plugged_in", "polestar.battery_pct"):
         data = _cached_fetch(client, data_cache, f"{backend_url}/api/polestar")
         return rule_polestar.check(rule, data)
 

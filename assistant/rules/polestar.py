@@ -4,6 +4,7 @@ Polestar car alerts.
 Variables:
   polestar.range_km     — estimated range remaining (km)
   polestar.is_plugged_in — whether the car is connected to a charger (boolean)
+  polestar.battery_pct  — state of charge (%)
 
 Source: /api/polestar (pypolestar).
 Deduplication: fires at most once per day per rule.
@@ -51,6 +52,30 @@ def check(rule: dict, data: dict) -> list[Notification]:
         return [Notification(
             title="Polestar — low range",
             message=f"Estimated range is {range_km} km{soc_str}.",
+            priority="default",
+            tags=["electric_plug", "warning"],
+        )]
+
+    # ── polestar.battery_pct ──────────────────────────────────────────────────
+    if variable == "polestar.battery_pct":
+        soc = data.get("soc")
+        if soc is None:
+            return []
+        try:
+            threshold = float(condition.get("value", 20))
+        except (TypeError, ValueError):
+            return []
+        if not _cmp(float(soc), operator, threshold):
+            return []
+        key = f"polestar.battery_pct:{operator}:{threshold}:{today}"
+        if state.has_fired(key):
+            return []
+        state.mark_fired(key)
+        range_km = data.get("range_km")
+        range_str = f" (~{range_km} km range)" if range_km is not None else ""
+        return [Notification(
+            title="Polestar — battery",
+            message=f"Battery at {soc}%{range_str}.",
             priority="default",
             tags=["electric_plug", "warning"],
         )]

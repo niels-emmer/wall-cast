@@ -1,5 +1,7 @@
 """ntfy notification channel — HTTP POST to a ntfy topic."""
 
+import urllib.parse
+
 import httpx
 
 
@@ -12,8 +14,11 @@ def send(
     tags: list[str] | None = None,
 ) -> None:
     url = f"{ntfy_url.rstrip('/')}/{topic}"
+    # HTTP headers must be Latin-1; percent-encode the title so Unicode
+    # characters (em-dash, accents, …) are transmitted safely. ntfy
+    # decodes percent-encoded header values automatically.
     headers: dict[str, str] = {
-        "Title":        title,
+        "Title":        urllib.parse.quote(title, safe=" ,!?"),
         "Priority":     priority,
         "Content-Type": "text/plain; charset=utf-8",
     }
