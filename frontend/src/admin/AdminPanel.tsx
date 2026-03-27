@@ -1658,7 +1658,7 @@ function ScreenPeopleSection({
 // ---------------------------------------------------------------------------
 
 interface ScreenStatus {
-  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'unknown'
+  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'cast_failed' | 'sleeping' | 'unknown'
   ip: string
   last_cast_at: number
 }
@@ -1682,6 +1682,7 @@ const STATUS_COLOR: Record<string, string> = {
   scanning:    'yellow',
   unreachable: 'red',
   cast_failed: 'orange',
+  sleeping:    'gray',
   unknown:     'gray',
 }
 
@@ -1692,6 +1693,7 @@ const STATUS_LABEL: Record<string, string> = {
   scanning:    'Scanning for device…',
   unreachable: 'Unreachable',
   cast_failed: 'Cast failed — retrying',
+  sleeping:    'Sleeping',
   unknown:     'Unknown',
 }
 

@@ -64,6 +64,7 @@ SERVER_URL         = os.environ.get("SERVER_URL", "http://localhost").rstrip("/"
 CHECK_INTERVAL     = int(os.environ.get("CHECK_INTERVAL", "60"))
 CAST_COOLDOWN      = int(os.environ.get("CAST_COOLDOWN", "300"))  # s before recasting
 CAST_VERIFY_DELAY  = int(os.environ.get("CAST_VERIFY_DELAY", "10"))  # s to wait before verifying; 0=disabled
+CAST_VERIFY_RETRY  = int(os.environ.get("CAST_VERIFY_RETRY", "60"))  # s to wait before retrying after failed verification
 HEARTBEAT_PATH     = os.environ.get("CASTER_HEARTBEAT_PATH", "/config/caster-heartbeat.txt")
 SCANNER_URL        = os.environ.get("SCANNER_URL", "http://localhost:8765/scan")
 
@@ -123,7 +124,12 @@ def is_casting(ip: str) -> bool:
             ["catt", "-d", ip, "status"],
             capture_output=True, text=True, timeout=10,
         )
-        return bool(re.search(r"DashCast|PLAYING|BUFFERING", r.stdout + r.stderr, re.IGNORECASE))
+        output = (r.stdout + r.stderr).strip()
+        matched = bool(re.search(r"DashCast|PLAYING|BUFFERING|PAUSED", output, re.IGNORECASE))
+        if not matched:
+            preview = output[:120].replace("\n", " ") if output else "<empty>"
+            print(f"[caster] Status check ({ip}): '{preview}' → not casting", flush=True)
+        return matched
     except Exception as exc:
         print(f"[caster] Status check failed ({ip}): {exc}", flush=True)
         return False
@@ -387,8 +393,10 @@ def main() -> None:
                         print(f"[caster] {sid} cast verified", flush=True)
                         status_str = "casting"
                     else:
-                        print(f"[caster] {sid} cast unverified — resetting cooldown, will retry next cycle", flush=True)
-                        last_cast_at[sid] = 0
+                        print(f"[caster] {sid} cast unverified — will retry in {CAST_VERIFY_RETRY}s", flush=True)
+                        # Use a short cooldown rather than resetting to 0, which would
+                        # trigger an immediate re-cast on the very next cycle.
+                        last_cast_at[sid] = now - CAST_COOLDOWN + CAST_VERIFY_RETRY
                         status_str = "cast_failed"
 
             screen_statuses[sid] = {

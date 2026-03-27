@@ -49,7 +49,7 @@ interface LogRecord {
 }
 
 interface CasterScreenStatus {
-  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'unknown'
+  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'cast_failed' | 'sleeping' | 'unknown'
   ip: string
   last_cast_at: number
 }
@@ -419,7 +419,8 @@ export default function LandingPage() {
                 const casterScreenStatus = casterStatus?.screens?.[screen.id]?.status
                 // fall back to effectivelyCasting when caster data hasn't arrived yet
                 const screenIsOn = casterStatus
-                  ? (casterScreenStatus === 'casting' || casterScreenStatus === 'cooldown' || casterScreenStatus === 'starting')
+                  ? (casterScreenStatus === 'casting' || casterScreenStatus === 'cooldown'
+                    || casterScreenStatus === 'starting' || casterScreenStatus === 'cast_failed')
                   : effectivelyCasting
                 const isPaired = pairingMap?.[screen.id] ?? false
                 return (
