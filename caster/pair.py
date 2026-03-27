@@ -1,28 +1,35 @@
 #!/usr/bin/env python3
 """
-Interactive pairing script for Android TV Remote (androidtvremote2).
+Interactive and non-interactive pairing script for Android TV Remote.
 
-Run once per device to pair wall-cast with your Google TV / Android TV:
-
+Interactive (manual, one-off):
     docker compose exec caster python /pair.py --screen-id <id> --ip <ip>
 
-A PIN will appear on your TV screen.  Enter it here to complete pairing.
-Certificates are stored in /config/atv-certs/<screen-id>/ and reused by
-cast.py for all subsequent wake/sleep commands — no re-pairing needed.
+    A PIN appears on the TV; enter it in the terminal to complete pairing.
 
-Re-run at any time to re-pair (e.g. after a factory reset) or to verify
-an existing pairing.
+Non-interactive (driven by cast.py / admin panel):
+    python /pair.py --non-interactive --screen-id <id> --ip <ip> \\
+                    --status-file /config/pair-status-<id>.json \\
+                    --pin-file    /config/pair-pin-<id>.json
 
-Example:
-    docker compose exec caster python /pair.py --screen-id living-room --ip 192.168.1.42
+    Writes JSON status updates to --status-file:
+        {"state": "starting"}
+        {"state": "waiting_pin"}
+        {"state": "success"}
+        {"state": "failed", "error": "..."}
+    Waits up to 5 min for --pin-file to appear (written by the admin panel).
+
+Certificates are stored in ATV_CERT_DIR/<screen-id>/ (default /config/atv-certs/).
 """
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 
 ATV_CERT_DIR = os.environ.get("ATV_CERT_DIR", "/config/atv-certs")
+PAIR_PIN_TIMEOUT = int(os.environ.get("PAIR_PIN_TIMEOUT", "300"))  # seconds to wait for PIN
 
 
 def cert_paths(screen_id: str) -> tuple[str, str]:
@@ -31,13 +38,129 @@ def cert_paths(screen_id: str) -> tuple[str, str]:
     return os.path.join(d, "cert.pem"), os.path.join(d, "key.pem")
 
 
-async def pair(screen_id: str, ip: str) -> None:
+def write_status(path: str, payload: dict) -> None:
+    try:
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(payload, f)
+        os.replace(tmp, path)
+    except Exception as exc:
+        print(f"[pair] Status write failed: {exc}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Non-interactive mode
+# ---------------------------------------------------------------------------
+
+async def pair_noninteractive(
+    screen_id: str, ip: str, status_file: str, pin_file: str
+) -> None:
     try:
         from androidtvremote2 import (  # type: ignore[import]
-            AndroidTVRemote,
-            CannotConnect,
-            ConnectionClosed,
-            InvalidAuth,
+            AndroidTVRemote, CannotConnect, ConnectionClosed, InvalidAuth,
+        )
+    except ImportError:
+        write_status(status_file, {"state": "failed", "error": "androidtvremote2 not installed"})
+        sys.exit(1)
+
+    cert, key = cert_paths(screen_id)
+    atv = AndroidTVRemote("wall-cast", cert, key, ip)
+
+    print(f"[pair:{screen_id}] generating cert…", flush=True)
+    write_status(status_file, {"state": "starting"})
+
+    try:
+        await atv.async_generate_cert_if_missing()
+    except Exception as exc:
+        write_status(status_file, {"state": "failed", "error": f"Cert generation failed: {exc}"})
+        return
+
+    print(f"[pair:{screen_id}] connecting to {ip}…", flush=True)
+
+    try:
+        await atv.async_connect()
+        # Device is already paired — verify with a harmless key
+        atv.send_key_command("KEYCODE_WAKEUP")
+        write_status(status_file, {"state": "success"})
+        print(f"[pair:{screen_id}] already paired — verified OK", flush=True)
+        atv.disconnect()
+        return
+    except InvalidAuth:
+        pass  # Not yet paired — proceed to PIN flow
+    except CannotConnect as exc:
+        write_status(status_file, {"state": "failed", "error": f"Cannot reach {ip}: {exc}"})
+        print(f"[pair:{screen_id}] cannot connect: {exc}", flush=True)
+        return
+
+    print(f"[pair:{screen_id}] starting pairing — PIN will appear on TV", flush=True)
+    try:
+        await atv.async_start_pairing()
+    except CannotConnect as exc:
+        write_status(status_file, {"state": "failed", "error": f"Cannot start pairing: {exc}"})
+        atv.disconnect()
+        return
+
+    write_status(status_file, {"state": "waiting_pin"})
+    print(f"[pair:{screen_id}] waiting for PIN (timeout {PAIR_PIN_TIMEOUT}s)…", flush=True)
+
+    # Poll for pin file
+    pin: str | None = None
+    for _ in range(PAIR_PIN_TIMEOUT):
+        if os.path.exists(pin_file):
+            try:
+                with open(pin_file) as f:
+                    data = json.load(f)
+                pin = str(data.get("pin", "")).strip()
+                os.unlink(pin_file)
+            except Exception:
+                pass
+            if pin:
+                break
+        await asyncio.sleep(1)
+
+    if not pin:
+        write_status(status_file, {"state": "failed", "error": "Timed out waiting for PIN"})
+        print(f"[pair:{screen_id}] timed out waiting for PIN", flush=True)
+        atv.disconnect()
+        return
+
+    print(f"[pair:{screen_id}] PIN received — finishing pairing", flush=True)
+    try:
+        await atv.async_finish_pairing(pin)
+    except InvalidAuth:
+        write_status(status_file, {"state": "failed", "error": "Incorrect PIN — try again"})
+        print(f"[pair:{screen_id}] incorrect PIN", flush=True)
+        atv.disconnect()
+        return
+    except ConnectionClosed as exc:
+        write_status(status_file, {"state": "failed", "error": f"Connection closed: {exc}"})
+        print(f"[pair:{screen_id}] connection closed during finish: {exc}", flush=True)
+        atv.disconnect()
+        return
+
+    # Verify the fresh pairing
+    print(f"[pair:{screen_id}] verifying…", flush=True)
+    try:
+        await atv.async_connect()
+        atv.send_key_command("KEYCODE_WAKEUP")
+        write_status(status_file, {"state": "success"})
+        print(f"[pair:{screen_id}] paired and verified OK", flush=True)
+    except Exception as exc:
+        # Paired but verify step failed — treat as success anyway
+        write_status(status_file, {"state": "success"})
+        print(f"[pair:{screen_id}] paired (verify step failed: {exc})", flush=True)
+    finally:
+        atv.disconnect()
+
+
+# ---------------------------------------------------------------------------
+# Interactive mode
+# ---------------------------------------------------------------------------
+
+async def pair_interactive(screen_id: str, ip: str) -> None:
+    try:
+        from androidtvremote2 import (  # type: ignore[import]
+            AndroidTVRemote, CannotConnect, ConnectionClosed, InvalidAuth,
         )
     except ImportError:
         print("androidtvremote2 is not installed.", file=sys.stderr)
@@ -52,7 +175,6 @@ async def pair(screen_id: str, ip: str) -> None:
     print(f"Connecting to {ip}…")
     try:
         await atv.async_connect()
-        # Already paired — send a test key to confirm
         print(f"'{screen_id}' is already paired.  Sending KEYCODE_WAKEUP to verify…")
         atv.send_key_command("KEYCODE_WAKEUP")
         print(f"\nOK — '{screen_id}' is paired and responsive.")
@@ -60,7 +182,7 @@ async def pair(screen_id: str, ip: str) -> None:
         atv.disconnect()
         return
     except InvalidAuth:
-        pass  # Not yet paired — proceed to PIN flow below
+        pass
     except CannotConnect as exc:
         print(f"\nCannot reach {ip}: {exc}", file=sys.stderr)
         print("Make sure the device is on and connected to the network.", file=sys.stderr)
@@ -90,11 +212,9 @@ async def pair(screen_id: str, ip: str) -> None:
         sys.exit(1)
     except ConnectionClosed as exc:
         print(f"\nConnection closed during pairing: {exc}", file=sys.stderr)
-        print("The device may have timed out.  Run pair.py again.", file=sys.stderr)
         atv.disconnect()
         sys.exit(1)
 
-    # Verify the pairing by connecting and sending a harmless key
     print("\nPairing complete!  Verifying connection…")
     try:
         await atv.async_connect()
@@ -109,24 +229,32 @@ async def pair(screen_id: str, ip: str) -> None:
         atv.disconnect()
 
 
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description="Pair wall-cast with a Google TV / Android TV device.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
     )
+    ap.add_argument("--screen-id", required=True, help="Screen ID from wall-cast.yaml")
+    ap.add_argument("--ip", required=True, help="IP address of the device")
     ap.add_argument(
-        "--screen-id",
-        required=True,
-        help="Screen ID from wall-cast.yaml (e.g. living-room)",
+        "--non-interactive",
+        action="store_true",
+        help="Run without user prompts (driven by cast.py / admin panel)",
     )
-    ap.add_argument(
-        "--ip",
-        required=True,
-        help="IP address of the device (e.g. 192.168.1.42)",
-    )
+    ap.add_argument("--status-file", help="Path to write JSON status updates (non-interactive)")
+    ap.add_argument("--pin-file", help="Path to poll for the PIN JSON file (non-interactive)")
     args = ap.parse_args()
-    asyncio.run(pair(args.screen_id, args.ip))
+
+    if args.non_interactive:
+        if not args.status_file or not args.pin_file:
+            ap.error("--status-file and --pin-file are required in non-interactive mode")
+        asyncio.run(pair_noninteractive(args.screen_id, args.ip, args.status_file, args.pin_file))
+    else:
+        asyncio.run(pair_interactive(args.screen_id, args.ip))
 
 
 if __name__ == "__main__":

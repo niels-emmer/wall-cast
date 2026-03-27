@@ -6,7 +6,7 @@ import re
 import tempfile
 import urllib.parse
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 import yaml
@@ -285,6 +285,56 @@ async def recast_screen(body: dict[str, Any]) -> None:
     config_dir = Path(settings.wall_config_path).parent
     signal_path = config_dir / f"recast-{screen_id}.signal"
     signal_path.touch()
+
+
+@router.get("/admin/pairing/{screen_id}")
+async def get_pairing_status(screen_id: str) -> JSONResponse:
+    """Return whether a screen is paired and the current pairing session state (if any)."""
+    config_dir = Path(settings.wall_config_path).parent
+    cert_file  = config_dir / "atv-certs" / screen_id / "cert.pem"
+    paired     = cert_file.exists()
+
+    session: Optional[dict] = None
+    status_file = config_dir / f"pair-status-{screen_id}.json"
+    if status_file.exists():
+        try:
+            session = json.loads(status_file.read_text())
+        except Exception:
+            pass
+
+    return JSONResponse(content={"paired": paired, "session": session})
+
+
+@router.post("/admin/pairing/start", status_code=204)
+async def start_pairing(body: dict[str, Any]) -> None:
+    """Write a pair-start signal so cast.py spawns pair.py for this screen."""
+    screen_id = (body.get("screen_id") or "").strip()
+    ip        = (body.get("ip") or "").strip()
+    if not screen_id:
+        raise HTTPException(status_code=400, detail="screen_id required")
+    if not ip:
+        raise HTTPException(status_code=400, detail="ip required")
+
+    config_dir  = Path(settings.wall_config_path).parent
+    status_file = config_dir / f"pair-status-{screen_id}.json"
+    if status_file.exists():
+        status_file.unlink()
+
+    (config_dir / f"pair-start-{screen_id}.signal").write_text(ip)
+
+
+@router.post("/admin/pairing/pin", status_code=204)
+async def submit_pairing_pin(body: dict[str, Any]) -> None:
+    """Write the PIN file so pair.py can finish pairing."""
+    screen_id = (body.get("screen_id") or "").strip()
+    pin       = (body.get("pin") or "").strip()
+    if not screen_id:
+        raise HTTPException(status_code=400, detail="screen_id required")
+    if not pin:
+        raise HTTPException(status_code=400, detail="pin required")
+
+    config_dir = Path(settings.wall_config_path).parent
+    (config_dir / f"pair-pin-{screen_id}.json").write_text(json.dumps({"pin": pin}))
 
 
 @router.post("/admin/casting/wake", status_code=204)

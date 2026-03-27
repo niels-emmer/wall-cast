@@ -1693,6 +1693,9 @@ const STATUS_LABEL: Record<string, string> = {
   unknown:     'Unknown',
 }
 
+type PairingSession = { state: 'starting' | 'waiting_pin' | 'success' | 'failed'; error?: string } | null
+type PairingStatus = { paired: boolean; session: PairingSession }
+
 function ScreenDiagnosticsBox({
   screenId,
   screensStatus,
@@ -1706,7 +1709,49 @@ function ScreenDiagnosticsBox({
 }) {
   const [recasting, setRecasting] = useState(false)
   const [recastDone, setRecastDone] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinSubmitting, setPinSubmitting] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: pairingStatus } = useQuery<PairingStatus>({
+    queryKey: ['pairing-status', screenId],
+    queryFn: () => apiFetch<PairingStatus>(`/api/admin/pairing/${screenId}`),
+    refetchInterval: (query) => {
+      const state = query.state.data?.session?.state
+      return state === 'starting' || state === 'waiting_pin' ? 2_000 : 15_000
+    },
+    staleTime: 1_500,
+  })
+
+  const pairingState = pairingStatus?.session?.state ?? null
+  const isPaired     = pairingStatus?.paired ?? false
+  const canPair      = !!draftIp
+
+  async function handleStartPairing() {
+    if (!draftIp) return
+    await fetch('/api/admin/pairing/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ screen_id: screenId, ip: draftIp }),
+    })
+    setPinInput('')
+    queryClient.invalidateQueries({ queryKey: ['pairing-status', screenId] })
+  }
+
+  async function handleSubmitPin() {
+    if (!pinInput.trim()) return
+    setPinSubmitting(true)
+    try {
+      await fetch('/api/admin/pairing/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ screen_id: screenId, pin: pinInput.trim() }),
+      })
+      setPinInput('')
+    } finally {
+      setPinSubmitting(false)
+    }
+  }
 
   const screenStatus = screensStatus?.screens?.[screenId]
   const updatedAgo   = screensStatus?.updated_at
@@ -1806,6 +1851,86 @@ function ScreenDiagnosticsBox({
             <Text size="xs" c="dimmed" ml="auto">updated {updatedAgo}s ago</Text>
           )}
         </Group>
+
+        {/* Remote control — pairing */}
+        <div style={{ borderTop: '1px solid var(--mantine-color-dark-5)', paddingTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em', minWidth: 100 }}>
+              Remote control
+            </Text>
+
+            {/* Paired badge */}
+            {isPaired && pairingState !== 'waiting_pin' && pairingState !== 'starting' && (
+              <span style={{
+                fontSize: 11, padding: '2px 7px', borderRadius: 4,
+                background: 'var(--mantine-color-green-9)',
+                color: 'var(--mantine-color-green-3)',
+                fontWeight: 600,
+              }}>
+                Paired
+              </span>
+            )}
+
+            {/* Session states */}
+            {pairingState === 'starting' && (
+              <Group gap="xs">
+                <Loader size={12} />
+                <Text size="xs" c="dimmed">Starting pairing…</Text>
+              </Group>
+            )}
+
+            {pairingState === 'success' && (
+              <Text size="xs" c="green">Paired successfully</Text>
+            )}
+
+            {pairingState === 'failed' && (
+              <Text size="xs" c="red">
+                {pairingStatus?.session?.error ?? 'Pairing failed'}
+              </Text>
+            )}
+
+            {/* Pair / Re-pair button */}
+            {pairingState !== 'starting' && pairingState !== 'waiting_pin' && (
+              <Button
+                size="xs"
+                variant="light"
+                color={isPaired ? 'gray' : 'cyan'}
+                disabled={!canPair}
+                title={!canPair ? 'Set a Chromecast IP first' : undefined}
+                onClick={handleStartPairing}
+              >
+                {isPaired ? 'Re-pair' : 'Pair now'}
+              </Button>
+            )}
+          </div>
+
+          {/* PIN input — shown when device is waiting for the PIN */}
+          {pairingState === 'waiting_pin' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <Text size="xs" c="cyan">PIN shown on TV:</Text>
+              <TextInput
+                size="xs"
+                placeholder="e.g. 123456"
+                value={pinInput}
+                onChange={e => setPinInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmitPin()}
+                w={130}
+                ff="monospace"
+                autoFocus
+              />
+              <Button
+                size="xs"
+                variant="filled"
+                color="cyan"
+                loading={pinSubmitting}
+                disabled={!pinInput.trim()}
+                onClick={handleSubmitPin}
+              >
+                Confirm
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Log buffer */}
         <div style={{

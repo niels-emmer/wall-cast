@@ -71,6 +71,9 @@ CAST_PORT   = 8009  # CastV2 control port — open on every Chromecast / Google 
 _CONFIG_DIR = os.path.dirname(CONFIG_PATH) or "."
 STATUS_FILE = os.path.join(_CONFIG_DIR, "caster-status.json")
 
+# Tracks running pair.py subprocesses by screen id so we don't spawn duplicates.
+_pair_procs: dict[str, subprocess.Popen] = {}
+
 
 def load_screens() -> list[dict]:
     try:
@@ -203,6 +206,44 @@ def check_recast_signal(sid: str) -> bool:
     return False
 
 
+def check_pair_signal(sid: str, ip: str) -> None:
+    """If a pair-start signal exists, spawn pair.py in non-interactive mode."""
+    path = os.path.join(_CONFIG_DIR, f"pair-start-{sid}.signal")
+    if not os.path.exists(path):
+        return
+
+    # The signal file contains the IP address to pair with.
+    try:
+        signal_ip = open(path).read().strip() or ip
+        os.unlink(path)
+    except Exception:
+        return
+
+    if not signal_ip:
+        print(f"[caster] {sid} pair-start: no IP — skipping", flush=True)
+        return
+
+    # Don't spawn a second process if one is still running.
+    existing = _pair_procs.get(sid)
+    if existing is not None and existing.poll() is None:
+        print(f"[caster] {sid} pairing already in progress — ignoring duplicate signal", flush=True)
+        return
+
+    status_file = os.path.join(_CONFIG_DIR, f"pair-status-{sid}.json")
+    pin_file    = os.path.join(_CONFIG_DIR, f"pair-pin-{sid}.json")
+
+    print(f"[caster] {sid} spawning pair.py (non-interactive) for {signal_ip}", flush=True)
+    proc = subprocess.Popen([
+        sys.executable, "/pair.py",
+        "--non-interactive",
+        "--screen-id", sid,
+        "--ip", signal_ip,
+        "--status-file", status_file,
+        "--pin-file", pin_file,
+    ])
+    _pair_procs[sid] = proc
+
+
 def check_wake_signal(sid: str) -> bool:
     """Return True (and consume the file) if a wake was requested for this screen."""
     path = os.path.join(_CONFIG_DIR, f"wake-{sid}.signal")
@@ -274,6 +315,9 @@ def main() -> None:
             name = s["name"]
             mac  = s["mac"]
             status_str = "unknown"
+
+            # Pairing signal: spawn pair.py in background, then continue normal cast logic
+            check_pair_signal(sid, ip)
 
             # Sleep signal: stop cast + power off display, then skip normal cast logic
             if check_sleep_signal(sid):
