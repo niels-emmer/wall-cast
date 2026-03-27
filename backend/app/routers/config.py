@@ -285,3 +285,23 @@ async def recast_screen(body: dict[str, Any]) -> None:
     config_dir = Path(settings.wall_config_path).parent
     signal_path = config_dir / f"recast-{screen_id}.signal"
     signal_path.touch()
+
+
+@router.post("/admin/casting/wake", status_code=204)
+async def wake_screen(body: dict[str, Any]) -> None:
+    """Drop a wake signal — caster wakes the display then resumes normal casting."""
+    screen_id = (body.get("screen_id") or "").strip()
+    if not screen_id:
+        raise HTTPException(status_code=400, detail="screen_id required")
+    config_dir = Path(settings.wall_config_path).parent
+    (config_dir / f"wake-{screen_id}.signal").touch()
+
+
+@router.post("/admin/casting/sleep", status_code=204)
+async def sleep_screen(body: dict[str, Any]) -> None:
+    """Drop a sleep signal — caster stops casting and puts the display in standby."""
+    screen_id = (body.get("screen_id") or "").strip()
+    if not screen_id:
+        raise HTTPException(status_code=400, detail="screen_id required")
+    config_dir = Path(settings.wall_config_path).parent
+    (config_dir / f"sleep-{screen_id}.signal").touch()

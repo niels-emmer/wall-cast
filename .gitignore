@@ -31,3 +31,6 @@ config/*.json
 # The backend creates this automatically on first run from built-in defaults.
 # See config/wall-cast.example.yaml for the full annotated template.
 config/wall-cast.yaml
+
+# Android TV Remote pairing certificates — device-specific, never commit.
+config/atv-certs/
