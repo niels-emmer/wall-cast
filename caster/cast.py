@@ -47,11 +47,17 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
 
 import yaml
+
+# remote.py lives alongside cast.py; add its directory to the path so it can
+# be found whether we're running from /cast.py or the source tree.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import remote
 
 CONFIG_PATH        = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
 SERVER_URL         = os.environ.get("SERVER_URL", "http://localhost").rstrip("/")
@@ -64,6 +70,9 @@ SCANNER_URL        = os.environ.get("SCANNER_URL", "http://localhost:8765/scan")
 CAST_PORT   = 8009  # CastV2 control port — open on every Chromecast / Google TV
 _CONFIG_DIR = os.path.dirname(CONFIG_PATH) or "."
 STATUS_FILE = os.path.join(_CONFIG_DIR, "caster-status.json")
+
+# Tracks running pair.py subprocesses by screen id so we don't spawn duplicates.
+_pair_procs: dict[str, subprocess.Popen] = {}
 
 
 def load_screens() -> list[dict]:
@@ -88,10 +97,12 @@ def load_screens() -> list[dict]:
             continue
         sid  = screen.get("id", "")
         name = (screen.get("chromecast_name") or "").strip() or None
+        mac  = (screen.get("chromecast_mac") or "").strip() or None
         result.append({
             "id":   sid,
             "ip":   ip,
             "name": name,
+            "mac":  mac,
             "url":  f"{SERVER_URL}/?screen={sid}",
         })
     return result
@@ -195,6 +206,70 @@ def check_recast_signal(sid: str) -> bool:
     return False
 
 
+def check_pair_signal(sid: str, ip: str) -> None:
+    """If a pair-start signal exists, spawn pair.py in non-interactive mode."""
+    path = os.path.join(_CONFIG_DIR, f"pair-start-{sid}.signal")
+    if not os.path.exists(path):
+        return
+
+    # The signal file contains the IP address to pair with.
+    try:
+        signal_ip = open(path).read().strip() or ip
+        os.unlink(path)
+    except Exception:
+        return
+
+    if not signal_ip:
+        print(f"[caster] {sid} pair-start: no IP — skipping", flush=True)
+        return
+
+    # Don't spawn a second process if one is still running.
+    existing = _pair_procs.get(sid)
+    if existing is not None and existing.poll() is None:
+        print(f"[caster] {sid} pairing already in progress — ignoring duplicate signal", flush=True)
+        return
+
+    status_file = os.path.join(_CONFIG_DIR, f"pair-status-{sid}.json")
+    pin_file    = os.path.join(_CONFIG_DIR, f"pair-pin-{sid}.json")
+
+    print(f"[caster] {sid} spawning pair.py (non-interactive) for {signal_ip}", flush=True)
+    proc = subprocess.Popen([
+        sys.executable, "/pair.py",
+        "--non-interactive",
+        "--screen-id", sid,
+        "--ip", signal_ip,
+        "--status-file", status_file,
+        "--pin-file", pin_file,
+    ])
+    _pair_procs[sid] = proc
+
+
+def check_wake_signal(sid: str) -> bool:
+    """Return True (and consume the file) if a wake was requested for this screen."""
+    path = os.path.join(_CONFIG_DIR, f"wake-{sid}.signal")
+    if os.path.exists(path):
+        try:
+            os.unlink(path)
+            print(f"[caster] {sid} wake signal received", flush=True)
+        except Exception:
+            pass
+        return True
+    return False
+
+
+def check_sleep_signal(sid: str) -> bool:
+    """Return True (and consume the file) if a sleep was requested for this screen."""
+    path = os.path.join(_CONFIG_DIR, f"sleep-{sid}.signal")
+    if os.path.exists(path):
+        try:
+            os.unlink(path)
+            print(f"[caster] {sid} sleep signal received", flush=True)
+        except Exception:
+            pass
+        return True
+    return False
+
+
 def write_screen_statuses(statuses: dict) -> None:
     """Atomically write per-screen status to caster-status.json."""
     try:
@@ -238,7 +313,23 @@ def main() -> None:
             ip   = s["ip"]
             sid  = s["id"]
             name = s["name"]
+            mac  = s["mac"]
             status_str = "unknown"
+
+            # Pairing signal: spawn pair.py in background, then continue normal cast logic
+            check_pair_signal(sid, ip)
+
+            # Sleep signal: stop cast + power off display, then skip normal cast logic
+            if check_sleep_signal(sid):
+                stop_cast(ip, sid)
+                remote.sleep_screen(ip, sid)
+                last_cast_at[sid] = 0
+                screen_statuses[sid] = {"status": "sleeping", "ip": ip, "last_cast_at": 0}
+                continue
+
+            # Wake signal: power on display, then fall through to normal cast logic
+            if check_wake_signal(sid):
+                remote.wake_screen(ip, sid, mac)
 
             force_recast = check_recast_signal(sid)
 

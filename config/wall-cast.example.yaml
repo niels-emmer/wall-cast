@@ -220,6 +220,18 @@ screens:
     chromecast_ip: ""      # e.g. "192.168.1.42" — find with: catt scan
     chromecast_name: ""    # e.g. "Living Room TV" — device's friendly name (Settings → Device name on the TV)
                            # When set, the caster re-discovers the device via LAN scan if the IP changes after a reboot.
+    # chromecast_mac: ""   # e.g. "aa:bb:cc:dd:ee:ff" — enables Wake-on-LAN fallback when the device is in deep sleep.
+                           # Find it in TV Settings → Network → MAC address.
+                           # Optional: only needed if KEYCODE_WAKEUP via Android TV Remote is insufficient.
+    #
+    # Remote control (wake/sleep display without ADB)
+    # ------------------------------------------------
+    # Pair once per device, then use the Wake / Sleep buttons in the admin panel.
+    #
+    #   docker compose exec caster python /pair.py --screen-id office --ip <chromecast_ip>
+    #
+    # A PIN appears on the TV screen; enter it in the terminal to complete pairing.
+    # Certificates are stored in config/atv-certs/office/ and reused automatically.
     people: []             # person IDs from shared.people to show on this screen
     layout:
       columns: 12
