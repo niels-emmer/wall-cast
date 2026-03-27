@@ -1,6 +1,6 @@
 # Built by Claude — tips and findings
 
-This project was conceived, architected, and coded entirely in collaboration with [Claude Code](https://claude.ai/claude-code) (Anthropic). These are notes from the author on how that went, and what made the difference.
+This project was conceived, architected, and coded entirely in collaboration with [Claude Code](https://claude.ai/claude-code) (Anthropic). These are notes from the author on how that went, and what made the difference. Notes, mind you, that were written by Claude after getting a much less well written story from me, the human (author).
 
 ---
 
