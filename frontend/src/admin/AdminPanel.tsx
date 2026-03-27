@@ -2193,7 +2193,7 @@ function ScreensTab({
                 </Group>
                 {scanState !== 'scanning' && (
                   <Button
-                    variant="subtle"
+                    variant="light"
                     color="gray"
                     size="xs"
                     onClick={handleScan}
@@ -2231,7 +2231,7 @@ function ScreensTab({
                           <td style={{ padding: '6px 12px 6px 0', fontSize: 13 }}>{d.name}</td>
                           <td style={{ padding: '6px 12px 6px 0', fontSize: 13, fontFamily: 'monospace', color: 'var(--mantine-color-cyan-4)' }}>{d.ip}</td>
                           <td style={{ padding: '6px 0', textAlign: 'right' }}>
-                            <Button size="xs" variant="subtle" color="cyan" onClick={() => pickScanResult(d.ip, d.name)}>
+                            <Button size="xs" variant="light" color="cyan" onClick={() => pickScanResult(d.ip, d.name)}>
                               Use
                             </Button>
                           </td>
@@ -2245,7 +2245,7 @@ function ScreensTab({
               <Divider />
               <Group gap="sm">
                 <Button
-                  variant="subtle"
+                  variant="light"
                   color={currentScreen.enabled === false ? 'green' : 'orange'}
                   size="sm"
                   onClick={() => {
@@ -2260,7 +2260,7 @@ function ScreensTab({
                   {currentScreen.enabled === false ? 'Enable screen' : 'Disable screen'}
                 </Button>
                 <Button
-                  variant="subtle"
+                  variant="light"
                   color="red"
                   size="sm"
                   onClick={() => handleDeleteScreen(currentScreen.id)}
