@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './lib/api'
 
-// ── Colours matching the dark dashboard theme ─────────────────────────────────
+// ── Colours matching the dark dashboard theme ──────────────────────────────────
 const C = {
   bg:       '#0d1117',
   surface:  '#161b22',
@@ -108,10 +108,11 @@ const sectionTitle: React.CSSProperties = {
 }
 
 // ── Toggle button ─────────────────────────────────────────────────────────────
-function ToggleButton({ active, onToggle, loading }: {
+function ToggleButton({ active, onToggle, loading, fullWidth }: {
   active: boolean
   onToggle: () => void
   loading?: boolean
+  fullWidth?: boolean
 }) {
   return (
     <button
@@ -133,7 +134,7 @@ function ToggleButton({ active, onToggle, loading }: {
         opacity:         loading ? 0.6 : 1,
         transition:      'opacity 0.15s',
         whiteSpace:      'nowrap',
-        width:           '100%',
+        width:           fullWidth ? '100%' : undefined,
         minWidth:        130,
         boxSizing:       'border-box',
       }}
@@ -404,15 +405,16 @@ export default function LandingPage() {
           {screens.length === 0 ? (
             <div style={{ fontSize: '0.85rem', color: C.muted }}>No screens configured.</div>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 190px)', gap: '0.75rem' }}>
               {screens.map(screen => {
                 const screenActive = screen.casting_active !== false
                 const hasIp = !!(screen.chromecast_ip || '').trim()
                 const effectivelyCasting = globalCasting && screenActive && hasIp
                 const casterScreenStatus = casterStatus?.screens?.[screen.id]?.status
-                const screenIsOn = casterScreenStatus === 'casting'
-                  || casterScreenStatus === 'cooldown'
-                  || casterScreenStatus === 'starting'
+                // fall back to effectivelyCasting when caster data hasn't arrived yet
+                const screenIsOn = casterStatus
+                  ? (casterScreenStatus === 'casting' || casterScreenStatus === 'cooldown' || casterScreenStatus === 'starting')
+                  : effectivelyCasting
                 const isPaired = pairingMap?.[screen.id] ?? false
                 return (
                   <div
@@ -422,7 +424,6 @@ export default function LandingPage() {
                       border:        `1px solid ${effectivelyCasting ? C.greenBdr : C.border}`,
                       borderRadius:  8,
                       padding:       '0.9rem 1rem',
-                      minWidth:      160,
                       display:       'flex',
                       flexDirection: 'column',
                       gap:           '0.6rem',
@@ -438,6 +439,7 @@ export default function LandingPage() {
                       active={screenActive}
                       onToggle={() => toggleScreen(screen)}
                       loading={togglingScreen === screen.id}
+                      fullWidth
                     />
                     <PowerButton
                       screenOn={screenIsOn}

@@ -1870,7 +1870,7 @@ function ScreenDiagnosticsBox({
 
         {/* Remote control row */}
         <Group gap="xs" align="center">
-          <Text size="sm" c="dimmed" style={{ minWidth: 90 }}>Remote</Text>
+          <Text size="sm" c="dimmed" style={{ minWidth: 90 }}>Remote control</Text>
           <Text size="sm" c={pairingStatusText.color as any}>{pairingStatusText.label}</Text>
         </Group>
 
@@ -2193,8 +2193,8 @@ function ScreensTab({
                 </Group>
                 {scanState !== 'scanning' && (
                   <Button
-                    variant="outline"
-                    color="gray"
+                    variant="light"
+                    color="blue"
                     size="sm"
                     onClick={handleScan}
                     style={{ alignSelf: 'flex-start' }}
@@ -2245,7 +2245,7 @@ function ScreensTab({
               <Divider />
               <Group gap="sm">
                 <Button
-                  variant="outline"
+                  variant="light"
                   color={currentScreen.enabled === false ? 'green' : 'orange'}
                   size="sm"
                   onClick={() => {
@@ -2260,7 +2260,7 @@ function ScreensTab({
                   {currentScreen.enabled === false ? 'Enable screen' : 'Disable screen'}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="light"
                   color="red"
                   size="sm"
                   onClick={() => handleDeleteScreen(currentScreen.id)}
