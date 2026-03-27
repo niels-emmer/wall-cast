@@ -48,6 +48,17 @@ interface LogRecord {
   msg: string
 }
 
+interface CasterScreenStatus {
+  status: 'casting' | 'cooldown' | 'starting' | 'scanning' | 'unreachable' | 'unknown'
+  ip: string
+  last_cast_at: number
+}
+
+interface CasterStatusData {
+  updated_at: number | null
+  screens: Record<string, CasterScreenStatus>
+}
+
 // ── Logo ──────────────────────────────────────────────────────────────────────
 function WallCastLogo() {
   return (
@@ -107,20 +118,24 @@ function ToggleButton({ active, onToggle, loading }: {
       onClick={onToggle}
       disabled={loading}
       style={{
-        display:       'inline-flex',
-        alignItems:    'center',
-        gap:           '0.45rem',
-        padding:       '0.35rem 0.85rem',
-        borderRadius:  6,
-        border:        `1px solid ${active ? C.greenBdr : C.redBdr}`,
-        background:    active ? C.greenBg : C.redBg,
-        color:         active ? C.green : C.red,
-        fontSize:      '0.8rem',
-        fontWeight:    600,
-        cursor:        loading ? 'wait' : 'pointer',
-        opacity:       loading ? 0.6 : 1,
-        transition:    'opacity 0.15s',
-        whiteSpace:    'nowrap',
+        display:         'inline-flex',
+        alignItems:      'center',
+        justifyContent:  'center',
+        gap:             '0.45rem',
+        padding:         '0.35rem 0.85rem',
+        borderRadius:    6,
+        border:          `1px solid ${active ? C.greenBdr : C.redBdr}`,
+        background:      active ? C.greenBg : C.redBg,
+        color:           active ? C.green : C.red,
+        fontSize:        '0.8rem',
+        fontWeight:      600,
+        cursor:          loading ? 'wait' : 'pointer',
+        opacity:         loading ? 0.6 : 1,
+        transition:      'opacity 0.15s',
+        whiteSpace:      'nowrap',
+        width:           '100%',
+        minWidth:        130,
+        boxSizing:       'border-box',
       }}
     >
       <span style={{
@@ -130,6 +145,46 @@ function ToggleButton({ active, onToggle, loading }: {
         flexShrink: 0,
       }} />
       {active ? 'CASTING ON' : 'CASTING OFF'}
+    </button>
+  )
+}
+
+// ── Power button ──────────────────────────────────────────────────────────────
+function PowerButton({ screenOn, isPaired, loading, onToggle }: {
+  screenOn: boolean
+  isPaired: boolean
+  loading: boolean
+  onToggle: () => void
+}) {
+  const disabled = !isPaired || loading
+  const title = !isPaired ? 'Requires pairing — go to Settings → Screen settings' : undefined
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      title={title}
+      style={{
+        display:         'inline-flex',
+        alignItems:      'center',
+        justifyContent:  'center',
+        gap:             '0.45rem',
+        padding:         '0.35rem 0.85rem',
+        borderRadius:    6,
+        border:          `1px solid ${disabled ? C.border : screenOn ? C.amberBdr : C.blueBdr}`,
+        background:      disabled ? 'rgba(255,255,255,0.02)' : screenOn ? C.amberBg : C.blueBg,
+        color:           disabled ? C.muted : screenOn ? C.amber : C.blue,
+        fontSize:        '0.8rem',
+        fontWeight:      600,
+        cursor:          disabled ? 'not-allowed' : 'pointer',
+        opacity:         disabled ? 0.45 : 1,
+        transition:      'opacity 0.15s',
+        whiteSpace:      'nowrap',
+        width:           '100%',
+        minWidth:        130,
+        boxSizing:       'border-box',
+      }}
+    >
+      {loading ? '…' : screenOn ? 'Switch off' : 'Switch on'}
     </button>
   )
 }
@@ -163,6 +218,7 @@ export default function LandingPage() {
   const qc = useQueryClient()
   const [togglingGlobal, setTogglingGlobal] = useState(false)
   const [togglingScreen, setTogglingScreen] = useState<string | null>(null)
+  const [poweringScreen, setPoweringScreen] = useState<string | null>(null)
 
   const { data: rawCfg } = useQuery<RawConfig>({
     queryKey: ['admin-config'],
@@ -184,8 +240,32 @@ export default function LandingPage() {
     staleTime: 4_000,
   })
 
-  const globalCasting = rawCfg?.shared?.casting_enabled !== false
+  const { data: casterStatus } = useQuery<CasterStatusData>({
+    queryKey: ['caster-screens-status'],
+    queryFn: () => apiFetch<CasterStatusData>('/api/admin/screens/status'),
+    refetchInterval: 10_000,
+    staleTime: 9_000,
+  })
+
   const screens: Screen[] = rawCfg?.screens ?? []
+
+  const { data: pairingMap } = useQuery<Record<string, boolean>>({
+    queryKey: ['pairing-all', screens.map(s => s.id).join(',')],
+    queryFn: async () => {
+      const results = await Promise.all(
+        screens.map(async s => {
+          const r = await apiFetch<{ paired: boolean }>(`/api/admin/pairing/${s.id}`)
+          return [s.id, r.paired] as [string, boolean]
+        })
+      )
+      return Object.fromEntries(results)
+    },
+    enabled: screens.length > 0,
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+  })
+
+  const globalCasting = rawCfg?.shared?.casting_enabled !== false
   const peopleCount = rawCfg?.shared?.people?.length ?? 0
 
   const castingScreens = screens.filter(s =>
@@ -227,6 +307,19 @@ export default function LandingPage() {
       setTogglingScreen(null)
     }
   }, [qc])
+
+  const togglePower = useCallback(async (screenId: string, currentlyOn: boolean) => {
+    setPoweringScreen(screenId)
+    try {
+      await fetch(`/api/admin/casting/${currentlyOn ? 'sleep' : 'wake'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ screen_id: screenId }),
+      })
+    } finally {
+      setPoweringScreen(null)
+    }
+  }, [])
 
   const casterOk    = statusData?.caster.status === 'ok'
   const casterStale = statusData?.caster.status === 'stale'
@@ -306,7 +399,7 @@ export default function LandingPage() {
         <div style={card}>
           <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>Screens</div>
           <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
-            Start or pause casting per screen independently. Open a live preview in your browser without touching the Chromecast.
+            Start or pause casting per screen independently. Open a live preview in your browser, or use the power button to wake or standby the display — requires pairing first (Settings → Screen settings).
           </div>
           {screens.length === 0 ? (
             <div style={{ fontSize: '0.85rem', color: C.muted }}>No screens configured.</div>
@@ -316,6 +409,11 @@ export default function LandingPage() {
                 const screenActive = screen.casting_active !== false
                 const hasIp = !!(screen.chromecast_ip || '').trim()
                 const effectivelyCasting = globalCasting && screenActive && hasIp
+                const casterScreenStatus = casterStatus?.screens?.[screen.id]?.status
+                const screenIsOn = casterScreenStatus === 'casting'
+                  || casterScreenStatus === 'cooldown'
+                  || casterScreenStatus === 'starting'
+                const isPaired = pairingMap?.[screen.id] ?? false
                 return (
                   <div
                     key={screen.id}
@@ -341,6 +439,12 @@ export default function LandingPage() {
                       onToggle={() => toggleScreen(screen)}
                       loading={togglingScreen === screen.id}
                     />
+                    <PowerButton
+                      screenOn={screenIsOn}
+                      isPaired={isPaired}
+                      loading={poweringScreen === screen.id}
+                      onToggle={() => togglePower(screen.id, screenIsOn)}
+                    />
                     <a
                       href={`/?screen=${encodeURIComponent(screen.id)}`}
                       style={{
@@ -354,6 +458,7 @@ export default function LandingPage() {
                         fontWeight:     500,
                         textDecoration: 'none',
                         textAlign:      'center',
+                        boxSizing:      'border-box',
                       }}
                     >
                       View →

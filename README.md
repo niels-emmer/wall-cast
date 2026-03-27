@@ -1,7 +1,7 @@
 # wall-cast
 
-> **Disclaimer:** This entire repository — app and docs — was written by Claude Code (Sonnet 4.6), guided only by prompts. Keep that in mind before entering anything sensitive. ;-)
-> Its main purpose is to demonstrate what you can build by teaming up with an AI agent. Fork it, prompt it, and make it your own. [Read more here.](docs/built-by-claude.md)
+> **Disclaimer:** This entire repository — app and docs — was written by Claude Code (Sonnet 4.6), merely guided by an initial idea and follow-up prompts. Keep that in mind before entering your bank account or crypto private key. ;-)
+> Its main purpose is to share a way of teaming up with an AI agent to create anything you can think of — fork it and expand freely. [Read more here.](docs/built-by-claude.md)
 
 **A self-hosted home display that casts personalised information to Android TV sets, Android TV boxes, and Chromecast-connected screens around your house.**
 

@@ -2193,9 +2193,9 @@ function ScreensTab({
                 </Group>
                 {scanState !== 'scanning' && (
                   <Button
-                    variant="light"
+                    variant="outline"
                     color="gray"
-                    size="xs"
+                    size="sm"
                     onClick={handleScan}
                     style={{ alignSelf: 'flex-start' }}
                   >
@@ -2245,7 +2245,7 @@ function ScreensTab({
               <Divider />
               <Group gap="sm">
                 <Button
-                  variant="light"
+                  variant="outline"
                   color={currentScreen.enabled === false ? 'green' : 'orange'}
                   size="sm"
                   onClick={() => {
@@ -2260,7 +2260,7 @@ function ScreensTab({
                   {currentScreen.enabled === false ? 'Enable screen' : 'Disable screen'}
                 </Button>
                 <Button
-                  variant="light"
+                  variant="outline"
                   color="red"
                   size="sm"
                   onClick={() => handleDeleteScreen(currentScreen.id)}
