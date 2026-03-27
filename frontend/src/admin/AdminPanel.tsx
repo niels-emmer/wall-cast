@@ -1681,6 +1681,7 @@ const STATUS_COLOR: Record<string, string> = {
   starting:    'blue',
   scanning:    'yellow',
   unreachable: 'red',
+  cast_failed: 'orange',
   unknown:     'gray',
 }
 
@@ -1690,6 +1691,7 @@ const STATUS_LABEL: Record<string, string> = {
   starting:    'Starting…',
   scanning:    'Scanning for device…',
   unreachable: 'Unreachable',
+  cast_failed: 'Cast failed — retrying',
   unknown:     'Unknown',
 }
 
@@ -1711,6 +1713,7 @@ function ScreenDiagnosticsBox({
   const [recastDone, setRecastDone] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinSubmitting, setPinSubmitting] = useState(false)
+  const [localStarting, setLocalStarting] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: pairingStatus } = useQuery<PairingStatus>({
@@ -1727,14 +1730,20 @@ function ScreenDiagnosticsBox({
   const isPaired     = pairingStatus?.paired ?? false
   const canPair      = !!draftIp
 
+  // Clear localStarting once the server session is visible
+  useEffect(() => {
+    if (pairingState !== null) setLocalStarting(false)
+  }, [pairingState])
+
   async function handleStartPairing() {
     if (!draftIp) return
+    setLocalStarting(true)
+    setPinInput('')
     await fetch('/api/admin/pairing/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ screen_id: screenId, ip: draftIp }),
     })
-    setPinInput('')
     queryClient.invalidateQueries({ queryKey: ['pairing-status', screenId] })
   }
 
@@ -1796,15 +1805,9 @@ function ScreenDiagnosticsBox({
           <Text size="xs" fw={600} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.1em' }}>
             Diagnostics
           </Text>
-          <Button
-            size="xs"
-            variant="light"
-            color={recastDone ? 'green' : 'blue'}
-            loading={recasting}
-            onClick={handleRecast}
-          >
-            {recastDone ? 'Signal sent' : 'Re-cast now'}
-          </Button>
+          {updatedAgo !== null && (
+            <Text size="xs" c="dimmed">updated {updatedAgo}s ago</Text>
+          )}
         </Group>
 
         {/* Status row */}
@@ -1847,9 +1850,16 @@ function ScreenDiagnosticsBox({
               )}
             </Group>
           )}
-          {updatedAgo !== null && (
-            <Text size="xs" c="dimmed" ml="auto">updated {updatedAgo}s ago</Text>
-          )}
+          <Button
+            size="xs"
+            variant="light"
+            color={recastDone ? 'green' : 'blue'}
+            loading={recasting}
+            ml="auto"
+            onClick={handleRecast}
+          >
+            {recastDone ? 'Signal sent' : 'Re-cast now'}
+          </Button>
         </Group>
 
         {/* Remote control — pairing */}
@@ -1859,8 +1869,8 @@ function ScreenDiagnosticsBox({
               Remote control
             </Text>
 
-            {/* Paired badge */}
-            {isPaired && pairingState !== 'waiting_pin' && pairingState !== 'starting' && (
+            {/* Paired badge — only when idle */}
+            {isPaired && !pairingState && !localStarting && (
               <span style={{
                 fontSize: 11, padding: '2px 7px', borderRadius: 4,
                 background: 'var(--mantine-color-green-9)',
@@ -1871,43 +1881,45 @@ function ScreenDiagnosticsBox({
               </span>
             )}
 
-            {/* Session states */}
-            {pairingState === 'starting' && (
-              <Group gap="xs">
-                <Loader size={12} />
-                <Text size="xs" c="dimmed">Starting pairing…</Text>
-              </Group>
-            )}
-
-            {pairingState === 'success' && (
-              <Text size="xs" c="green">Paired successfully</Text>
-            )}
-
-            {pairingState === 'failed' && (
-              <Text size="xs" c="red">
-                {pairingStatus?.session?.error ?? 'Pairing failed'}
-              </Text>
-            )}
-
-            {/* Pair / Re-pair button */}
-            {pairingState !== 'starting' && pairingState !== 'waiting_pin' && (
+            {/* Pair / Re-pair button — always visible except during PIN entry */}
+            {pairingState !== 'waiting_pin' && (
               <Button
                 size="xs"
                 variant="light"
                 color={isPaired ? 'gray' : 'cyan'}
-                disabled={!canPair}
+                disabled={!canPair || pairingState === 'starting' || localStarting}
+                loading={localStarting || pairingState === 'starting'}
                 title={!canPair ? 'Set a Chromecast IP first' : undefined}
                 onClick={handleStartPairing}
               >
                 {isPaired ? 'Re-pair' : 'Pair now'}
               </Button>
             )}
+
+            {/* Status text — after the button */}
+            {localStarting && !pairingState && (
+              <Text size="xs" c="dimmed">Pairing started…</Text>
+            )}
+            {pairingState === 'starting' && (
+              <Text size="xs" c="dimmed">Pairing started…</Text>
+            )}
+            {pairingState === 'waiting_pin' && (
+              <Text size="xs" c="cyan" fw={500}>Confirm pairing PIN</Text>
+            )}
+            {pairingState === 'success' && (
+              <Text size="xs" c="green">Paired successfully</Text>
+            )}
+            {pairingState === 'failed' && (
+              <Text size="xs" c="red">
+                {pairingStatus?.session?.error ?? 'Pairing failed'}
+              </Text>
+            )}
           </div>
 
           {/* PIN input — shown when device is waiting for the PIN */}
           {pairingState === 'waiting_pin' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-              <Text size="xs" c="cyan">PIN shown on TV:</Text>
+              <Text size="xs" c="dimmed">PIN shown on TV:</Text>
               <TextInput
                 size="xs"
                 placeholder="e.g. 123456"
