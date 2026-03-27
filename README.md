@@ -1,5 +1,8 @@
 # wall-cast
 
+> **Disclaimer:** This entire repository — app and docs — was written by Claude Code (Sonnet 4.6), guided only by prompts. Keep that in mind before entering anything sensitive. ;-)
+> Its main purpose is to demonstrate what you can build by teaming up with an AI agent. Fork it, prompt it, and make it your own. See the [`docs/`](docs/) folder for details.
+
 **A self-hosted home display that casts personalised information to Android TV sets, Android TV boxes, and Chromecast-connected screens around your house.**
 
 Put the weather, family calendar, bin collection schedule, and live travel times on the TV in the living room. Put a different mix — with the kids' school schedule, the rain radar, and bus / tram departures — on the screen in their room. All from one Docker stack, hot-reloading, no cloud, no subscription.
