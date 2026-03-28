@@ -4,6 +4,7 @@ import json
 import time
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -29,6 +30,16 @@ async def _check_scanner() -> str:
             asyncio.open_connection(SCANNER_HOST, SCANNER_PORT), timeout=1.0
         )
         writer.close()
+        return "ok"
+    except Exception:
+        return "offline"
+
+
+async def _check_http(url: str) -> str:
+    """HTTP GET probe — returns 'ok' or 'offline'. Any HTTP response counts as ok."""
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            await client.get(url)
         return "ok"
     except Exception:
         return "offline"
@@ -62,11 +73,30 @@ async def get_status() -> JSONResponse:
         except Exception:
             assistant_status = "offline"
 
+    # Notification server reachability — read from raw config (shared.assistant.notify)
+    raw = wall_config.get_raw_config()
+    notify_cfg = raw.get("shared", {}).get("assistant", {}).get("notify", {})
+    ntfy_cfg   = notify_cfg.get("ntfy", {})
+    matrix_cfg = notify_cfg.get("matrix", {})
+
+    ntfy_url    = ntfy_cfg.get("url", "").rstrip("/")
+    matrix_hs   = matrix_cfg.get("homeserver", "").rstrip("/")
+
+    async def _static(val: str) -> str:
+        return val
+
+    ntfy_status, matrix_status = await asyncio.gather(
+        _check_http(ntfy_url) if ntfy_url else _static("unconfigured"),
+        _check_http(f"{matrix_hs}/_matrix/client/versions") if matrix_hs else _static("unconfigured"),
+    )
+
     return JSONResponse(content={
         "backend":     {"status": "ok"},
         "caster":      {"status": caster_status, "last_seen_s": last_seen_s},
         "scanner":     {"status": scanner_status},
         "assistant":   {"status": assistant_status, "last_seen_s": assistant_last_s},
+        "ntfy":        {"status": ntfy_status},
+        "matrix":      {"status": matrix_status},
         "api_sources": cache_registry.get_all(),
     })
 

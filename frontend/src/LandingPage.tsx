@@ -41,6 +41,8 @@ interface StatusData {
   caster:      { status: string; last_seen_s: number | null }
   scanner:     { status: string }
   assistant:   { status: string; last_seen_s: number | null }
+  ntfy:        { status: string }
+  matrix:      { status: string }
   api_sources: Record<string, { ok: boolean; age_s: number; detail: string }>
 }
 
@@ -203,12 +205,12 @@ function fmtAge(age_s: number | null | undefined): string {
 
 // ── Service status row ────────────────────────────────────────────────────────
 function StatusRow({ label, status, age }: { label: string; status: string; age?: string }) {
-  const ok  = status === 'ok'
+  const ok    = status === 'ok'
   const stale = status === 'stale'
-  const dis = status === 'disabled'
+  const dis   = status === 'disabled' || status === 'unconfigured'
   const color = ok ? C.green : stale ? C.amber : dis ? C.muted : C.red
   const dot   = ok ? C.green : stale ? C.amber : dis ? 'rgba(255,255,255,0.2)' : C.red
-  const text  = dis ? 'DISABLED' : status.toUpperCase()
+  const text  = status === 'unconfigured' ? 'NOT CONFIGURED' : dis ? 'DISABLED' : status.toUpperCase()
   return (
     <>
       <span style={{ fontSize: '0.78rem', color: C.muted }}>{label}</span>
@@ -489,6 +491,8 @@ export default function LandingPage() {
                 status={statusData?.assistant?.status ?? 'unknown'}
                 age={fmtAge(statusData?.assistant?.last_seen_s)}
               />
+              <StatusRow label="ntfy"      status={statusData?.ntfy?.status ?? 'unknown'} />
+              <StatusRow label="Matrix"    status={statusData?.matrix?.status ?? 'unknown'} />
             </div>
 
             {/* Divider */}
