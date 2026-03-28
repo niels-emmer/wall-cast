@@ -173,12 +173,18 @@ export function WeatherWidget({ config }: Props) {
   const cur      = data.current_weather
   const { label: curLabel } = wmo(cur.weathercode, t)
 
+  const curPrecip = data.hourly.precipitation_probability[startIdx] ?? 0
+
   return (
     <div style={shellStyle}>
 
-      {/* ── Title + Current ── */}
+      {/* ── Title ── */}
+      <div style={titleStyle}>{t.weatherTitle}</div>
+
+      {divider}
+
+      {/* ── Current conditions ── */}
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.75em', flexShrink: 0 }}>
-        <div style={titleStyle}>{t.weatherTitle}</div>
         <span style={{ fontSize: fs.hero, lineHeight: 1 }}><WeatherIcon code={cur.weathercode} /></span>
         <span style={{
           fontSize:           fs.hero,
@@ -192,8 +198,8 @@ export function WeatherWidget({ config }: Props) {
           <span style={{ fontSize: fs.md, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap' }}>
             {curLabel}
           </span>
-          <span style={{ fontSize: fs.sm, color: 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
-            {t.wind} {Math.round(cur.windspeed)} km/u
+          <span style={{ fontSize: fs.sm, color: curPrecip > 40 ? 'var(--color-accent)' : 'var(--color-muted)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            {curPrecip}%
           </span>
         </div>
         {sunData && <SunBlock d={sunData} t={t} />}
