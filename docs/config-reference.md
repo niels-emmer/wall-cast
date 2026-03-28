@@ -548,11 +548,11 @@ Current outdoor air quality and a 4-day pollen forecast. Data from [open-meteo.c
 
 ### `market`
 
-Live market overview — crypto Fear & Greed index, main stock indices (S&P 500, NASDAQ, AEX, FTSE), key stock tickers, and top 10 crypto coins. No API key required.
+Live market overview — crypto Fear & Greed index, main stock indices (S&P 500, Dow Jones, AEX, FTSE 100), key stock tickers, and top 10 crypto coins. No API key required.
 
 Data sources:
 - Fear & Greed: [alternative.me/fng](https://alternative.me/fng/) — no key
-- Stock/index quotes: Yahoo Finance — no key
+- Stock/index quotes: [Stooq](https://stooq.com) — no key
 - Crypto top 10: [CoinGecko](https://coingecko.com) — no key
 
 ```yaml
@@ -568,11 +568,56 @@ Data sources:
 **Display (top to bottom):**
 1. Title — `MARKT` (nl) / `MARKET` (en)
 2. Fear & Greed gauge — gradient bar (red → yellow → green), needle at current value (0–100), classification label (Extreme Fear / Fear / Neutral / Greed / Extreme Greed)
-3. Indices section — S&P 500, NASDAQ, AEX, FTSE as cards with price + % change
+3. Indices section — S&P 500, Dow Jones, AEX, FTSE 100 as cards with price + % change
 4. Stocks section — AAPL, MSFT, NVDA, TSLA, AMZN as cards with price + % change
 5. Crypto section — top 10 coins by market cap (rank, symbol, price, 24h %)
 
 **Backend cache:** 5 minutes.
+
+---
+
+### `p2000`
+
+Dutch P2000 emergency services paging alerts scoped to the user's safety region (derived from `shared.location`). No API key required. **Automatically hidden when there are no recent incidents**, making it a good fit inside a `rotate` widget.
+
+Data source: [p2000.brandweer-berkel-enschot.nl](http://p2000.brandweer-berkel-enschot.nl/homeassistant/rss.asp) — public RSS feed of the national P2000 paging network.
+
+Filtering rules:
+- **Brandweerdiensten** (fire) — all priorities kept
+- **Ambulancediensten** (ambulance) — A1 only (life-threatening); A2/B1/B2 skipped
+- **Politiediensten** (police) — P1 / "Prio 1" / GRIP only; lower priority skipped
+- **Gereserveerd** — system noise, always skipped (~22% of the feed)
+- **TESTOPROEP** — test pages, always skipped
+- Messages with no readable text (pure pager codes) — skipped
+
+Multi-unit dispatches (same incident sent to 2–4 units) are deduplicated within a 5-minute window.
+
+```yaml
+- id: p2000
+  type: p2000
+  col: 5
+  row: 4
+  col_span: 4
+  row_span: 4
+  config: {}   # no widget-level config; widget_enabled is in shared.p2000
+```
+
+**Display:**
+- Header: `P2000` title + safety region name
+- **Active** section (age ≤ 60 min): full brightness, discipline icon (🚒🚑🚔), priority pill, message text, "X min ago"
+- **Earlier today** section (60–360 min): same layout, dimmed
+- Widget calls `onSkip()` when there are no incidents in the past 6 hours
+
+**Shared config** (`shared.p2000`):
+```yaml
+shared:
+  p2000:
+    widget_enabled: true   # set to false to hide the widget (skip in rotator)
+```
+
+**News ticker injection** — enable via Admin → General → P2000 Emergency Alerts → "Show in news ticker". Stores `p2000_ticker: true` inside the `news` widget's config. When enabled, the most recent P2000 incident is injected into the ticker every 2 items, max 3 times per scroll cycle, with an orange `P2000` badge.
+
+**Backend cache:** 30 seconds.
 
 ---
 

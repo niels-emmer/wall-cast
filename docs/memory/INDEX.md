@@ -47,6 +47,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | bus | /api/bus | BusWidget.tsx | ✅ production |
 | network | /api/network | NetworkWidget.tsx | ✅ production |
 | market | /api/market | MarketWidget.tsx | ✅ production |
+| p2000 | /api/p2000 | P2000Widget.tsx | ✅ production |
 
 ## Feature Status
 
@@ -76,6 +77,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Visual harmony | ✅ | Shared design token system in `frontend/src/widgets/styles.ts` — 7 font tiers, unified shell gap/card padding/radius across all widgets. See `docs/widget-style-guide.md`. |
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on genuine drop; cooldown prevents false-negative recast loop; post-cast verification catches silent failures (e.g. after "Hey Google") |
 | Network widget | ✅ | WAN status, connectivity, DNS, LAN host count, speedtest; Zyxel VMG8825 DAL API; router password via `ROUTER_PASSWORD` env var |
+| P2000 widget | ✅ | Dutch emergency alerts widget + news ticker injection; region from shared.location; Brandweer all / Ambulance A1 / Politie P1; auto-skipped when no incidents |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
 
@@ -242,6 +244,10 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Traffic jams: `api.anwb.nl/routing/v1/incidents/incidents-desktop` — no key, 5 min TTL
 - Travel time: TomTom Routing API — free key (`TOMTOM_API_KEY`), 5 min TTL, traffic-aware
 - TomTom Geocoding: `api.tomtom.com/search/2/geocode/{query}.json` — resolves home/work addresses to coords on first request, cached for process lifetime
+- Market Fear & Greed: `api.alternative.me/fng/` — no key, 5 min TTL
+- Market quotes (indices + stocks): `stooq.com/q/d/l/` CSV — no key, 7-day date range to get latest close + prev close, 5 min TTL
+- Crypto top 10: `api.coingecko.com/api/v3/coins/markets` — no key, 5 min TTL
+- P2000: `p2000.brandweer-berkel-enschot.nl/homeassistant/rss.asp` — public RSS, no key, 30 s TTL; filter by RegName (bbox lookup from shared.location), discipline + priority rules, dedup within 5 min window
 
 ## In-Progress Work
 

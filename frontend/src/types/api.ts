@@ -226,3 +226,17 @@ export interface MarketData {
   quotes: QuoteData[]
   crypto: CryptoData[]
 }
+
+export interface P2000Incident {
+  id: string
+  ts: string            // ISO 8601 with tz offset
+  discipline: string    // 'Brandweerdiensten' | 'Ambulancediensten' | 'Politiediensten'
+  priority: string      // 'A1', 'P1', 'PRIO1', etc.
+  message: string       // cleaned dispatch text
+  age_min: number       // minutes since dispatch
+}
+
+export interface P2000Data {
+  region: string
+  incidents: P2000Incident[]
+}

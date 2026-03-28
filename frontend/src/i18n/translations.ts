@@ -108,6 +108,16 @@ export interface Translations {
   marketCrypto: string
   fearGreedLabel: (value: number) => string
 
+  // P2000 Emergency Alerts
+  p2000Title: string
+  p2000Region: string
+  p2000NoIncidents: string
+  p2000Active: string
+  p2000Historic: string
+  p2000AgoMin: (n: number) => string
+  p2000Unavailable: string
+  p2000TickerBadge: string
+
   // Shared
   unavailable: string
   loading: string
@@ -260,6 +270,15 @@ export const nl: Translations = {
   marketCrypto: 'Crypto',
   fearGreedLabel: (v) => v <= 24 ? 'Extreme Angst' : v <= 44 ? 'Angst' : v <= 54 ? 'Neutraal' : v <= 74 ? 'Hebzucht' : 'Extreme Hebzucht',
 
+  p2000Title: 'P2000',
+  p2000Region: 'Regio',
+  p2000NoIncidents: 'Geen meldingen',
+  p2000Active: 'Actief',
+  p2000Historic: 'Eerder vandaag',
+  p2000AgoMin: (n) => n === 0 ? 'Nu' : `${n} min geleden`,
+  p2000Unavailable: 'Niet beschikbaar',
+  p2000TickerBadge: 'P2000',
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -401,6 +420,15 @@ export const en: Translations = {
   marketStocks: 'Stocks',
   marketCrypto: 'Crypto',
   fearGreedLabel: (v) => v <= 24 ? 'Extreme Fear' : v <= 44 ? 'Fear' : v <= 54 ? 'Neutral' : v <= 74 ? 'Greed' : 'Extreme Greed',
+
+  p2000Title: 'P2000',
+  p2000Region: 'Region',
+  p2000NoIncidents: 'No incidents',
+  p2000Active: 'Active',
+  p2000Historic: 'Earlier today',
+  p2000AgoMin: (n) => n === 0 ? 'Now' : `${n} min ago`,
+  p2000Unavailable: 'Unavailable',
+  p2000TickerBadge: 'P2000',
 
   unavailable: 'Unavailable',
   loading: 'Loading...',

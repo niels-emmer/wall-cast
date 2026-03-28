@@ -32,6 +32,14 @@ shared:
   #   router_url:      https://192.168.1.1
   #   router_username: admin
 
+  # P2000 emergency alerts (Dutch paging network — Netherlands only)
+  # Region is derived automatically from shared.location lat/lon.
+  # Filters: Brandweer (all priorities), Ambulance A1, Politie P1 only.
+  # widget_enabled toggles the P2000 Alert Service widget in the rotator.
+  # Ticker injection (p2000_ticker) is stored in the news widget config — use Admin panel.
+  # p2000:
+  #   widget_enabled: true
+
   people: []
     # Example:
     # - id: alice

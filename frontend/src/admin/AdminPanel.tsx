@@ -20,6 +20,7 @@ import type {
   Location,
   GarbageConfig,
   NetworkConfig,
+  P2000Config,
   AssistantConfig,
   Person,
   PersonTraffic,
@@ -161,6 +162,16 @@ function getNetwork(draft: AdminConfig): NetworkConfig {
 function setNetworkInDraft(draft: AdminConfig, nc: NetworkConfig): AdminConfig {
   if (!isMultiScreen(draft)) return draft  // only supported in multi-screen format
   return { ...draft, shared: { ...draft.shared, network: nc } }
+}
+
+function getP2000(draft: AdminConfig): P2000Config {
+  if (!isMultiScreen(draft)) return (draft as FlatConfig).p2000 ?? {}
+  return draft.shared.p2000 ?? {}
+}
+
+function setP2000InDraft(draft: AdminConfig, cfg: P2000Config): AdminConfig {
+  if (!isMultiScreen(draft)) return { ...draft, p2000: cfg }
+  return { ...draft, shared: { ...draft.shared, p2000: cfg } }
 }
 
 function getAssistant(draft: AdminConfig): AssistantConfig {
@@ -801,6 +812,60 @@ function NetworkSection({
             Set <Code fz="xs">ROUTER_PASSWORD=…</Code> in your <Code fz="xs">.env</Code> file — never stored in the config YAML.
           </Text>
         </Group>
+      </Stack>
+    </Paper>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// P2000Section
+// ---------------------------------------------------------------------------
+
+function P2000Section({
+  draft, onChange,
+}: {
+  draft: AdminConfig
+  onChange: (d: AdminConfig) => void
+}) {
+  const multi = isMultiScreen(draft)
+  const p2000Cfg = getP2000(draft)
+  const widgets = multi ? (draft.shared.widgets ?? []) : (draft.widgets ?? [])
+  const newsWidget = widgets.find(w => w.type === 'news')
+  const tickerEnabled = !!(newsWidget?.config?.p2000_ticker)
+  const widgetEnabled = p2000Cfg.widget_enabled !== false
+  const locationName = getLocation(draft)?.name
+
+  function setTickerEnabled(val: boolean) {
+    const updated = widgets.map(w =>
+      w.type === 'news' ? { ...w, config: { ...w.config, p2000_ticker: val } } : w
+    )
+    if (multi) onChange({ ...draft, shared: { ...draft.shared, widgets: updated } })
+    else onChange({ ...draft, widgets: updated })
+  }
+
+  function setWidgetEnabled(val: boolean) {
+    onChange(setP2000InDraft(draft, { ...p2000Cfg, widget_enabled: val }))
+  }
+
+  return (
+    <Paper p="md" radius="sm" withBorder>
+      <SectionTitle>P2000 Emergency Alerts</SectionTitle>
+      <Text size="sm" c="dimmed" mb="md">
+        Show Dutch emergency services dispatch alerts (fire, ambulance A1, police P1) scoped
+        to your location{locationName ? <> — <strong>{locationName}</strong></> : null}.
+      </Text>
+      <Stack gap="xs">
+        <Checkbox
+          label="Show in news ticker"
+          checked={tickerEnabled}
+          onChange={e => setTickerEnabled(e.currentTarget.checked)}
+          disabled={!newsWidget}
+        />
+        <Checkbox
+          label="Show in P2000 Alert Service widget"
+          checked={widgetEnabled}
+          onChange={e => setWidgetEnabled(e.currentTarget.checked)}
+        />
       </Stack>
     </Paper>
   )
@@ -1612,6 +1677,7 @@ function GeneralTab({
 
       <GarbageSection draft={draft} onChange={onChange} />
       <NetworkSection draft={draft} onChange={onChange} />
+      <P2000Section draft={draft} onChange={onChange} />
     </Stack>
   )
 }

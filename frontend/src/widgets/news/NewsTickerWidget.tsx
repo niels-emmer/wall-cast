@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useNews } from '../../hooks/use-news'
 import { useNtfy, type NtfyMessage } from '../../hooks/use-ntfy'
+import { useP2000 } from '../../hooks/use-p2000'
+import type { P2000Incident } from '../../types/api'
 
 interface Props {
   config: Record<string, unknown>
@@ -107,6 +109,60 @@ function NewsItem({ source, title }: { source: string; title: string }) {
   )
 }
 
+// ── P2000 alert item renderer ──────────────────────────────────────────────────
+const DISC_ICON: Record<string, string> = {
+  Brandweerdiensten: '🚒',
+  Ambulancediensten: '🚑',
+  Politiediensten:   '🚔',
+}
+
+function P2000TickerItem({ incident }: { incident: P2000Incident }) {
+  const icon = DISC_ICON[incident.discipline] ?? '🚨'
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: '0.7rem',
+      padding: '0 2.5rem',
+    }}>
+      {/* P2000 badge */}
+      <span style={{
+        background: '#ea580c',
+        color: '#fff',
+        fontSize: 'clamp(1.1rem, 2.1vw, 1.55rem)',
+        fontWeight: 900,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        padding: '0.08em 0.45em 0.1em',
+        borderRadius: 4,
+        flexShrink: 0,
+        lineHeight: 1.2,
+      }}>
+        P2000
+      </span>
+
+      {/* Discipline icon */}
+      <span style={{ fontSize: 'clamp(1.3rem, 2.5vw, 1.9rem)', flexShrink: 0, lineHeight: 1 }}>
+        {icon}
+      </span>
+
+      {/* Message */}
+      <span style={{
+        color: '#ffffff',
+        fontSize: 'clamp(1.875rem, 3.75vw, 2.8rem)',
+        fontWeight: 400,
+      }}>
+        {incident.message}
+      </span>
+
+      {/* Separator */}
+      <span style={{ color: '#ea580c', fontSize: '1.2em', flexShrink: 0 }}>·</span>
+    </span>
+  )
+}
+
 // ── Main widget ────────────────────────────────────────────────────────────────
 export function NewsTickerWidget({ config }: Props) {
   // Pass the screen ID so the backend can include personal feeds for assigned people
@@ -116,6 +172,9 @@ export function NewsTickerWidget({ config }: Props) {
     config.ntfy_url  as string | undefined,
     config.ntfy_topic as string | undefined,
   )
+  const p2000Enabled = !!(config.p2000_ticker as boolean | undefined)
+  const { data: p2000Data } = useP2000(p2000Enabled)
+  const p2000Alert = p2000Enabled ? (p2000Data?.incidents[0] ?? null) : null
 
   const trackRef = useRef<HTMLDivElement>(null)
   const animRef  = useRef<Animation | null>(null)
@@ -146,7 +205,7 @@ export function NewsTickerWidget({ config }: Props) {
     })
 
     return () => { animRef.current?.cancel() }
-  }, [data, breaking, speedPx])
+  }, [data, breaking, p2000Alert, speedPx])
 
   if (isError || !data) {
     return (
@@ -167,15 +226,25 @@ export function NewsTickerWidget({ config }: Props) {
   // freq = how many news items between each breaking insertion (min 1).
   const freq = breaking ? Math.max(1, Math.floor(newsItems.length / 3)) : Infinity
 
-  const buildHalf = (prefix: string) =>
-    newsItems.flatMap((item, i) => {
+  // P2000 alerts inject every 2 items, max 3 times per half-cycle.
+  const P2000_FREQ = 2
+  const P2000_MAX  = 3
+
+  const buildHalf = (prefix: string) => {
+    let p2000Count = 0
+    return newsItems.flatMap((item, i) => {
       const els = []
       if (breaking && i % freq === 0) {
         els.push(<BreakingItem key={`${prefix}-br-${i}`} msg={breaking} />)
       }
+      if (p2000Alert && i % P2000_FREQ === 0 && p2000Count < P2000_MAX) {
+        els.push(<P2000TickerItem key={`${prefix}-p2k-${i}`} incident={p2000Alert} />)
+        p2000Count++
+      }
       els.push(<NewsItem key={`${prefix}-n-${i}`} source={item.source} title={item.title} />)
       return els
     })
+  }
 
   return (
     <>

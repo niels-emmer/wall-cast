@@ -72,6 +72,10 @@ export interface NetworkConfig {
   // router_password is NOT stored in YAML — set ROUTER_PASSWORD in .env
 }
 
+export interface P2000Config {
+  widget_enabled?: boolean
+}
+
 export interface AssistantNotifyConfig {
   ntfy_url?: string
   ntfy_topic?: string
@@ -129,6 +133,7 @@ export interface SharedSection {
   people?: Person[]
   garbage?: GarbageConfig
   network?: NetworkConfig
+  p2000?: P2000Config
   assistant?: AssistantConfig
   fade_speed?: number
 }
@@ -158,6 +163,7 @@ export interface FlatConfig {
   layout?: { columns: number; rows: number }
   widgets?: WidgetConfig[]
   garbage?: GarbageConfig
+  p2000?: P2000Config
 }
 
 export type AdminConfig = MultiScreenConfig | FlatConfig
