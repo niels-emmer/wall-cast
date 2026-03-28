@@ -1,4 +1,6 @@
 import asyncio
+import csv
+import io
 import logging
 import time
 
@@ -8,36 +10,22 @@ from fastapi import APIRouter
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["market"])
 
-_CACHE_TTL = 5 * 60  # 5 minutes
+_CACHE_TTL   = 5 * 60  # 5 minutes
+_CRYPTO_COUNT = 10
 
-_INDEX_SYMBOLS = ["^GSPC", "^IXIC", "^AEX", "^FTSE"]
-_STOCK_SYMBOLS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN"]
-_CRYPTO_COUNT  = 10
-
-# Short display names — avoids relying on Yahoo returning shortName
-_NAME_MAP = {
-    "^GSPC": "S&P 500",
-    "^IXIC": "NASDAQ",
-    "^AEX":  "AEX",
-    "^FTSE": "FTSE 100",
-    "AAPL":  "Apple",
-    "MSFT":  "Microsoft",
-    "NVDA":  "NVIDIA",
-    "TSLA":  "Tesla",
-    "AMZN":  "Amazon",
-}
-
-_YAHOO_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept":          "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Origin":          "https://finance.yahoo.com",
-    "Referer":         "https://finance.yahoo.com/",
-}
+# Stooq symbol → (canonical symbol, display name, type)
+# Stooq: indices use ^ prefix; US stocks use .US suffix
+_QUOTES = [
+    ("^SPX",   "^GSPC", "S&P 500",   "index"),
+    ("^DJI",   "^DJI",  "Dow Jones", "index"),
+    ("^AEX",   "^AEX",  "AEX",       "index"),
+    ("^UKX",   "^FTSE", "FTSE 100",  "index"),
+    ("AAPL.US","AAPL",  "Apple",     "stock"),
+    ("MSFT.US","MSFT",  "Microsoft", "stock"),
+    ("NVDA.US","NVDA",  "NVIDIA",    "stock"),
+    ("TSLA.US","TSLA",  "Tesla",     "stock"),
+    ("AMZN.US","AMZN",  "Amazon",    "stock"),
+]
 
 _cache: dict | None = None
 _cache_ts: float = 0.0
@@ -61,47 +49,50 @@ async def _fetch_fear_greed() -> dict | None:
         return None
 
 
-async def _fetch_one_quote(
-    client: httpx.AsyncClient, symbol: str, sym_type: str
-) -> dict | None:
-    """Fetch current price + prev close from Yahoo Finance v8 chart API."""
-    url = (
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-        "?interval=1d&range=2d&includePrePost=false"
-    )
-    try:
-        r = await client.get(url, timeout=12)
-        r.raise_for_status()
-        result = r.json().get("chart", {}).get("result", [])
-        if not result:
-            return None
-        meta  = result[0].get("meta", {})
-        price = meta.get("regularMarketPrice")
-        prev  = meta.get("chartPreviousClose") or meta.get("previousClose")
-        if price is None or not prev:
-            return None
-        change_pct = (price - prev) / prev * 100
-        name = _NAME_MAP.get(symbol, meta.get("shortName") or symbol)
-        return {
-            "symbol":     symbol,
-            "name":       name,
-            "price":      round(float(price), 2),
-            "change_pct": round(change_pct, 2),
-            "type":       sym_type,
-        }
-    except Exception as exc:
-        logger.warning("Yahoo v8 chart failed for %s: %s", symbol, exc)
-        return None
-
-
 async def _fetch_quotes() -> list[dict]:
-    async with httpx.AsyncClient(headers=_YAHOO_HEADERS, follow_redirects=True) as client:
-        tasks = (
-            [_fetch_one_quote(client, s, "index") for s in _INDEX_SYMBOLS]
-            + [_fetch_one_quote(client, s, "stock") for s in _STOCK_SYMBOLS]
-        )
-        results = await asyncio.gather(*tasks)
-    return [r for r in results if r is not None]
+    """Fetch quotes from Stooq (free, no auth, works from server environments)."""
+    stooq_syms = ",".join(s[0] for s in _QUOTES)
+    # f= fields: Symbol, Date, Time, Close, Prev.Close
+    url = f"https://stooq.com/q/l/?s={stooq_syms}&f=sd2t2cp&h&e=csv"
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            text = r.text
+    except Exception as exc:
+        logger.warning("Stooq fetch failed: %s", exc)
+        return []
+
+    # Build lookup: uppercase stooq symbol → row dict
+    reader = csv.DictReader(io.StringIO(text))
+    rows: dict[str, dict] = {}
+    for row in reader:
+        rows[row.get("Symbol", "").upper()] = row
+
+    results = []
+    for stooq_sym, orig_sym, name, sym_type in _QUOTES:
+        row = rows.get(stooq_sym.upper())
+        if not row:
+            logger.debug("Stooq: no row for %s", stooq_sym)
+            continue
+        try:
+            close = float(row.get("Close") or 0)
+            prev  = float(row.get("Prev. Close") or 0)
+        except (ValueError, TypeError):
+            continue
+        if not close or not prev:
+            continue
+        results.append({
+            "symbol":     orig_sym,
+            "name":       name,
+            "price":      round(close, 2),
+            "change_pct": round((close - prev) / prev * 100, 2),
+            "type":       sym_type,
+        })
+
+    if not results:
+        logger.warning("Stooq returned no usable rows; raw: %s", text[:300])
+    return results
 
 
 async def _fetch_crypto() -> list[dict]:
