@@ -346,6 +346,66 @@ function SlotConfig({
     )
   }
 
+  if (slot.type === 'info') {
+    const title = (cfg.title as string) ?? ''
+    const items = (cfg.items as { label: string; value: string }[]) ?? []
+    return (
+      <Stack gap="xs" pl="xl" pt={4}>
+        <TextInput
+          label="Title (optional)"
+          placeholder="e.g. Household"
+          value={title}
+          onChange={e => onChange({ ...slot, config: { ...cfg, title: e.target.value } })}
+          size="xs"
+          w={220}
+        />
+        <Text size="xs" c="dimmed" fw={500}>Items</Text>
+        {items.map((item, i) => (
+          <Group key={i} gap="xs" wrap="nowrap" align="flex-end">
+            <TextInput
+              placeholder="Label"
+              value={item.label}
+              onChange={e => {
+                const next = items.map((x, j) => j === i ? { ...x, label: e.target.value } : x)
+                onChange({ ...slot, config: { ...cfg, items: next } })
+              }}
+              size="xs"
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <TextInput
+              placeholder="Value"
+              value={item.value}
+              onChange={e => {
+                const next = items.map((x, j) => j === i ? { ...x, value: e.target.value } : x)
+                onChange({ ...slot, config: { ...cfg, items: next } })
+              }}
+              size="xs"
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="xs"
+              onClick={() => onChange({ ...slot, config: { ...cfg, items: items.filter((_, j) => j !== i) } })}
+              style={{ flexShrink: 0, marginBottom: 1 }}
+            >
+              ✕
+            </ActionIcon>
+          </Group>
+        ))}
+        <Button
+          variant="subtle"
+          color="gray"
+          size="xs"
+          onClick={() => onChange({ ...slot, config: { ...cfg, items: [...items, { label: '', value: '' }] } })}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          + Add item
+        </Button>
+      </Stack>
+    )
+  }
+
   if (slot.type === 'calendar') {
     const ids = (cfg.calendar_ids as string[]) ?? []
     return (
@@ -503,6 +563,7 @@ function defaultSlotConfig(type: string): Record<string, unknown> {
   if (type === 'bus')     return { stop_city: '', stop_name: '' }
   if (type === 'weather') return { show_hourly: true, show_daily: true }
   if (type === 'calendar') return { calendar_ids: [] }
+  if (type === 'info')     return { title: '', items: [] }
   return {}
 }
 
