@@ -29,8 +29,10 @@ export function RotatorWidget({ config }: WidgetProps) {
   // skipVersion triggers re-renders when skipSetRef changes.
   const [skipVersion, setSkipVersion] = useState(0)
 
-  // Stable skip callbacks per slot index
-  const skipCallbacks = useRef<Map<number, () => void>>(new Map())
+  // Stable skip/unskip callbacks per slot index
+  const skipCallbacks   = useRef<Map<number, () => void>>(new Map())
+  const unskipCallbacks = useRef<Map<number, () => void>>(new Map())
+
   const getSkipCallback = useCallback((idx: number) => {
     if (!skipCallbacks.current.has(idx)) {
       skipCallbacks.current.set(idx, () => {
@@ -42,6 +44,19 @@ export function RotatorWidget({ config }: WidgetProps) {
       })
     }
     return skipCallbacks.current.get(idx)!
+  }, [])
+
+  const getUnskipCallback = useCallback((idx: number) => {
+    if (!unskipCallbacks.current.has(idx)) {
+      unskipCallbacks.current.set(idx, () => {
+        if (!skipSetRef.current.has(idx)) return
+        const next = new Set(skipSetRef.current)
+        next.delete(idx)
+        skipSetRef.current = next
+        setSkipVersion(v => v + 1)
+      })
+    }
+    return unskipCallbacks.current.get(idx)!
   }, [])
 
   // If the currently active slot has been skipped, advance immediately.
@@ -57,6 +72,7 @@ export function RotatorWidget({ config }: WidgetProps) {
     setActiveIdx(0)
     skipSetRef.current = new Set()
     skipCallbacks.current.clear()
+    unskipCallbacks.current.clear()
     setSkipVersion(0)
   }, [slots.length])
 
@@ -90,6 +106,7 @@ export function RotatorWidget({ config }: WidgetProps) {
             <Component
               config={slot.config ?? {}}
               onSkip={getSkipCallback(idx)}
+              onUnskip={getUnskipCallback(idx)}
             />
           </div>
         )

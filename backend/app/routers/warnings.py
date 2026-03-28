@@ -155,12 +155,27 @@ def _parse_warnings(xml_text: str) -> list[dict]:
     return result
 
 
+def _filter_expired(warnings: list[dict]) -> list[dict]:
+    """Drop any warnings whose valid_until has already passed."""
+    now = datetime.now(timezone.utc)
+    out = []
+    for w in warnings:
+        dt = _parse_dt(w.get("valid_until", ""))
+        if dt is not None and now > dt:
+            continue
+        out.append(w)
+    return out
+
+
 @router.get("/warnings")
 async def get_warnings() -> dict:
     global _cache, _cache_ts
 
     if _cache_ts and (time.monotonic() - _cache_ts) < _CACHE_TTL:
-        return {"warnings": _cache}
+        # Re-check expiry on every cache hit so warnings clear as soon as
+        # their valid_until passes, without waiting for the next full fetch.
+        live = _filter_expired(_cache)
+        return {"warnings": live}
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -169,7 +184,8 @@ async def get_warnings() -> dict:
             warnings = _parse_warnings(resp.text)
     except Exception as exc:
         logger.error("MeteoAlarm fetch error: %s", exc)
-        return {"warnings": _cache}
+        # On fetch error return whatever is still live from the last cache.
+        return {"warnings": _filter_expired(_cache)}
 
     _cache = warnings
     _cache_ts = time.monotonic()

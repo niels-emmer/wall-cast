@@ -151,18 +151,21 @@ function WarningCard({
   )
 }
 
-export function WarningsWidget({ onSkip }: WidgetProps) {
+export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
   const t = useLang()
   const { data, isLoading } = useWarnings()
 
   const hasWarnings = (data?.warnings?.length ?? 0) > 0
 
-  // Signal the RotatorWidget to skip this slot when there are no warnings
+  // Skip slot when no warnings; re-enable it when warnings return
   useEffect(() => {
-    if (!isLoading && !hasWarnings) {
+    if (isLoading) return
+    if (hasWarnings) {
+      onUnskip?.()
+    } else {
       onSkip?.()
     }
-  }, [isLoading, hasWarnings, onSkip])
+  }, [isLoading, hasWarnings, onSkip, onUnskip])
 
   const shell  = shellStyle
   const title  = <div style={titleStyle}>{t.warningsTitle}</div>

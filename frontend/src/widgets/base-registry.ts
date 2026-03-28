@@ -17,6 +17,8 @@ export interface WidgetProps {
   config: Record<string, unknown>
   /** Called by a widget to signal it has no content — RotatorWidget skips it. */
   onSkip?: () => void
+  /** Called by a widget to signal content is available again — RotatorWidget re-enables it. */
+  onUnskip?: () => void
 }
 
 // Base registry — no RotatorWidget here to avoid a circular import.
