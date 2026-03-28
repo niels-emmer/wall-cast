@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-03-28 — Matrix notifications + ntfy/matrix status probes
+
+### Matrix notification channel
+**Decision**: Added `assistant/notify/matrix.py` using the Matrix Client-Server API (`PUT /_matrix/client/v3/rooms/{roomId}/send/m.room.message/{txnId}`) via httpx. `MATRIX_TOKEN` from env var only (never YAML). Config restructured from flat `ntfy_url`/`ntfy_topic` to nested `notify.ntfy.{enabled,url}` and `notify.matrix.{enabled,homeserver,room_id}`. Per-person: `notify.matrix_room_id` added alongside existing `ntfy_topic`. Auto-migration in `wall_config.py` converts old flat structure on load.
+**Rationale**: User wanted to receive assistant alerts on their self-hosted Dendrite Matrix server in parallel with ntfy. No new library needed — httpx already present. Parallel dispatch means both channels fire independently; one channel failing silently doesn't affect the other.
+
+### ntfy config structure change
+**Decision**: Removed system-level `ntfy_topic`. ntfy now only has `url` at the system level; each person has their own `ntfy_topic`. Global alerts fan out to all personal ntfy topics. No system-wide topic — if a person has no topic, they receive no ntfy notifications.
+**Rationale**: The old `ntfy_topic` system topic was redundant once personal topics existed. Subscribers subscribe to their own topic; there is no single "family" topic in the new model. Global alerts still reach everyone by fanning out to each person's topic.
+
+### ntfy/matrix reachability in STATUS section
+**Decision**: `GET /api/admin/status` now probes the ntfy URL and Matrix homeserver (`/_matrix/client/versions`) via `_check_http()` with 3 s timeout. Returns `ok`/`offline`/`unconfigured`. Shown in landing page STATUS section as two new rows (ntfy, Matrix) below Assistant, above the API sources divider. `StatusRow` extended to render `unconfigured` as muted "NOT CONFIGURED".
+**Rationale**: Notification channels are critical infrastructure. A misconfigured URL or unreachable server is not obvious without a probe. The reachability check confirms the servers are up from the backend's perspective, not just configured in YAML.
+
+---
+
 ## 2026-03-28 — Cache health registry, landing page STATUS section, assistant + bus fixes
 
 ### Cache health registry (`cache_registry.py`)

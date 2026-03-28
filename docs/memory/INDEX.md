@@ -79,7 +79,8 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Network widget | ✅ | WAN status, connectivity, DNS, LAN host count, speedtest; Zyxel VMG8825 DAL API; router password via `ROUTER_PASSWORD` env var |
 | P2000 widget | ✅ | Dutch emergency alerts widget + news ticker injection; region from shared.location; Brandweer all / Ambulance A1 / Politie P1; auto-skipped when no incidents |
 | Cache health registry | ✅ | `backend/app/cache_registry.py` — all 13 API routers call `update(name, ok)` on success/failure; `GET /api/admin/status` surfaces per-source age + health |
-| Landing page STATUS section | ✅ | Services (backend/caster/scanner/assistant) + API sources grid; card order: Header → Screens → System → Logs |
+| Landing page STATUS section | ✅ | Services (backend/caster/scanner/assistant/ntfy/matrix) + API sources grid; card order: Header → Screens → System → Logs |
+| Matrix notifications | ✅ | `assistant/notify/matrix.py` — parallel ntfy+Matrix dispatch; MATRIX_TOKEN from .env; per-person matrix_room_id; system room for global alerts; ntfy/matrix reachability in STATUS section |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
 
@@ -264,13 +265,36 @@ See `records/rules-rewrite-plan.md` for the full plan and status.
 - **Stop before:** Phase 5c (rule editor modal) — implement with user
 - **Status:** All code written and verified in Vite dev preview. Needs deploy + server YAML migration to show populated rules.
 
-### ntfy routing (2026-03-24)
-- **System topic** (`assistant.notify.ntfy_topic`): receives all global notifications.
-- **Personal topic** (`people[].notify.ntfy_topic`): set per-person in admin panel People tab.
-  - Personal notifications → personal topic only.
-  - Global notifications → system topic + fan-out to all registered personal topics.
-- **Test button** in admin AssistantTab → `POST /api/admin/notify/test` → sends to system topic.
-- Admin panel: People tab "Personal rules" box renamed to "Assistant"; ntfy topic field added at bottom.
+### Notification channels (2026-03-28)
+ntfy and Matrix run in parallel; both optional; configured independently.
+
+**Config structure** (`shared.assistant.notify`):
+```yaml
+notify:
+  ntfy:
+    enabled: true
+    url: https://ntfy.example.com
+  matrix:
+    enabled: true
+    homeserver: https://matrix.example.com
+    room_id: "!systemroom:matrix.example.com"   # fallback for global alerts
+# MATRIX_TOKEN=syt_... in .env only — never in YAML
+```
+
+**Per-person** (`shared.people[].notify`):
+- `ntfy_topic` — personal ntfy topic; global alerts also fan out here
+- `matrix_room_id` — personal Matrix room; falls back to system room if absent
+
+**Dispatch logic** (`assistant/notify/matrix.py` + `_dispatch()` in `assistant.py`):
+- Personal rule fired → sends to person's configured channels only
+- Global rule fired → ntfy fan-out to all personal topics; Matrix to all personal rooms + system room
+- MATRIX_TOKEN read from `MATRIX_TOKEN` env var at module load
+
+**Matrix bot setup**: create account with `create-account` in Dendrite, invite bot to room, then `curl POST /_matrix/client/v3/join/{roomId}` (single-time join — membership persists).
+
+**Admin panel**: AssistantTab Notifications card has separate ntfy / Matrix sections with enable toggles + fields. PeopleTab shows both `ntfy topic` and `Matrix room ID` per person.
+
+**Status probes**: `GET /api/admin/status` returns `ntfy: {status}` and `matrix: {status}` (ok/offline/unconfigured) via HTTP probe. Shown in landing page STATUS section above the divider.
 
 ## Open Items
 
