@@ -10,6 +10,8 @@ Widget and data source additions that make sense for a Dutch family info board. 
 |---|--------|---------------|--------|
 | — | KNMI weather warnings | None | ✅ done |
 | — | Air quality + pollen | None | ✅ done |
+| — | Market overview | None | ✅ done |
+| — | P2000 emergency alerts | None | ✅ done |
 | 1 | Countdown / event timer | None | Very low |
 | 2 | Energy prices (ENTSO-E) | None | Low |
 | 3 | Photo slideshow | None | Low–medium |
@@ -160,3 +162,22 @@ Auto-skips in rotator when no warnings are active.
 ```
 
 **Effort:** Medium — flexible config schema + backend multi-entity fetch + frontend card layout. ~1 day. Higher if icon mapping is included.
+
+---
+
+## P2000 emergency alerts ✅ Done
+
+Implemented as the `p2000` widget. Shows Dutch emergency services (P2000 paging network) alerts scoped to the user's safety region (derived from `shared.location` lat/lon). Filters: Brandweer all priorities, Ambulance A1 only, Politie P1 only. Deduplicates multi-unit dispatches within a 5-minute window. Auto-skips in the rotator when no recent incidents.
+
+News ticker injection is also available: enable via Admin → General → P2000 Emergency Alerts. When enabled, the most recent incident is injected into the news ticker with an orange `P2000` badge.
+
+Data source: [p2000.brandweer-berkel-enschot.nl](http://p2000.brandweer-berkel-enschot.nl/homeassistant/rss.asp) — public RSS, no API key, 30 s TTL.
+
+---
+
+## Market overview ✅ Done
+
+Implemented as the `market` widget. Shows the crypto Fear & Greed gauge (alternative.me),
+four stock indices (S&P 500, Dow Jones, AEX, FTSE 100), five stock tickers (AAPL, MSFT,
+NVDA, TSLA, AMZN), and the top 10 crypto coins by market cap — all from free, unauthenticated
+APIs (Stooq for equities, CoinGecko for crypto). Refreshes every 5 minutes. No API key required.

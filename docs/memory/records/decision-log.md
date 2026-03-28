@@ -1,5 +1,33 @@
 # Decision Log
 
+## 2026-03-28 — Cache health registry, landing page STATUS section, assistant + bus fixes
+
+### Cache health registry (`cache_registry.py`)
+**Decision**: New `backend/app/cache_registry.py` module with `update(name, ok, detail)` and `get_all()`. All 13 API routers call `cache_registry.update()` on success and on every error/stale-fallback path. `GET /api/admin/status` extended to return `scanner`, `assistant`, and `api_sources` in addition to `backend` and `caster`.
+**Rationale**: The landing page had two binary pills (BACKEND OK / CASTER OK) with no visibility into individual API source health or the scanner/assistant services. The registry is a lightweight module-level dict keyed by source name with monotonic timestamps — no extra dependencies, negligible overhead. Per-router hooks are placed at existing branch points so no fetch logic changes.
+
+### Landing page: Screens before System, STATUS section
+**Decision**: Swapped card order to Header → Screens → System → Logs. Removed Pill indicators from System button row (toggle + Settings only). Added STATUS section below the buttons with service rows (backend / caster / scanner / assistant) and an API sources grid showing all 13 tracked sources with age labels.
+**Rationale**: Screens are the primary operational action. Moving them first makes the page feel action-first. The STATUS section surfaces health detail without cluttering the action area.
+
+### Scanner health: TCP probe (no scanner changes)
+**Decision**: `status.py` probes `host.docker.internal:8765` with `asyncio.open_connection(timeout=1.0)`. No changes to `scanner.py`.
+**Rationale**: `GET /scan` triggers an expensive LAN scan — inappropriate as a health check. TCP probe just confirms the port is accepting connections.
+
+### Assistant heartbeat
+**Decision**: `assistant.py` writes `str(time.time())` to `/config/assistant-heartbeat.txt` after each successful `run_cycle()` call (same pattern as `caster-heartbeat.txt` in `cast.py`). `status.py` reads it and reports `ok` / `stale` (>600 s) / `offline`. Reports `disabled` when `assistant.enabled` is false in config.
+**Rationale**: Assistant is a background worker with no HTTP server. Heartbeat file is the only non-invasive pattern available without adding a sidecar API.
+
+### `shared.assistant` forwarding fix
+**Decision**: Added `"assistant": shared.get("assistant", {})` to the merged dict returned by `wall_config.get_config()`.
+**Rationale**: `status.py` reads `cfg.get("assistant", {}).get("enabled")` but `assistant` lives under `shared.assistant`. Like `shared.network`, shared-only backend keys must be explicitly forwarded in `get_config()` or they return `{}`. Fixed after STATUS section showed "DISABLED" for an active assistant.
+
+### Bus: `asyncio.CancelledError` + timeout increase
+**Decision**: Added `except Exception` handler after the two httpx exception handlers in `bus.py`. Raised timeout from 10 s to 20 s.
+**Rationale**: Live server logs showed `asyncio.exceptions.CancelledError` causing 500 responses. `CancelledError` is `BaseException` in Python 3.8+ (not `Exception`), so it bypassed both `httpx.HTTPError` handlers. Occurs when concurrent requests race on a stale 30-second cache and one gets asyncio-cancelled mid-flight. Broad `except Exception` catches this and serves stale data or 502. Timeout raised because vertrektijd.info sometimes responds in 10–15 s.
+
+---
+
 ## 2026-03-28 — Caster reachability, warnings expiry, RotatorWidget unskip, assistant fixes
 
 ### Caster `is_casting()`: reachability-based trust

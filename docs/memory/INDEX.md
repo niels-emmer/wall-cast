@@ -78,6 +78,8 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | Auto-cast to Chromecast | ✅ | `caster` service using `catt cast_site` + DashCast; polls every 60s, re-casts on genuine drop; cooldown prevents false-negative recast loop; post-cast verification catches silent failures (e.g. after "Hey Google") |
 | Network widget | ✅ | WAN status, connectivity, DNS, LAN host count, speedtest; Zyxel VMG8825 DAL API; router password via `ROUTER_PASSWORD` env var |
 | P2000 widget | ✅ | Dutch emergency alerts widget + news ticker injection; region from shared.location; Brandweer all / Ambulance A1 / Politie P1; auto-skipped when no incidents |
+| Cache health registry | ✅ | `backend/app/cache_registry.py` — all 13 API routers call `update(name, ok)` on success/failure; `GET /api/admin/status` surfaces per-source age + health |
+| Landing page STATUS section | ✅ | Services (backend/caster/scanner/assistant) + API sources grid; card order: Header → Screens → System → Logs |
 | Docker prod build | ✅ | `docker compose up --build -d` |
 | Docker dev build | ✅ | `docker compose -f docker-compose.dev.yml up --build` |
 
@@ -221,7 +223,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Router integration: Zyxel VMG8825 DAL API (RSA+AES encrypted). Requires `cryptography` package (in `requirements.txt`). Optional — widget still shows connectivity/DNS/speed without it.
 - `router_url` and `router_username` live in `shared.network` in the YAML (set via Admin → General → Network widget)
 - `router_password` is **never stored in YAML** — read from `ROUTER_PASSWORD` env var in `.env`
-- **`shared.network` must be explicitly forwarded** in `wall_config.get_config()` merged dict — it is a top-level shared key that the router endpoint reads. Adding any new shared-only backend keys (not widget configs) requires the same treatment.
+- **Shared-only backend keys must be explicitly forwarded** in `wall_config.get_config()` merged dict — e.g. `shared.network`, `shared.p2000`, `shared.assistant`. Any new key that a backend router reads directly from `cfg` (not from a widget config) must be added to the merged dict, otherwise `cfg.get(key)` returns `{}` and the feature silently breaks.
 - Speedtest: Cloudflare `speed.cloudflare.com/__down` / `__up`, runs every 60 s in background, capped at `speedtest_bytes_down` / `speedtest_bytes_up` (YAML, defaults 2 MB / 200 KB)
 - Cache TTL: 30 s. Speedtest runs async so it never blocks the main probe responses.
 - WAN uptime: separate `status` OID call after the main `cardpage_status` query
@@ -248,6 +250,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Market quotes (indices + stocks): `stooq.com/q/d/l/` CSV — no key, 7-day date range to get latest close + prev close, 5 min TTL
 - Crypto top 10: `api.coingecko.com/api/v3/coins/markets` — no key, 5 min TTL
 - P2000: `p2000.brandweer-berkel-enschot.nl/homeassistant/rss.asp` — public RSS, no key, 30 s TTL; filter by RegName (bbox lookup from shared.location), discipline + priority rules, dedup within 5 min window
+- Bus (vertrektijd.info): 20 s timeout (raised from 10 s — API occasionally slow). `asyncio.CancelledError` is `BaseException` not `Exception` in Python 3.8+; bus.py has a broad `except Exception` fallback after the two httpx handlers to catch it and serve stale data instead of 500.
 
 ## In-Progress Work
 
