@@ -234,6 +234,45 @@ def _migrate_flat(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _migrate_notify(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Migrate old flat notify config to nested ntfy/matrix structure.
+
+    Old: assistant.notify.ntfy_url / assistant.notify.ntfy_topic
+    New: assistant.notify.ntfy.{enabled, url}  (ntfy_topic is now per-person only)
+    """
+    assistant = data.get("shared", {}).get("assistant")
+    if not isinstance(assistant, dict):
+        return data, False
+    notify = assistant.get("notify")
+    if not isinstance(notify, dict):
+        return data, False
+
+    # Already migrated if ntfy key is a dict
+    if isinstance(notify.get("ntfy"), dict):
+        return data, False
+
+    old_url   = notify.get("ntfy_url", "")
+    if not old_url and "ntfy_topic" not in notify:
+        return data, False  # nothing to migrate
+
+    logger.info("Migrating flat assistant.notify to nested ntfy/matrix structure")
+    new_notify: dict[str, Any] = {k: v for k, v in notify.items()
+                                   if k not in ("ntfy_url", "ntfy_topic")}
+    new_notify["ntfy"] = {"enabled": bool(old_url), "url": old_url or ""}
+
+    new_data = {
+        **data,
+        "shared": {
+            **data["shared"],
+            "assistant": {
+                **assistant,
+                "notify": new_notify,
+            },
+        },
+    }
+    return new_data, True
+
+
 _config: dict[str, Any] = {}
 _subscribers: list[asyncio.Queue] = []
 _change_callbacks: list = []  # callables invoked synchronously on every config reload
@@ -276,6 +315,11 @@ def load_config() -> dict[str, Any]:
     if changed:
         _write_config(path, data)
         logger.info("Rules migrated to new format and written back to %s", path)
+
+    data, changed = _migrate_notify(data)
+    if changed:
+        _write_config(path, data)
+        logger.info("Notify config migrated to nested structure and written back to %s", path)
 
     return data
 

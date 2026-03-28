@@ -90,9 +90,12 @@ import yaml
 
 import state
 from ai import formatter as ai_fmt
+from notify import matrix as notify_matrix
 from notify import ntfy as notify_ntfy
 from rules import Notification
 from rules.engine import REQUIRES_PERSON, _cached_fetch, run_rule
+
+MATRIX_TOKEN = os.environ.get("MATRIX_TOKEN", "")
 
 CONFIG_PATH = os.environ.get("WALL_CONFIG_PATH", "/config/wall-cast.yaml")
 
@@ -118,37 +121,68 @@ def _dispatch(
     context: str = "",
     all_people: list[dict] | None = None,
 ) -> None:
-    ntfy_url     = notify_cfg.get("ntfy_url", "")
-    system_topic = notify_cfg.get("ntfy_topic", "wall-cast-alerts")
+    ntfy_cfg   = notify_cfg.get("ntfy", {})
+    matrix_cfg = notify_cfg.get("matrix", {})
 
-    if not ntfy_url:
-        print(f"[assistant] No ntfy_url — skipping: {notification.title}", flush=True)
+    ntfy_enabled   = ntfy_cfg.get("enabled", False)
+    ntfy_url       = ntfy_cfg.get("url", "").rstrip("/")
+    matrix_enabled = matrix_cfg.get("enabled", False)
+    matrix_hs      = matrix_cfg.get("homeserver", "").rstrip("/")
+    matrix_room    = matrix_cfg.get("room_id", "")
+
+    if not ntfy_enabled and not matrix_enabled:
+        print(f"[assistant] No notification channel enabled — skipping: {notification.title}", flush=True)
         return
 
-    # AI reformatting done once, reused for all topics
+    # AI reformatting done once, reused across all channels
     message = ai_fmt.format_message(notification.title, notification.message, context, ai_cfg)
 
     if person:
-        # Personal notification — send only to this person's topic (system topic as fallback)
-        topic = (person.get("notify") or {}).get("ntfy_topic", system_topic)
-        notify_ntfy.send(
-            ntfy_url=ntfy_url, topic=topic,
-            title=notification.title, message=message,
-            priority=notification.priority, tags=notification.tags,
-        )
+        # Personal notification — send on each of this person's configured channels
+        p_notify = person.get("notify") or {}
+        if ntfy_enabled and ntfy_url:
+            topic = p_notify.get("ntfy_topic") or ""
+            if topic:
+                notify_ntfy.send(
+                    ntfy_url=ntfy_url, topic=topic,
+                    title=notification.title, message=message,
+                    priority=notification.priority, tags=notification.tags,
+                )
+        if matrix_enabled and matrix_hs and MATRIX_TOKEN:
+            room = p_notify.get("matrix_room_id") or matrix_room
+            if room:
+                notify_matrix.send(
+                    homeserver=matrix_hs, room_id=room, token=MATRIX_TOKEN,
+                    title=notification.title, message=message,
+                )
     else:
-        # Global notification — system topic + every registered personal topic
-        topics: list[str] = [system_topic]
-        for p in (all_people or []):
-            personal = (p.get("notify") or {}).get("ntfy_topic")
-            if personal and personal not in topics:
-                topics.append(personal)
-        for topic in topics:
-            notify_ntfy.send(
-                ntfy_url=ntfy_url, topic=topic,
-                title=notification.title, message=message,
-                priority=notification.priority, tags=notification.tags,
-            )
+        # Global notification — ntfy: all unique topics; matrix: system room + per-person rooms
+        if ntfy_enabled and ntfy_url:
+            topics: list[str] = []
+            for p in (all_people or []):
+                topic = (p.get("notify") or {}).get("ntfy_topic")
+                if topic and topic not in topics:
+                    topics.append(topic)
+            for topic in topics:
+                notify_ntfy.send(
+                    ntfy_url=ntfy_url, topic=topic,
+                    title=notification.title, message=message,
+                    priority=notification.priority, tags=notification.tags,
+                )
+
+        if matrix_enabled and matrix_hs and MATRIX_TOKEN:
+            rooms: list[str] = []
+            if matrix_room:
+                rooms.append(matrix_room)
+            for p in (all_people or []):
+                room = (p.get("notify") or {}).get("matrix_room_id")
+                if room and room not in rooms:
+                    rooms.append(room)
+            for room in rooms:
+                notify_matrix.send(
+                    homeserver=matrix_hs, room_id=room, token=MATRIX_TOKEN,
+                    title=notification.title, message=message,
+                )
 
 
 # ── Main cycle ────────────────────────────────────────────────────────────────

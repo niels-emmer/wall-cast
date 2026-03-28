@@ -247,33 +247,79 @@ async def set_screen_casting(body: dict[str, Any]) -> None:
 
 
 @router.post("/admin/notify/test", status_code=204)
-async def test_notification() -> None:
-    """Send a test notification to the system ntfy topic."""
-    raw      = wall_config.get_raw_config()
-    shared   = raw.get("shared", {})
+async def test_notification(body: dict[str, Any] | None = None) -> None:
+    """Send a test notification on all configured channels (ntfy and/or Matrix)."""
+    raw       = wall_config.get_raw_config()
+    shared    = raw.get("shared", {})
     assistant = shared.get("assistant", {})
-    notify   = assistant.get("notify", {})
-    ntfy_url = notify.get("ntfy_url", "").rstrip("/")
-    ntfy_topic = notify.get("ntfy_topic", "wall-cast-alerts")
+    notify    = assistant.get("notify", {})
 
-    if not ntfy_url:
-        raise HTTPException(status_code=400, detail="No ntfy_url configured in assistant.notify")
+    ntfy_cfg   = notify.get("ntfy", {})
+    matrix_cfg = notify.get("matrix", {})
 
-    url = f"{ntfy_url}/{ntfy_topic}"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            resp = await client.post(
-                url,
-                content="This is a test notification from wall-cast. ✅".encode(),
-                headers={
-                    "Title":    "wall-cast test",
-                    "Priority": "default",
-                    "Tags":     "white_check_mark",
-                },
-            )
-            resp.raise_for_status()
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"ntfy send failed: {exc}")
+    ntfy_enabled   = ntfy_cfg.get("enabled", False)
+    ntfy_url       = ntfy_cfg.get("url", "").rstrip("/")
+    matrix_enabled = matrix_cfg.get("enabled", False)
+    matrix_hs      = matrix_cfg.get("homeserver", "").rstrip("/")
+    matrix_room    = matrix_cfg.get("room_id", "")
+
+    errors: list[str] = []
+
+    if ntfy_enabled and ntfy_url:
+        # ntfy: send to all personal topics (at least one required)
+        people = raw.get("shared", {}).get("people", [])
+        topics = list({
+            (p.get("notify") or {}).get("ntfy_topic")
+            for p in people
+            if (p.get("notify") or {}).get("ntfy_topic")
+        })
+        if not topics:
+            errors.append("ntfy enabled but no personal ntfy_topic configured for any person")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for topic in topics:
+                url = f"{ntfy_url}/{topic}"
+                try:
+                    resp = await client.post(
+                        url,
+                        content="This is a test notification from wall-cast. ✅".encode(),
+                        headers={
+                            "Title":    "wall-cast test",
+                            "Priority": "default",
+                            "Tags":     "white_check_mark",
+                        },
+                    )
+                    resp.raise_for_status()
+                except Exception as exc:
+                    errors.append(f"ntfy → {topic}: {exc}")
+
+    if matrix_enabled and matrix_hs and matrix_room:
+        if not settings.matrix_token:
+            errors.append("Matrix enabled but MATRIX_TOKEN not set in .env")
+        else:
+            import uuid, time as _time
+            txn_id = f"wc-test-{int(_time.time()*1000)}-{uuid.uuid4().hex[:8]}"
+            url = f"{matrix_hs}/_matrix/client/v3/rooms/{matrix_room}/send/m.room.message/{txn_id}"
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                try:
+                    resp = await client.put(
+                        url,
+                        json={
+                            "msgtype": "m.text",
+                            "body":    "wall-cast test\nThis is a test notification from wall-cast. ✅",
+                            "format":  "org.matrix.custom.html",
+                            "formatted_body": "<b>wall-cast test</b><br>This is a test notification from wall-cast. ✅",
+                        },
+                        headers={"Authorization": f"Bearer {settings.matrix_token}"},
+                    )
+                    resp.raise_for_status()
+                except Exception as exc:
+                    errors.append(f"matrix → {matrix_room}: {exc}")
+
+    if not ntfy_enabled and not matrix_enabled:
+        raise HTTPException(status_code=400, detail="No notification channel is enabled")
+
+    if errors:
+        raise HTTPException(status_code=502, detail="; ".join(errors))
 
 
 @router.post("/admin/casting/recast", status_code=204)

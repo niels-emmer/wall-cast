@@ -1482,29 +1482,81 @@ function AssistantTab({
 
       {/* Notifications */}
       <Paper p="md" radius="sm" withBorder>
-        <SectionTitle>Notifications (ntfy)</SectionTitle>
+        <SectionTitle>Notifications</SectionTitle>
         <Text size="sm" c="dimmed" mb="md">
-          Notifications are pushed to your ntfy server. Subscribe to the topic
-          on your phone via the ntfy app to receive alerts.
+          Enable one or more channels. Each person can have a personal ntfy topic and/or
+          Matrix room configured in the People tab — alerts are delivered to all active channels.
         </Text>
-        <Group gap="sm" wrap="wrap" align="flex-start">
+
+        {/* ntfy */}
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={6} style={{ letterSpacing: '0.07em' }}>ntfy</Text>
+        <Stack gap="xs" mb="md">
+          <Checkbox
+            label="Enable ntfy"
+            checked={notify.ntfy?.enabled ?? false}
+            onChange={e => update({ notify: { ...notify, ntfy: { ...notify.ntfy, enabled: e.currentTarget.checked } } })}
+            size="sm"
+          />
           <TextInput
             label="ntfy server URL"
             placeholder="https://ntfy.example.com"
-            value={notify.ntfy_url ?? ''}
-            onChange={e => update({ notify: { ...notify, ntfy_url: e.target.value || undefined } })}
+            value={notify.ntfy?.url ?? ''}
+            onChange={e => update({ notify: { ...notify, ntfy: { ...notify.ntfy, url: e.target.value || undefined } } })}
             size="sm"
-            style={{ flex: 1, minWidth: 220 }}
+            style={{ maxWidth: 340 }}
+            disabled={!notify.ntfy?.enabled}
           />
-          <TextInput
-            label="Topic"
-            placeholder="wall-cast-alerts"
-            value={notify.ntfy_topic ?? ''}
-            onChange={e => update({ notify: { ...notify, ntfy_topic: e.target.value || undefined } })}
+          <Text size="xs" c="dimmed">
+            Personal topics are configured per-person in the People tab.
+          </Text>
+        </Stack>
+
+        {/* Matrix */}
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={6} style={{ letterSpacing: '0.07em' }}>Matrix</Text>
+        <Stack gap="xs">
+          <Checkbox
+            label="Enable Matrix"
+            checked={notify.matrix?.enabled ?? false}
+            onChange={e => update({ notify: { ...notify, matrix: { ...notify.matrix, enabled: e.currentTarget.checked } } })}
             size="sm"
-            w={180}
           />
-        </Group>
+          <Group gap="sm" wrap="wrap" align="flex-start">
+            <TextInput
+              label="Homeserver URL"
+              placeholder="https://matrix.example.com"
+              value={notify.matrix?.homeserver ?? ''}
+              onChange={e => update({ notify: { ...notify, matrix: { ...notify.matrix, homeserver: e.target.value || undefined } } })}
+              size="sm"
+              style={{ flex: 1, minWidth: 220 }}
+              disabled={!notify.matrix?.enabled}
+            />
+            <TextInput
+              label="System room ID"
+              placeholder="!roomid:matrix.example.com"
+              value={notify.matrix?.room_id ?? ''}
+              onChange={e => update({ notify: { ...notify, matrix: { ...notify.matrix, room_id: e.target.value || undefined } } })}
+              size="sm"
+              style={{ flex: 1, minWidth: 220 }}
+              disabled={!notify.matrix?.enabled}
+            />
+          </Group>
+          <Group gap="xs" align="center">
+            <TextInput
+              label="Access token"
+              value="••••••••"
+              readOnly
+              disabled
+              size="sm"
+              w={120}
+            />
+            <Text size="xs" c="dimmed" mt={22}>
+              Set <Code fz="xs">MATRIX_TOKEN=…</Code> in <Code fz="xs">.env</Code> — never stored in YAML
+            </Text>
+          </Group>
+          <Text size="xs" c="dimmed">
+            Per-person room IDs can be set in the People tab to route personal alerts directly.
+          </Text>
+        </Stack>
       </Paper>
 
       {/* AI */}
@@ -1597,7 +1649,7 @@ function AssistantTab({
       <Paper p="md" radius="sm" withBorder>
         <SectionTitle>Test</SectionTitle>
         <Text size="sm" c="dimmed" mb="sm">
-          Send a test message to the system ntfy topic to verify your notification setup.
+          Send a test message on all enabled channels to verify your notification setup.
         </Text>
         <Group gap="sm" align="center">
           <Button
@@ -1606,7 +1658,7 @@ function AssistantTab({
             size="sm"
             onClick={handleSendTest}
             loading={testSending}
-            disabled={!notify.ntfy_url}
+            disabled={!notify.ntfy?.enabled && !notify.matrix?.enabled}
           >
             Send test message
           </Button>
@@ -2752,9 +2804,8 @@ function PeopleTab({
           <Paper p="md" radius="sm" withBorder>
             <SectionTitle>Assistant</SectionTitle>
             <Text size="sm" c="dimmed" mb="md">
-              {currentPerson.name || 'This person'} can receive notifications on their phone via the{' '}
-              <Anchor href="https://ntfy.sh" target="_blank" size="sm">ntfy app</Anchor>.
-              They will receive all family-wide alerts, plus personal alerts based on the rules below.
+              {currentPerson.name || 'This person'} will receive family-wide alerts and
+              personal alerts (from the rules below) on all their configured notification channels.
             </Text>
 
             <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={4} style={{ letterSpacing: '0.07em' }}>
@@ -2771,14 +2822,28 @@ function PeopleTab({
 
             <Divider my="md" />
 
-            <TextInput
-              label="Personal ntfy topic"
-              description="Personal notifications go here. Global notifications also fan out to this topic."
-              placeholder="wall-cast-alice"
-              value={currentPerson.notify?.ntfy_topic ?? ''}
-              onChange={e => updatePerson({ notify: { ...currentPerson.notify, ntfy_topic: e.target.value || undefined } })}
-              size="sm"
-            />
+            <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb={8} style={{ letterSpacing: '0.07em' }}>
+              Notifications
+            </Text>
+            <Stack gap="sm">
+              <TextInput
+                label="ntfy topic"
+                description="Personal notifications go here via ntfy. Leave blank to skip ntfy for this person."
+                placeholder="wall-cast-alice"
+                value={currentPerson.notify?.ntfy_topic ?? ''}
+                onChange={e => updatePerson({ notify: { ...currentPerson.notify, ntfy_topic: e.target.value || undefined } })}
+                size="sm"
+              />
+              <TextInput
+                label="Matrix room ID"
+                description="Personal Matrix room for this person. Leave blank to skip Matrix for personal alerts."
+                placeholder="!roomid:matrix.example.com"
+                value={currentPerson.notify?.matrix_room_id ?? ''}
+                onChange={e => updatePerson({ notify: { ...currentPerson.notify, matrix_room_id: e.target.value || undefined } })}
+                size="sm"
+                ff="monospace"
+              />
+            </Stack>
           </Paper>
 
           <RuleEditorModal

@@ -47,6 +47,7 @@ export interface PersonRssFeed {
 
 export interface PersonNotify {
   ntfy_topic?: string
+  matrix_room_id?: string
 }
 
 export interface Person {
@@ -76,9 +77,20 @@ export interface P2000Config {
   widget_enabled?: boolean
 }
 
+export interface AssistantNotifyNtfyConfig {
+  enabled?: boolean
+  url?: string
+}
+
+export interface AssistantNotifyMatrixConfig {
+  enabled?: boolean
+  homeserver?: string
+  room_id?: string
+}
+
 export interface AssistantNotifyConfig {
-  ntfy_url?: string
-  ntfy_topic?: string
+  ntfy?: AssistantNotifyNtfyConfig
+  matrix?: AssistantNotifyMatrixConfig
 }
 
 export interface AssistantAiConfig {

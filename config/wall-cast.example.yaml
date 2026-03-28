@@ -61,8 +61,9 @@ shared:
     #   bus:                # bus stop — used on any screen Bob is assigned to
     #     stop_city: Amsterdam
     #     stop_name: Leidseplein
-    #   notify:             # personal ntfy topic (set via People tab in admin panel)
-    #     ntfy_topic: wall-cast-bob   # personal notifications go here; global notifications also fan out here
+    #   notify:             # personal notification channels (set via People tab in admin panel)
+    #     ntfy_topic: wall-cast-bob       # ntfy: personal topic; global alerts also fan out here
+    #     matrix_room_id: "!room:matrix.example.com"  # Matrix: personal room (optional)
     #   rules:              # personal assistant rules (in addition to shared rules)
     #     - id: bob-bus-threshold
     #       title: Bob's bus alert
@@ -91,8 +92,15 @@ shared:
   #   backend_url: http://backend:8000   # internal Docker service name
   #
   #   notify:
-  #     ntfy_url: https://ntfy.example.com
-  #     ntfy_topic: wall-cast-alerts    # system topic — global notifications go here + fan out to all personal topics
+  #     ntfy:
+  #       enabled: true
+  #       url: https://ntfy.example.com
+  #       # Topics are per-person (configured in People tab); no system-level topic.
+  #     matrix:
+  #       enabled: false
+  #       homeserver: https://matrix.example.com
+  #       room_id: "!systemroom:matrix.example.com"   # fallback room for global alerts
+  #       # Access token: set MATRIX_TOKEN=syt_... in .env — never stored in YAML
   #
   #   ai:
   #     provider: none            # none | ollama | openai
