@@ -13,7 +13,7 @@ from typing import Any
 import feedparser
 import httpx
 
-from app import wall_config
+from app import cache_registry, wall_config
 from app.config import settings
 from fastapi import APIRouter
 
@@ -83,10 +83,14 @@ async def get_news(screen: str | None = None) -> dict:
         all_items.extend(items)
 
     if not all_items and _cache.get(cache_key):
+        cache_registry.update("news", ok=False)
         return {"items": _cache[cache_key]}  # return stale on total failure
 
     if all_items:
         _cache[cache_key] = all_items
         _cache_ts[cache_key] = time.monotonic()
+        cache_registry.update("news", ok=True)
+    else:
+        cache_registry.update("news", ok=False)
 
     return {"items": all_items}

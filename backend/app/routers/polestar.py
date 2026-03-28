@@ -11,6 +11,7 @@ import logging
 import time
 from typing import Any
 
+from app import cache_registry
 from app.config import settings
 from fastapi import APIRouter, HTTPException
 
@@ -128,6 +129,7 @@ async def get_polestar() -> dict:
             "oil_warning": oil_warning,
         }
         _cache_ts = time.monotonic()
+        cache_registry.update("polestar", ok=True)
 
         try:
             await api.async_logout()
@@ -149,6 +151,7 @@ async def get_polestar() -> dict:
         raise HTTPException(status_code=503, detail="pypolestar not installed")
     except Exception as exc:
         logger.error("Polestar fetch failed: %s", exc)
+        cache_registry.update("polestar", ok=False)
         if _cache:
             return _cache
         raise HTTPException(status_code=502, detail=f"Polestar API error: {exc}")

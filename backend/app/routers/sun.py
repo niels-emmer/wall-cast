@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from app import wall_config
+from app import cache_registry, wall_config
 
 router = APIRouter()
 
@@ -42,6 +42,7 @@ async def get_sun() -> dict:
             r.raise_for_status()
             raw = r.json()["results"]
     except Exception as exc:
+        cache_registry.update("sun", ok=False)
         raise HTTPException(status_code=502, detail=f"Sun API error: {exc}") from exc
 
     sunrise = _parse(raw["sunrise"])
@@ -63,4 +64,5 @@ async def get_sun() -> dict:
     }
 
     _cache[key] = {"ts": now, "data": data}
+    cache_registry.update("sun", ok=True)
     return data

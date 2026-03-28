@@ -31,6 +31,8 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter
 
+from app import cache_registry
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["warnings"])
 
@@ -184,9 +186,11 @@ async def get_warnings() -> dict:
             warnings = _parse_warnings(resp.text)
     except Exception as exc:
         logger.error("MeteoAlarm fetch error: %s", exc)
+        cache_registry.update("warnings", ok=False)
         # On fetch error return whatever is still live from the last cache.
         return {"warnings": _filter_expired(_cache)}
 
     _cache = warnings
     _cache_ts = time.monotonic()
+    cache_registry.update("warnings", ok=True)
     return {"warnings": warnings}

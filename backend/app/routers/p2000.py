@@ -31,7 +31,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from app import wall_config
+from app import cache_registry, wall_config
 from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger(__name__)
@@ -228,6 +228,7 @@ async def get_p2000() -> dict:
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("P2000 feed fetch failed: %s", exc)
+        cache_registry.update("p2000", ok=False)
         if _cache is not None:
             return _cache
         raise HTTPException(status_code=502, detail="P2000 feed unavailable")
@@ -241,4 +242,5 @@ async def get_p2000() -> dict:
     _cache = result
     _cache_ts = now
     _cached_region = region
+    cache_registry.update("p2000", ok=True)
     return result

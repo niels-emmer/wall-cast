@@ -13,6 +13,7 @@ from typing import Any
 
 import httpx
 
+from app import cache_registry
 from app.config import settings
 from fastapi import APIRouter, HTTPException, Query
 
@@ -74,6 +75,7 @@ async def get_garbage(
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("Garbage fetch failed: %s", exc)
+        cache_registry.update("garbage", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail="Afvalwijzer API unavailable")
@@ -81,6 +83,7 @@ async def get_garbage(
     raw = resp.json()
     if raw.get("response") != "OK":
         logger.error("Afvalwijzer returned response %s", raw.get("response"))
+        cache_registry.update("garbage", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail="Afvalwijzer returned error status")
@@ -122,4 +125,5 @@ async def get_garbage(
     result = {"collections": collections}
     _cache[cache_key] = result
     _cache_ts[cache_key] = time.monotonic()
+    cache_registry.update("garbage", ok=True)
     return result

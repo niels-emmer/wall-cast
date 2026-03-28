@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from app import cache_registry
 from app.config import settings
 from fastapi import APIRouter, HTTPException, Query
 
@@ -137,11 +138,13 @@ async def get_bus(
             resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
         logger.error("Bus fetch HTTP error %s: %s", exc.response.status_code, exc)
+        cache_registry.update("bus", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail=f"Bus API error: {exc.response.status_code}")
     except httpx.HTTPError as exc:
         logger.error("Bus fetch failed: %s", exc)
+        cache_registry.update("bus", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail="Bus API unavailable")
@@ -156,4 +159,5 @@ async def get_bus(
     }
     _cache[cache_key] = result
     _cache_ts[cache_key] = time.monotonic()
+    cache_registry.update("bus", ok=True)
     return result

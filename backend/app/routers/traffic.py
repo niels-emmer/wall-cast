@@ -22,6 +22,7 @@ from typing import Any
 
 import httpx
 
+from app import cache_registry
 from app.config import settings
 from fastapi import APIRouter, HTTPException, Query
 
@@ -290,6 +291,7 @@ async def get_traffic(
             logger.error("ANWB incidents parse error: %s", exc)
 
     if not anwb_ok and not tomtom_ok:
+        cache_registry.update("traffic", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail="Traffic data unavailable")
@@ -297,4 +299,5 @@ async def get_traffic(
     result: dict = {"jams": jams, "travel": travel}
     _cache[cache_key] = result
     _cache_ts[cache_key] = time.monotonic()
+    cache_registry.update("traffic", ok=True)
     return result

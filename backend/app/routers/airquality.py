@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from app import wall_config
+from app import cache_registry, wall_config
 from app.config import settings
 from fastapi import APIRouter, HTTPException
 
@@ -160,10 +160,12 @@ async def get_air_quality() -> dict:
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("Air quality fetch failed: %s", exc)
+        cache_registry.update("airquality", ok=False)
         if _cache:
             return _cache
         raise HTTPException(status_code=502, detail="Air quality API unavailable")
 
     _cache    = _parse(resp.json())
     _cache_ts = time.monotonic()
+    cache_registry.update("airquality", ok=True)
     return _cache

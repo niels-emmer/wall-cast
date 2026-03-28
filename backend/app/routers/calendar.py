@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from app import cache_registry
 from app.config import settings
 from fastapi import APIRouter, HTTPException, Query
 
@@ -234,6 +235,7 @@ async def get_calendar(
         data = await asyncio.to_thread(_fetch_events, ids, language)
         _cache[cache_key] = data
         _cache_ts[cache_key] = time.monotonic()
+        cache_registry.update("calendar", ok=True)
         return _cache[cache_key]
 
     except ImportError:
@@ -241,6 +243,7 @@ async def get_calendar(
         raise HTTPException(status_code=503, detail="google-api-python-client not installed")
     except Exception as exc:
         logger.error("Calendar fetch failed: %s", exc)
+        cache_registry.update("calendar", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
         raise HTTPException(status_code=502, detail=f"Calendar error: {exc}")

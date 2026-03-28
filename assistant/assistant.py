@@ -84,6 +84,7 @@ Per-person rules (optional, under each person in shared.people):
 
 import os
 import time
+from pathlib import Path
 
 import yaml
 
@@ -234,6 +235,7 @@ def main() -> None:
         try:
             state.prune()
             run_cycle(cfg)
+            Path("/config/assistant-heartbeat.txt").write_text(str(time.time()))
         except Exception as exc:
             print(f"[assistant] Cycle error: {exc}", flush=True)
 

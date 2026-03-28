@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from app import wall_config
+from app import cache_registry, wall_config
 from app.config import settings
 from fastapi import APIRouter, HTTPException
 
@@ -81,6 +81,7 @@ async def get_rain() -> dict:
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("Rain fetch failed: %s", exc)
+        cache_registry.update("rain", ok=False)
         if _cache:
             return _cache
         raise HTTPException(status_code=502, detail="Rain API unavailable")
@@ -91,4 +92,5 @@ async def get_rain() -> dict:
         "levels": RAIN_LEVELS,
     }
     _cache_ts = time.monotonic()
+    cache_registry.update("rain", ok=True)
     return _cache

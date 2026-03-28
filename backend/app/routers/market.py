@@ -8,6 +8,8 @@ from datetime import date, timedelta
 import httpx
 from fastapi import APIRouter
 
+from app import cache_registry
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["market"])
 
@@ -144,4 +146,5 @@ async def get_market() -> dict:
 
     _cache = {"fear_greed": fear_greed, "quotes": quotes, "crypto": crypto}
     _cache_ts = time.monotonic()
+    cache_registry.update("market", ok=bool(quotes or crypto))
     return _cache
