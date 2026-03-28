@@ -99,6 +99,15 @@ export interface Translations {
   pollenSpecies: (species: string) => string
   pollenLevel: (level: string) => string
 
+  // Market / Fear & Greed
+  marketTitle: string
+  marketUnavailable: string
+  marketFearGreed: string
+  marketIndices: string
+  marketStocks: string
+  marketCrypto: string
+  fearGreedLabel: (value: number) => string
+
   // Shared
   unavailable: string
   loading: string
@@ -243,6 +252,14 @@ export const nl: Translations = {
     none: 'Geen', low: 'Laag', moderate: 'Matig', high: 'Hoog', very_high: 'Zeer hoog',
   } as Record<string, string>)[level] ?? level,
 
+  marketTitle: 'Markt',
+  marketUnavailable: 'Marktdata niet beschikbaar',
+  marketFearGreed: 'Angst & Hebzucht',
+  marketIndices: 'Indices',
+  marketStocks: 'Aandelen',
+  marketCrypto: 'Crypto',
+  fearGreedLabel: (v) => v <= 24 ? 'Extreme Angst' : v <= 44 ? 'Angst' : v <= 54 ? 'Neutraal' : v <= 74 ? 'Hebzucht' : 'Extreme Hebzucht',
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -376,6 +393,14 @@ export const en: Translations = {
   pollenLevel: (level) => ({
     none: 'None', low: 'Low', moderate: 'Moderate', high: 'High', very_high: 'Very High',
   } as Record<string, string>)[level] ?? level,
+
+  marketTitle: 'Market',
+  marketUnavailable: 'Market data unavailable',
+  marketFearGreed: 'Fear & Greed',
+  marketIndices: 'Indices',
+  marketStocks: 'Stocks',
+  marketCrypto: 'Crypto',
+  fearGreedLabel: (v) => v <= 24 ? 'Extreme Fear' : v <= 44 ? 'Fear' : v <= 54 ? 'Neutral' : v <= 74 ? 'Greed' : 'Extreme Greed',
 
   unavailable: 'Unavailable',
   loading: 'Loading...',

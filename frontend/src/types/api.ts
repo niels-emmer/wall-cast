@@ -198,3 +198,31 @@ export interface SunData {
   day_length_h: number
   day_length_m: number
 }
+
+export interface FearGreedData {
+  value: number
+  classification: string
+  updated: string
+}
+
+export interface QuoteData {
+  symbol: string
+  name: string
+  price: number
+  change_pct: number
+  type: 'index' | 'stock'
+}
+
+export interface CryptoData {
+  rank: number
+  symbol: string
+  name: string
+  price: number
+  change_pct_24h: number
+}
+
+export interface MarketData {
+  fear_greed: FearGreedData | null
+  quotes: QuoteData[]
+  crypto: CryptoData[]
+}

@@ -546,6 +546,36 @@ Current outdoor air quality and a 4-day pollen forecast. Data from [open-meteo.c
 
 ---
 
+### `market`
+
+Live market overview — crypto Fear & Greed index, main stock indices (S&P 500, NASDAQ, AEX, FTSE), key stock tickers, and top 10 crypto coins. No API key required.
+
+Data sources:
+- Fear & Greed: [alternative.me/fng](https://alternative.me/fng/) — no key
+- Stock/index quotes: Yahoo Finance — no key
+- Crypto top 10: [CoinGecko](https://coingecko.com) — no key
+
+```yaml
+- id: market
+  type: market
+  col: 1
+  row: 1
+  col_span: 6
+  row_span: 8
+  config: {}   # no configuration — tickers and crypto count are hardcoded defaults
+```
+
+**Display (top to bottom):**
+1. Title — `MARKT` (nl) / `MARKET` (en)
+2. Fear & Greed gauge — gradient bar (red → yellow → green), needle at current value (0–100), classification label (Extreme Fear / Fear / Neutral / Greed / Extreme Greed)
+3. Indices section — S&P 500, NASDAQ, AEX, FTSE as cards with price + % change
+4. Stocks section — AAPL, MSFT, NVDA, TSLA, AMZN as cards with price + % change
+5. Crypto section — top 10 coins by market cap (rank, symbol, price, 24h %)
+
+**Backend cache:** 5 minutes.
+
+---
+
 ### `warnings`
 
 Active KNMI weather warnings for the Netherlands, sourced from [MeteoAlarm](https://meteoalarm.org) (Atom/CAP feed) — no API key required. **Automatically hidden when there are no active warnings**, making it a good fit inside a `rotate` widget.

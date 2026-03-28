@@ -46,6 +46,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 | warnings | /api/warnings | WarningsWidget.tsx | ✅ production |
 | bus | /api/bus | BusWidget.tsx | ✅ production |
 | network | /api/network | NetworkWidget.tsx | ✅ production |
+| market | /api/market | MarketWidget.tsx | ✅ production |
 
 ## Feature Status
 
