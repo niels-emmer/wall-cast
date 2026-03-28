@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 import time
+from datetime import date, timedelta
 
 import httpx
 from fastapi import APIRouter
@@ -54,7 +55,9 @@ async def _fetch_one_quote(
     stooq_sym: str, orig_sym: str, name: str, sym_type: str,
 ) -> dict | None:
     """Fetch 2-day daily history from Stooq and derive close + % change."""
-    url = f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d&l=2"
+    d2 = date.today().strftime("%Y%m%d")
+    d1 = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
+    url = f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d&d1={d1}&d2={d2}"
     try:
         r = await client.get(url, timeout=12)
         r.raise_for_status()
@@ -130,7 +133,9 @@ async def debug_market() -> dict:
     """Temporary: test one Stooq symbol and return raw response."""
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
-            r = await client.get("https://stooq.com/q/d/l/?s=aapl.us&i=d&l=2")
+            d2 = date.today().strftime("%Y%m%d")
+            d1 = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
+            r = await client.get(f"https://stooq.com/q/d/l/?s=aapl.us&i=d&d1={d1}&d2={d2}")
             return {"status": r.status_code, "url": str(r.url), "body": r.text[:500]}
     except Exception as exc:
         return {"error": str(exc)}
