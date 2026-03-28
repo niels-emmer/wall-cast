@@ -62,7 +62,7 @@ def check_departure(
         if not ops.get(operator, False):
             continue
 
-        key = f"bus.departure:{person_id}:{dep_time_str}"
+        key = f"bus.departure:{person_id}:{now.date().isoformat()}:{dep_time_str}"
         if state.has_fired(key):
             continue
 
