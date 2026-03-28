@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-03-28 — Caster reachability, warnings expiry, RotatorWidget unskip, assistant fixes
+
+### Caster `is_casting()`: reachability-based trust
+**Decision**: `is_casting()` now returns `(confirmed: bool, reachable: bool)`. "Confirmed" means `DashCast|PLAYING|BUFFERING|PAUSED` found in `catt status` output. "Reachable" means the device responded with any output (e.g. `Volume: X`). Within the cooldown window the caster trusts reachable-but-unclear as "still casting"; it only resets the cooldown (triggering a recast) when the device is completely unreachable.
+**Rationale**: Cast OS devices (Google Nest Hub, regular Chromecast) never output `DashCast` or `PLAYING` — they only report `Volume: X Volume muted: False`. The old single-bool return caused every status check to look like a cast failure, producing a rapid recast loop every `CAST_VERIFY_DELAY` seconds.
+
+### Warnings: immediate expiry on cache hits
+**Decision**: `_filter_expired()` is called on every `/api/warnings` cache hit, not just after a full re-fetch. Cache TTL is 15 min but warnings are dropped as soon as their `valid_until` passes.
+**Rationale**: A warning fetched at 14:00 with `valid_until=14:05` would otherwise persist in the cache until 14:15. The filter costs negligible CPU; warnings should disappear on time regardless of when they were fetched.
+
+### RotatorWidget: bidirectional `onSkip`/`onUnskip`
+**Decision**: Added `onUnskip?: () => void` to `WidgetProps`. `RotatorWidget` provides stable `getUnskipCallback(idx)` (symmetric to `getSkipCallback`). Widgets call `onUnskip()` when content becomes available again.
+**Rationale**: Without `onUnskip`, once a widget (e.g. `WarningsWidget`) signalled empty and was skipped, it could never re-enter the rotation — even when warnings returned. The bidirectional mechanism lets widgets dynamically enter/leave the rotation cycle at runtime.
+
+### Assistant: `polestar.battery_pct` handler and cache-key fix
+**Decision**: Added `polestar.battery_pct` to `assistant/rules/polestar.py` (reads `soc` from the Polestar API response). Fixed cache-key bug in `engine.py`: `sorted(str(x) for x in items())` → `sorted((params or {}).items())` (the old form converted tuples to strings and then tried to unpack them as `(k, v)` pairs, raising `ValueError: too many values to unpack`).
+
+### ntfy Unicode title encoding
+**Decision**: `Title` HTTP header is percent-encoded via `urllib.parse.quote(title, safe=" ,!?")` before being sent to ntfy.
+**Rationale**: Python's `httpx`/`requests` encodes HTTP headers as Latin-1. Characters outside that range (e.g. em-dash `—`) raised `UnicodeEncodeError`. ntfy accepts percent-encoded UTF-8 in the `Title` header and decodes it automatically.
+
 ## 2026-03-25 — Rotator IDs, admin screen ID crash, polestar task leak
 
 ### Rotator widget IDs: no screen-ID prefix

@@ -80,6 +80,37 @@ widgets:    [ ... ]
 
 ---
 
+### Screen casting fields
+
+Each screen entry in `screens` supports the following casting fields:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `id` | string | — | Unique screen identifier. Used as `?screen=<id>` in the cast URL. |
+| `name` | string | — | Display name shown in the admin panel and landing page. |
+| `enabled` | bool | `true` | `false` = keep the entry but stop casting entirely (caster skips the screen). |
+| `casting_active` | bool | `true` | Runtime on/off toggle. `false` = caster stops recasting this screen. Toggled by the power button on the landing page. |
+| `chromecast_ip` | string | — | IP address of the Chromecast / Google Nest Hub. Set manually or auto-updated by the scanner after a scan → use pick flow. |
+| `chromecast_name` | string | — | Device name as it appears in the Google Home app. Used by the scanner to match a discovered device back to this screen and auto-update `chromecast_ip` when it changes. |
+| `chromecast_mac` | string | — | MAC address of the device. Only used for Wake-on-LAN. Optional — most Cast OS devices (Nest Hub, Chromecast) do not support WoL, so this field has no effect for them. |
+
+```yaml
+screens:
+  - id: living-room
+    name: Living Room
+    enabled: true
+    casting_active: true
+    chromecast_ip: 192.168.1.50
+    chromecast_name: Living Room TV
+    chromecast_mac: "aa:bb:cc:dd:ee:ff"   # optional, WoL only
+    layout: { columns: 12, rows: 8 }
+    widgets: [ ... ]
+```
+
+> **Tip**: Use the **Scan** button in the admin panel (Admin → Screens → select screen) to discover devices on the LAN and populate `chromecast_ip` + `chromecast_name` automatically.
+
+---
+
 ### Screen identity
 
 Each Chromecast is cast to a URL with a `?screen=` param matching an `id` in the `screens` list:
