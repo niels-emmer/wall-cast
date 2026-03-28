@@ -41,9 +41,9 @@ def check(rule: dict, data: dict) -> list[Notification]:
         notifications.append(Notification(
             title="Garbage collection",
             message=f"{label} is being collected {when} ({col_date}).",
+            state_key=key,
             priority="default",
             tags=["wastebasket"],
         ))
-        state.mark_fired(key)
 
     return notifications

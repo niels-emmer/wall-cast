@@ -137,6 +137,8 @@ def _dispatch(
     # AI reformatting done once, reused across all channels
     message = ai_fmt.format_message(notification.title, notification.message, context, ai_cfg)
 
+    dispatched = False
+
     if person:
         # Personal notification — send on each of this person's configured channels
         p_notify = person.get("notify") or {}
@@ -148,6 +150,7 @@ def _dispatch(
                     title=notification.title, message=message,
                     priority=notification.priority, tags=notification.tags,
                 )
+                dispatched = True
         if matrix_enabled and matrix_hs and MATRIX_TOKEN:
             room = p_notify.get("matrix_room_id") or matrix_room
             if room:
@@ -155,6 +158,7 @@ def _dispatch(
                     homeserver=matrix_hs, room_id=room, token=MATRIX_TOKEN,
                     title=notification.title, message=message,
                 )
+                dispatched = True
     else:
         # Global notification — ntfy: all unique topics; matrix: system room + per-person rooms
         if ntfy_enabled and ntfy_url:
@@ -169,6 +173,7 @@ def _dispatch(
                     title=notification.title, message=message,
                     priority=notification.priority, tags=notification.tags,
                 )
+                dispatched = True
 
         if matrix_enabled and matrix_hs and MATRIX_TOKEN:
             rooms: list[str] = []
@@ -183,6 +188,12 @@ def _dispatch(
                     homeserver=matrix_hs, room_id=room, token=MATRIX_TOKEN,
                     title=notification.title, message=message,
                 )
+                dispatched = True
+
+    # Mark the dedup key only after at least one channel was attempted,
+    # so a misconfigured / silent dispatch failure can retry next cycle.
+    if dispatched and notification.state_key:
+        state.mark_fired(notification.state_key)
 
 
 # ── Main cycle ────────────────────────────────────────────────────────────────

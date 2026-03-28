@@ -65,12 +65,12 @@ def check(rule: dict, aq_data: dict) -> list[Notification]:
         key = f"airquality.aqi:{operator}:{threshold}:{today}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         aqi_label = _AQI_LABEL.get(aq_data.get("aqi_level", ""), "")
         label_str = f" — {aqi_label}" if aqi_label else ""
         return [Notification(
             title="Air quality alert",
             message=f"Current air quality index is {aqi}{label_str}.",
+            state_key=key,
             priority="default",
             tags=["cloud"],
         )]
@@ -95,10 +95,10 @@ def check(rule: dict, aq_data: dict) -> list[Notification]:
         key = f"airquality.{pollen_species}_pollen:{level}:{today}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         return [Notification(
             title=f"Pollen alert — {pollen_species.capitalize()}",
             message=f"Today's {pollen_species} pollen level is {level.replace('_', ' ')}.",
+            state_key=key,
             priority="default",
             tags=["seedling"],
         )]

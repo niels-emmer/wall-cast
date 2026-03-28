@@ -51,10 +51,10 @@ def check(rule: dict, rain_data: dict) -> list[Notification]:
         key = f"rain.mm_now:{operator}:{threshold}:{hour}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         return [Notification(
             title="Rain alert",
             message=f"Current rainfall is {mm_now:.1f} mm/hour.",
+            state_key=key,
             priority="default",
             tags=["rain_cloud"],
         )]
@@ -71,7 +71,6 @@ def check(rule: dict, rain_data: dict) -> list[Notification]:
         key = f"rain.minutes_until_rain:{operator}:{threshold}:{hour}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         if mins_until == 0:
             msg = "It is raining now."
         elif mins_until >= 999:
@@ -81,6 +80,7 @@ def check(rule: dict, rain_data: dict) -> list[Notification]:
         return [Notification(
             title="Rain forecast",
             message=msg,
+            state_key=key,
             priority="default",
             tags=["rain_cloud"],
         )]

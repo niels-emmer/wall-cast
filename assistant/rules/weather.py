@@ -44,10 +44,10 @@ def check(rule: dict, warnings_data: dict) -> list[Notification]:
         notifications.append(Notification(
             title=f"Weather: {level.capitalize()} — {phenomenon}",
             message=msg,
+            state_key=key,
             priority=_PRIORITY.get(level, "default"),
             tags=_TAGS.get(level, ["cloud"]),
         ))
-        state.mark_fired(key)
 
     return notifications
 
@@ -94,10 +94,10 @@ def check_current(rule: dict, weather_data: dict) -> list[Notification]:
     if state.has_fired(key):
         return []
 
-    state.mark_fired(key)
     return [Notification(
         title=f"Weather: {name.capitalize()}",
         message=f"Current {name} is {value}{unit} ({operator} {threshold}{unit}).",
+        state_key=key,
         priority="default",
         tags=tags,
     )]

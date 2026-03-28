@@ -59,11 +59,11 @@ def check(rule: dict, person: dict, calendar_data: dict) -> list[Notification]:
         notifications.append(Notification(
             title=f"Reminder: {title_str}",
             message=f"{person_name}, '{title_str}' starts at {start_str} (in ~{int(minutes_until)} min).",
+            state_key=key,
             person_id=person_id,
             priority="high",
             tags=["calendar"],
         ))
-        state.mark_fired(key)
 
     return notifications
 

@@ -77,11 +77,11 @@ def check_departure(
                 f"{person_name}: line {line} ({direction}) departs at "
                 f"{dep_time_str}{delay_str} — {int(mins_until)} min away."
             ),
+            state_key=key,
             person_id=person_id,
             priority="default",
             tags=["bus"],
         ))
-        state.mark_fired(key)
         break  # notify only about the next departure
 
     return notifications
@@ -152,10 +152,10 @@ def check(
                 f"{person_name}: line {line} ({direction}) at {dep_time_str} is {delay_lbl}. "
                 f"You have '{event_title}' at {event_time}."
             ),
+            state_key=key,
             person_id=person_id,
             priority="high",
             tags=["bus", "warning"],
         ))
-        state.mark_fired(key)
 
     return notifications

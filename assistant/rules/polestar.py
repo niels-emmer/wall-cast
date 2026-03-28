@@ -46,12 +46,12 @@ def check(rule: dict, data: dict) -> list[Notification]:
         key = f"polestar.range_km:{operator}:{threshold}:{today}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         soc     = data.get("soc")
         soc_str = f" ({soc}% battery)" if soc is not None else ""
         return [Notification(
             title="Polestar — low range",
             message=f"Estimated range is {range_km} km{soc_str}.",
+            state_key=key,
             priority="default",
             tags=["electric_plug", "warning"],
         )]
@@ -70,12 +70,12 @@ def check(rule: dict, data: dict) -> list[Notification]:
         key = f"polestar.battery_pct:{operator}:{threshold}:{today}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         range_km = data.get("range_km")
         range_str = f" (~{range_km} km range)" if range_km is not None else ""
         return [Notification(
             title="Polestar — battery",
             message=f"Battery at {soc}%{range_str}.",
+            state_key=key,
             priority="default",
             tags=["electric_plug", "warning"],
         )]
@@ -95,11 +95,11 @@ def check(rule: dict, data: dict) -> list[Notification]:
         key = f"polestar.is_plugged_in:{want_plugged}:{today}"
         if state.has_fired(key):
             return []
-        state.mark_fired(key)
         status = "plugged in" if is_plugged else "not plugged in"
         return [Notification(
             title="Polestar — charging",
             message=f"Car is {status} (connection: {conn or 'none'}).",
+            state_key=key,
             priority="default",
             tags=["electric_plug"],
         )]

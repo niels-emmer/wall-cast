@@ -44,13 +44,13 @@ def check(rule: dict, person: dict, traffic_data: dict) -> list[Notification]:
     if state.has_fired(key):
         return []
 
-    state.mark_fired(key)
     return [Notification(
         title="Traffic delay",
         message=(
             f"{person_name}: commute is {total_min} min today "
             f"({delay_min} min delay, +{int(delay_pct)}% above normal)."
         ),
+        state_key=key,
         person_id=person_id,
         priority="default",
         tags=["car", "warning"],
