@@ -49,50 +49,51 @@ async def _fetch_fear_greed() -> dict | None:
         return None
 
 
-async def _fetch_quotes() -> list[dict]:
-    """Fetch quotes from Stooq (free, no auth, works from server environments)."""
-    stooq_syms = ",".join(s[0] for s in _QUOTES)
-    # f= fields: Symbol, Date, Time, Close, Prev.Close
-    url = f"https://stooq.com/q/l/?s={stooq_syms}&f=sd2t2cp&h&e=csv"
+async def _fetch_one_quote(
+    client: httpx.AsyncClient,
+    stooq_sym: str, orig_sym: str, name: str, sym_type: str,
+) -> dict | None:
+    """Fetch 2-day daily history from Stooq and derive close + % change."""
+    url = f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d&l=2"
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            text = r.text
+        r = await client.get(url, timeout=12)
+        r.raise_for_status()
+        rows = list(csv.DictReader(io.StringIO(r.text)))
     except Exception as exc:
-        logger.warning("Stooq fetch failed: %s", exc)
-        return []
+        logger.warning("Stooq history failed for %s: %s", stooq_sym, exc)
+        return None
 
-    # Build lookup: uppercase stooq symbol → row dict
-    reader = csv.DictReader(io.StringIO(text))
-    rows: dict[str, dict] = {}
-    for row in reader:
-        rows[row.get("Symbol", "").upper()] = row
+    if len(rows) < 2:
+        logger.warning("Stooq: only %d row(s) for %s", len(rows), stooq_sym)
+        return None
+    try:
+        close = float(rows[-1].get("Close") or 0)
+        prev  = float(rows[-2].get("Close") or 0)
+    except (ValueError, TypeError):
+        return None
+    if not close or not prev:
+        return None
+    return {
+        "symbol":     orig_sym,
+        "name":       name,
+        "price":      round(close, 2),
+        "change_pct": round((close - prev) / prev * 100, 2),
+        "type":       sym_type,
+    }
 
-    results = []
-    for stooq_sym, orig_sym, name, sym_type in _QUOTES:
-        row = rows.get(stooq_sym.upper())
-        if not row:
-            logger.debug("Stooq: no row for %s", stooq_sym)
-            continue
-        try:
-            close = float(row.get("Close") or 0)
-            prev  = float(row.get("Prev. Close") or 0)
-        except (ValueError, TypeError):
-            continue
-        if not close or not prev:
-            continue
-        results.append({
-            "symbol":     orig_sym,
-            "name":       name,
-            "price":      round(close, 2),
-            "change_pct": round((close - prev) / prev * 100, 2),
-            "type":       sym_type,
-        })
 
-    if not results:
-        logger.warning("Stooq returned no usable rows; raw: %s", text[:300])
-    return results
+async def _fetch_quotes() -> list[dict]:
+    """Fetch quotes from Stooq (free, no auth, server-accessible)."""
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        tasks = [
+            _fetch_one_quote(client, stooq_sym, orig_sym, name, sym_type)
+            for stooq_sym, orig_sym, name, sym_type in _QUOTES
+        ]
+        results = await asyncio.gather(*tasks)
+    good = [r for r in results if r is not None]
+    if not good:
+        logger.warning("Stooq: all quote fetches failed")
+    return good
 
 
 async def _fetch_crypto() -> list[dict]:
@@ -122,7 +123,18 @@ async def _fetch_crypto() -> list[dict]:
     ]
 
 
-# ── Endpoint ──────────────────────────────────────────────────────────────────
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get("/market/debug")
+async def debug_market() -> dict:
+    """Temporary: test one Stooq symbol and return raw response."""
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
+            r = await client.get("https://stooq.com/q/d/l/?s=aapl.us&i=d&l=2")
+            return {"status": r.status_code, "url": str(r.url), "body": r.text[:500]}
+    except Exception as exc:
+        return {"error": str(exc)}
+
 
 @router.get("/market")
 async def get_market() -> dict:
