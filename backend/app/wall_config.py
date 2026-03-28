@@ -362,6 +362,31 @@ def _inject_garbage(
     return _inject(widgets)
 
 
+def _inject_p2000(
+    widgets: list[dict[str, Any]],
+    p2000_config: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Inject shared p2000.widget_enabled into p2000 widget slots."""
+    if p2000_config is None:
+        return widgets
+    enabled = p2000_config.get("widget_enabled", True)
+
+    def _inject(wlist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        result = []
+        for w in wlist:
+            if w.get("type") == "p2000":
+                cfg = dict(w.get("config") or {})
+                cfg["enabled"] = enabled
+                w = {**w, "config": cfg}
+            elif w.get("type") == "rotate":
+                inner = _inject(w.get("config", {}).get("widgets") or [])
+                w = {**w, "config": {**w.get("config", {}), "widgets": inner}}
+            result.append(w)
+        return result
+
+    return _inject(widgets)
+
+
 def _inject_people_feeds(
     widgets: list[dict[str, Any]],
     screen_people_ids: list[str] | None,
@@ -493,6 +518,7 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
     merged_widgets = _inject_people_calendars(merged_widgets, screen_people_ids, all_people)
     merged_widgets = _inject_people_commute(merged_widgets, screen_people_ids, all_people)
     merged_widgets = _inject_garbage(merged_widgets, shared.get("garbage"))
+    merged_widgets = _inject_p2000(merged_widgets, shared.get("p2000"))
 
     merged: dict[str, Any] = {
         "location": target.get("location") or shared.get("location", {}),
@@ -502,6 +528,7 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
         "widgets": merged_widgets,
         # Pass through shared-only keys used by backend routers
         "network": shared.get("network", {}),
+        "p2000":   shared.get("p2000", {}),
         "fade_speed": shared.get("fade_speed", 0.8),
     }
     return merged

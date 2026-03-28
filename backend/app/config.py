@@ -32,5 +32,8 @@ class Settings(BaseSettings):
 
     airquality_cache_ttl: int = 3600  # 1 hour (CAMS model updates twice daily)
 
+    # P2000 emergency services feed (p2000.brandweer-berkel-enschot.nl)
+    p2000_cache_ttl: int = 30         # 30 seconds (real-time dispatch data)
+
 
 settings = Settings()

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import log_capture, wall_config
-from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus, network, status, rule_variables, airquality, market
+from app.routers import config, weather, rain, news, sun, garbage, polestar, calendar, traffic, warnings, bus, network, status, rule_variables, airquality, market, p2000
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,6 +60,7 @@ app.include_router(status.router, prefix="/api")
 app.include_router(rule_variables.router, prefix="/api")
 app.include_router(airquality.router,    prefix="/api")
 app.include_router(market.router,        prefix="/api")
+app.include_router(p2000.router,         prefix="/api")
 
 
 @app.get("/health")
