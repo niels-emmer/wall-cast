@@ -527,8 +527,9 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
         # Screen-specific widgets first, shared widgets appended (e.g. news ticker stays at bottom)
         "widgets": merged_widgets,
         # Pass through shared-only keys used by backend routers
-        "network": shared.get("network", {}),
-        "p2000":   shared.get("p2000", {}),
+        "network":   shared.get("network", {}),
+        "p2000":     shared.get("p2000", {}),
+        "assistant": shared.get("assistant", {}),
         "fade_speed": shared.get("fade_speed", 0.8),
     }
     return merged
