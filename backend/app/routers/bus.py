@@ -133,7 +133,7 @@ async def get_bus(
     headers = {"X-Vertrektijd-Client-Api-Key": settings.vertrektijd_api_key}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -144,6 +144,14 @@ async def get_bus(
         raise HTTPException(status_code=502, detail=f"Bus API error: {exc.response.status_code}")
     except httpx.HTTPError as exc:
         logger.error("Bus fetch failed: %s", exc)
+        cache_registry.update("bus", ok=False)
+        if cache_key in _cache:
+            return _cache[cache_key]
+        raise HTTPException(status_code=502, detail="Bus API unavailable")
+    except Exception as exc:
+        # CancelledError and other non-httpx exceptions (e.g. asyncio cancellation
+        # when concurrent requests race on a stale cache)
+        logger.error("Bus fetch unexpected error: %s", exc)
         cache_registry.update("bus", ok=False)
         if cache_key in _cache:
             return _cache[cache_key]
