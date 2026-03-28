@@ -128,18 +128,6 @@ async def _fetch_crypto() -> list[dict]:
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
-@router.get("/market/debug")
-async def debug_market() -> dict:
-    """Temporary: test one Stooq symbol and return raw response."""
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
-            d2 = date.today().strftime("%Y%m%d")
-            d1 = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
-            r = await client.get(f"https://stooq.com/q/d/l/?s=aapl.us&i=d&d1={d1}&d2={d2}")
-            return {"status": r.status_code, "url": str(r.url), "body": r.text[:500]}
-    except Exception as exc:
-        return {"error": str(exc)}
-
 
 @router.get("/market")
 async def get_market() -> dict:

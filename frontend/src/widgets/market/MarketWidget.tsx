@@ -38,7 +38,7 @@ function fearGreedColor(value: number): string {
 // Short symbol for display in compact chips
 function shortSymbol(symbol: string): string {
   const map: Record<string, string> = {
-    '^GSPC': 'SPX', '^IXIC': 'NDX', '^AEX': 'AEX', '^FTSE': 'FTSE',
+    '^GSPC': 'SPX', '^IXIC': 'NDX', '^DJI': 'DOW', '^AEX': 'AEX', '^FTSE': 'FTSE',
   }
   return map[symbol] ?? symbol
 }
