@@ -37,8 +37,11 @@ interface RawConfig {
 }
 
 interface StatusData {
-  backend: { status: string }
-  caster: { status: string; last_seen_s: number | null }
+  backend:     { status: string }
+  caster:      { status: string; last_seen_s: number | null }
+  scanner:     { status: string }
+  assistant:   { status: string; last_seen_s: number | null }
+  api_sources: Record<string, { ok: boolean; age_s: number; detail: string }>
 }
 
 interface LogRecord {
@@ -190,27 +193,31 @@ function PowerButton({ screenOn, isPaired, loading, onToggle }: {
   )
 }
 
-// ── Status pill ───────────────────────────────────────────────────────────────
-function Pill({ ok, stale, label }: { ok: boolean; stale?: boolean; label: string }) {
-  const color = ok ? C.green : stale ? C.amber : C.red
-  const bg    = ok ? C.greenBg : stale ? C.amberBg : C.redBg
-  const bdr   = ok ? C.greenBdr : stale ? C.amberBdr : C.redBdr
+// ── Age formatter ─────────────────────────────────────────────────────────────
+function fmtAge(age_s: number | null | undefined): string {
+  if (age_s == null) return ''
+  if (age_s < 60)   return `${age_s}s ago`
+  if (age_s < 3600) return `${Math.floor(age_s / 60)}m ago`
+  return `${Math.floor(age_s / 3600)}h ago`
+}
+
+// ── Service status row ────────────────────────────────────────────────────────
+function StatusRow({ label, status, age }: { label: string; status: string; age?: string }) {
+  const ok  = status === 'ok'
+  const stale = status === 'stale'
+  const dis = status === 'disabled'
+  const color = ok ? C.green : stale ? C.amber : dis ? C.muted : C.red
+  const dot   = ok ? C.green : stale ? C.amber : dis ? 'rgba(255,255,255,0.2)' : C.red
+  const text  = dis ? 'DISABLED' : status.toUpperCase()
   return (
-    <span style={{
-      display:      'inline-flex',
-      alignItems:   'center',
-      gap:          '0.4rem',
-      padding:      '0.25rem 0.7rem',
-      borderRadius: 6,
-      border:       `1px solid ${bdr}`,
-      background:   bg,
-      color,
-      fontSize:     '0.8rem',
-      fontWeight:   600,
-    }}>
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      {label}
-    </span>
+    <>
+      <span style={{ fontSize: '0.78rem', color: C.muted }}>{label}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 600, color }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+        {text}
+      </span>
+      <span style={{ fontSize: '0.72rem', color: C.muted }}>{age ?? ''}</span>
+    </>
   )
 }
 
@@ -322,16 +329,6 @@ export default function LandingPage() {
     }
   }, [])
 
-  const casterOk    = statusData?.caster.status === 'ok'
-  const casterStale = statusData?.caster.status === 'stale'
-  const casterLabel = (() => {
-    if (!statusData) return 'CASTER —'
-    const s = statusData.caster
-    if (s.status === 'offline') return 'CASTER OFFLINE'
-    if (s.status === 'stale')   return `CASTER STALE (${s.last_seen_s}s)`
-    return `CASTER OK (${s.last_seen_s}s)`
-  })()
-
   const logs = (logsData?.records ?? []).slice().reverse()
 
   return (
@@ -358,48 +355,6 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* ── System ─────────────────────────────────────────────────────── */}
-        <div style={card}>
-          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>System</div>
-          <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
-            Halt casting across every screen at once, or open the admin panel to configure widgets, people, and integrations.
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <ToggleButton
-              active={globalCasting}
-              onToggle={toggleGlobal}
-              loading={togglingGlobal}
-            />
-            <Pill ok label="BACKEND OK" />
-            <Pill
-              ok={casterOk}
-              stale={casterStale}
-              label={casterLabel}
-            />
-            <a
-              href="/#admin"
-              style={{
-                padding:        '0.35rem 0.85rem',
-                borderRadius:   6,
-                border:         `1px solid ${C.blueBdr}`,
-                background:     C.blueBg,
-                color:          C.blue,
-                fontSize:       '0.8rem',
-                fontWeight:     600,
-                textDecoration: 'none',
-                whiteSpace:     'nowrap',
-              }}
-            >
-              ⚙ Settings
-            </a>
-          </div>
-          {castingStatus && (
-            <div style={{ fontSize: '0.78rem', color: C.muted, marginTop: '0.6rem' }}>
-              {castingStatus}
-            </div>
-          )}
         </div>
 
         {/* ── Screens ────────────────────────────────────────────────────── */}
@@ -477,6 +432,86 @@ export default function LandingPage() {
               })}
             </div>
           )}
+        </div>
+
+        {/* ── System ─────────────────────────────────────────────────────── */}
+        <div style={card}>
+          <div style={{ ...sectionTitle, marginBottom: '0.2rem' }}>System</div>
+          <div style={{ fontSize: '0.8rem', color: C.muted, marginBottom: '0.85rem' }}>
+            Halt casting across every screen at once, or open the admin panel to configure widgets, people, and integrations.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <ToggleButton
+              active={globalCasting}
+              onToggle={toggleGlobal}
+              loading={togglingGlobal}
+            />
+            <a
+              href="/#admin"
+              style={{
+                padding:        '0.35rem 0.85rem',
+                borderRadius:   6,
+                border:         `1px solid ${C.blueBdr}`,
+                background:     C.blueBg,
+                color:          C.blue,
+                fontSize:       '0.8rem',
+                fontWeight:     600,
+                textDecoration: 'none',
+                whiteSpace:     'nowrap',
+              }}
+            >
+              ⚙ Settings
+            </a>
+          </div>
+          {castingStatus && (
+            <div style={{ fontSize: '0.78rem', color: C.muted, marginTop: '0.6rem' }}>
+              {castingStatus}
+            </div>
+          )}
+
+          {/* STATUS section */}
+          <div style={{ marginTop: '1.1rem' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: C.muted, marginBottom: '0.65rem' }}>
+              Status
+            </div>
+
+            {/* Services grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'max-content max-content 1fr', gap: '0.3rem 0.75rem', alignItems: 'center' }}>
+              <StatusRow label="Backend"   status={statusData?.backend?.status ?? 'unknown'} />
+              <StatusRow
+                label="Caster"
+                status={statusData?.caster?.status ?? 'unknown'}
+                age={fmtAge(statusData?.caster?.last_seen_s)}
+              />
+              <StatusRow label="Scanner"   status={statusData?.scanner?.status ?? 'unknown'} />
+              <StatusRow
+                label="Assistant"
+                status={statusData?.assistant?.status ?? 'unknown'}
+                age={fmtAge(statusData?.assistant?.last_seen_s)}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: C.border, margin: '0.65rem 0' }} />
+
+            {/* API sources grid */}
+            {statusData?.api_sources && Object.keys(statusData.api_sources).length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'max-content max-content 1fr', gap: '0.3rem 0.75rem', alignItems: 'center' }}>
+                {Object.entries(statusData.api_sources).map(([name, src]) => (
+                  <StatusRow
+                    key={name}
+                    label={name}
+                    status={src.ok ? 'ok' : 'error'}
+                    age={fmtAge(src.age_s)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.75rem', color: C.muted, opacity: 0.5 }}>
+                API source data populates after first widget poll.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Live server logs ────────────────────────────────────────── */}
