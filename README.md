@@ -37,7 +37,8 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 - **Overview & control page** — the root URL (`/`) shows all screens with live casting status, backend health, and one-click navigation; no screen ID needed
 - **Admin panel** — browser-based UI at `/#admin`: configure screens, people, feeds, assistant, and Chromecast IPs; built-in LAN scanner to discover devices
 - **DHCP-resilient casting** — set a device's friendly name once; if the IP changes after a reboot, the caster scans the LAN, finds the device by name, and updates the config automatically
-- **Assistant** — proactive push notifications via ntfy: bin day reminders, bus delay alerts cross-correlated with your calendar, commute delay warnings, and weather alerts; optional AI (Ollama/OpenAI) rewrites messages into natural language
+- **Extensible notifications** — ntfy and Matrix run in parallel; configure one or both; each person gets their own topic / room; global alerts fan out to everyone
+- **Assistant** — proactive notifications: bin day reminders, bus delay alerts cross-correlated with your calendar, commute delay warnings, and weather alerts; optional AI (Ollama/OpenAI) rewrites messages into natural language
 - **Dark theme** — pure black background, bold white type, cyan accent
 - **Dutch / English** — all widget labels switch with `language: en/nl`
 - **Mostly no API keys** — most data sources are free and unauthenticated
@@ -59,6 +60,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
 | **Air quality** | L | [open-meteo.com](https://open-meteo.com) — European AQI, PM2.5/PM10/NO₂/O₃, 4-day pollen forecast | 1 h |
 | **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
+| **Market** | L | [Stooq](https://stooq.com) (indices + stocks) + [alternative.me](https://alternative.me/fng/) F&G + [CoinGecko](https://coingecko.com) (crypto top 10) | 5 min |
 | **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
 
@@ -150,7 +152,7 @@ Open `/#admin`. Four tabs:
 - **General** — location, garbage address, language, news feeds, network widget settings
 - **Screens** — add/rename/delete/enable screens; set Chromecast IP; assign people; configure layout and widget options
 - **People** — add household members; mark as family; add calendar IDs; set commute and bus stop; add per-person notification rules
-- **Assistant** — ntfy server/topic; AI provider; family-wide notification rules
+- **Assistant** — ntfy server URL and Matrix homeserver; AI provider; family-wide notification rules
 
 Changes are written back to `wall-cast.yaml` immediately and hot-reload onto the display.
 
@@ -166,7 +168,7 @@ Assign household members to screens so each screen shows the right calendars. Fa
 
 ## Assistant & Notifications
 
-The assistant watches your data and pushes proactive notifications to your phone via [ntfy](https://ntfy.sh). Rules are configured in the admin panel or YAML. Supports family-wide and per-person rules, optional AI message formatting (Ollama / OpenAI), and deduplication.
+The assistant watches your data and pushes proactive notifications to your phone via [ntfy](https://ntfy.sh) and/or [Matrix](https://matrix.org). Both channels can run in parallel. Rules are configured in the admin panel or YAML. Supports family-wide and per-person rules, optional AI message formatting (Ollama / OpenAI), and deduplication.
 
 ntfy also powers **breaking news**: push a message from your phone or a script and it appears instantly on screen in the news ticker.
 
@@ -207,7 +209,7 @@ curl -H "Title: Power outage" \
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │  assistant                                                   │   │
 │  │  polls GET /api/garbage, /api/calendar, /api/bus, ...        │   │
-│  │  runs rules -> deduplicates -> pushes ntfy notifications  ---┼---+-->  ntfy / phone
+│  │  runs rules -> deduplicates -> dispatches notifications  ----┼---+-->  ntfy + Matrix / phone
 │  └──────────────────────────────────────────────────────────────┘   │
 └───────────┼──────────────────────────────────────────────────────────┘
             │ DashCast receiver
@@ -217,7 +219,7 @@ curl -H "Title: Power outage" \
    browser subscribes to ntfy SSE directly (no proxy)
 ```
 
-Five Docker services: **frontend** (nginx, port 80), **backend** (FastAPI, internal), **caster** (host network, `catt cast_site`), **scanner** (host network, mDNS), **assistant** (ntfy notifications, opt-in).
+Five Docker services: **frontend** (nginx, port 80), **backend** (FastAPI, internal), **caster** (host network, `catt cast_site`), **scanner** (host network, mDNS), **assistant** (ntfy + Matrix notifications, opt-in).
 
 ---
 
@@ -278,6 +280,7 @@ wall-cast/
 │   ├── assistant.py            polling loop; runs rules; dispatches
 │   ├── rules/                  engine + one file per data domain
 │   ├── notify/ntfy.py          push to ntfy via HTTP POST
+│   ├── notify/matrix.py        push to Matrix via CS API PUT
 │   ├── ai/formatter.py         optional AI message rewriting
 │   └── state.py                deduplication (JSON, persisted)
 ├── docs/
@@ -301,7 +304,8 @@ wall-cast/
 | [TomTom Routing API](https://developer.tomtom.com) | Travel time |
 | [MeteoAlarm](https://meteoalarm.org) | KNMI weather warnings |
 | [pypolestar](https://github.com/pypolestar/pypolestar) | Polestar vehicle data |
-| [ntfy.sh](https://ntfy.sh) | Push notifications |
+| [ntfy.sh](https://ntfy.sh) | Push notifications (assistant + breaking news) |
+| [Matrix](https://matrix.org) | Push notifications (assistant, self-hosted) |
 
 ### Built with
 

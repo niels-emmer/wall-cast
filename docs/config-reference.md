@@ -18,6 +18,7 @@ The display is controlled by two things:
 | `GOOGLE_SA_KEY_FILE` | `calendar` | `/config/google-sa.json` | Path inside the container to the service account JSON key file. Leave at the default and place your JSON at `config/google-sa.json` in the repo root — it is gitignored and never committed. |
 | `TOMTOM_API_KEY` | `traffic` | — | API key for the TomTom Routing API (travel time + geocoding). Free — see [API keys](#api-keys) below. |
 | `VERTREKTIJD_API_KEY` | `bus` | — | API key for vertrektijd.info. Free account at [vertrektijd.info/starten.html](https://vertrektijd.info/starten.html). |
+| `MATRIX_TOKEN` | `assistant` (Matrix) | — | Matrix bot access token. Create a bot account on your homeserver and copy its access token here. **Never put this in the YAML.** See [docs/assistant.md](assistant.md#2b-matrix-setup). |
 
 All widget-specific settings (addresses, stop names, postcodes, etc.) are configured in the **admin panel** at `/#admin` — not in `.env`. See `.env.example` for the full template with step-by-step setup instructions for Google Calendar.
 
@@ -51,7 +52,26 @@ shared:
       bus:
         stop_city: Amsterdam
         stop_name: Leidseplein
-  widgets:    [ ... ]         # widgets shown on every screen (e.g. news ticker)
+      notify:
+        ntfy_topic: wall-cast-bob          # personal ntfy topic (optional)
+        matrix_room_id: "!room:example.com"  # personal Matrix room (optional)
+  assistant:                 # see docs/assistant.md for full reference
+    enabled: true
+    check_interval: 300      # seconds between rule evaluation cycles (default: 300)
+    notify:
+      ntfy:
+        enabled: true
+        url: https://ntfy.example.com
+        # Topics are per-person (see people[].notify.ntfy_topic above)
+      matrix:
+        enabled: false
+        homeserver: https://matrix.example.com
+        room_id: "!systemroom:example.com"   # global alerts go here
+        # Access token: set MATRIX_TOKEN=syt_... in .env — never in YAML
+    ai:
+      provider: none           # none | ollama | openai
+    rules: [ ... ]             # see docs/assistant.md
+  widgets:    [ ... ]          # widgets shown on every screen (e.g. news ticker)
 
 screens:
   - id: living-room
@@ -703,6 +723,7 @@ From the admin panel you can:
 - Set **bus stop** (city and stop name) per person
 - Add **per-person RSS feeds** (personalised news shown only when that person's screen is active)
 - Add **per-person notification rules** (same condition builder as the shared rules; only evaluated when that person is in scope)
+- Set per-person **ntfy topic** and **Matrix room ID** under Notifications
 
 Changes are saved back to `config/wall-cast.yaml` and take effect on the display immediately via hot-reload.
 
