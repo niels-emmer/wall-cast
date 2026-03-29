@@ -70,7 +70,7 @@ shared:
         # Access token: set MATRIX_TOKEN=syt_... in .env — never in YAML
     ai:
       provider: none           # none | ollama | openai
-    rules: [ ... ]             # see docs/assistant.md
+    rules: [ ... ]             # 1–3 conditions per rule; see docs/assistant.md
   widgets:    [ ... ]          # widgets shown on every screen (e.g. news ticker)
 
 screens:

@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-03-29 — Rule builder rewrite: multi-condition support + Popover picker
+
+### Multi-condition rules (1–3 conditions, AND/OR logic)
+**Decision**: Rewrote the rule builder in the admin panel to support 1–3 conditions per rule with an AND/OR `SegmentedControl` toggle that appears when 2+ conditions are added. New YAML format uses `conditions:` (list) + optional `condition_logic: and | or`. Old `condition:` (single) format is auto-migrated on load in both the backend (`wall_config.py`) and the frontend modal. The backend engine (`rules/engine.py`) evaluates multi-condition rules via boolean `_eval_condition_bool` per condition then combines with AND/OR logic; single-condition rules continue using the existing per-domain handlers unchanged. Dedup key for multi-condition rules: `{rule_id}:{hour}`.
+**Rationale**: Users wanted compound alerts (e.g. "bus is late AND a meeting is coming up") that the single-condition model couldn't express. The backwards-compatible migration means no manual YAML editing required on upgrade.
+
+### Popover variable picker (replaces inline tag grid)
+**Decision**: Moved the variable tag grid from inline inside the modal into a Mantine `Popover`. Each condition is now a compact single-row `ConditionRow` component: variable button → Popover with grouped colour-coded tags → operator tags → value/unit inputs, all on one line. Popover uses `withinPortal` + `zIndex={310}` to render above the modal.
+**Rationale**: The old inline tag grid pushed operator and value inputs off-screen in shorter viewports, requiring scrolling. The Popover approach has zero vertical footprint inside the modal — same colour-coded visual richness, now floating.
+
+### Shared `RuleEditor.tsx` component
+**Decision**: Extracted `RuleEditorModal`, `RuleList`, `useRuleVariables`, `generateRuleId`, `formatRule` from `AdminPanel.tsx` into a new `frontend/src/admin/RuleEditor.tsx`. Both `AssistantTab` and `PeopleTab` import from it — no duplication.
+**Rationale**: The rule builder was duplicated between the Assistant tab and People tab. Single source of truth prevents drift.
+
+---
+
 ## 2026-03-28 — Matrix notifications + ntfy/matrix status probes
 
 ### Matrix notification channel

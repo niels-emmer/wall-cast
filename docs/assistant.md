@@ -30,7 +30,7 @@ The browser subscribes directly to the ntfy SSE endpoint — no backend proxy ne
 
 ## How the assistant works
 
-Rules are defined in the admin panel (or directly in YAML). Each rule has a single condition: a variable, an operator, and a threshold. When the condition is met, a notification is dispatched on all configured channels.
+Rules are defined in the admin panel (or directly in YAML). Each rule has **1–3 conditions** with an optional AND/OR logic toggle. When the condition(s) are met, a notification is dispatched on all configured channels.
 
 **Family rules** fire for the whole household — notifications go to every person's configured ntfy topic and/or Matrix room.
 **Personal rules** (variables marked *personal* below) require a person context and fire per-person — notifications go only to that person's own channels.
@@ -192,19 +192,33 @@ shared:
       - id: garbage-reminder
         title: Garbage pickup reminder
         enabled: true
-        condition:
-          variable: garbage.hours_until_pickup
-          operator: "<="
-          value: 18
-          unit: h
+        conditions:
+          - variable: garbage.hours_until_pickup
+            operator: "<="
+            value: 18
+            unit: h
       - id: heavy-rain
         title: Heavy rain alert
         enabled: true
-        condition:
-          variable: rain.mm_now
-          operator: ">="
-          value: 5
-          unit: mm/h
+        conditions:
+          - variable: rain.mm_now
+            operator: ">="
+            value: 5
+            unit: mm/h
+      # Multi-condition example: alert when bus is late AND you have a meeting soon
+      - id: bus-late-and-meeting
+        title: Late bus before a meeting
+        enabled: false
+        condition_logic: and    # 'and' (default) or 'or'
+        conditions:
+          - variable: bus.delay_minutes
+            operator: ">="
+            value: 5
+            unit: min
+          - variable: calendar.minutes_until_event
+            operator: "<="
+            value: 60
+            unit: min
 
   people:
     - id: niels
@@ -216,11 +230,11 @@ shared:
         - id: niels-bus-delay
           title: Bus delay alert
           enabled: true
-          condition:
-            variable: bus.delay_minutes
-            operator: ">="
-            value: 5
-            unit: min
+          conditions:
+            - variable: bus.delay_minutes
+              operator: ">="
+              value: 5
+              unit: min
 ```
 
 ### 4. Start the service
