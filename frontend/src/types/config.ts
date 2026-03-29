@@ -104,7 +104,7 @@ export interface AssistantAiConfig {
 export interface RuleCondition {
   variable: string          // e.g. "bus.delay_minutes"
   operator: string          // ">=" | "<=" | ">" | "<" | "==" | "in"
-  value: number | string | string[]
+  value: number | string | boolean | string[]
   unit?: string | null      // "min" | "h" | "%" | null
 }
 
@@ -113,7 +113,9 @@ export interface Rule {
   title: string
   description?: string
   enabled: boolean
-  condition: RuleCondition
+  condition?: RuleCondition        // LEGACY — single condition (still in YAML for old rules)
+  conditions?: RuleCondition[]     // NEW — 1–3 conditions
+  condition_logic?: 'and' | 'or'   // used when conditions.length > 1, default 'and'
 }
 
 /** Catalogue entry returned by GET /api/admin/rule-variables */

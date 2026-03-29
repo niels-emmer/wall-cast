@@ -68,19 +68,19 @@ shared:
     #     - id: bob-bus-threshold
     #       title: Bob's bus alert
     #       enabled: true
-    #       condition:
-    #         variable: bus.delay_minutes
-    #         operator: ">="
-    #         value: 3
-    #         unit: min
+    #       conditions:
+    #         - variable: bus.delay_minutes
+    #           operator: ">="
+    #           value: 3
+    #           unit: min
     #     - id: bob-bus-departure
     #       title: Bus departing soon
     #       enabled: true
-    #       condition:
-    #         variable: bus.minutes_until_departure
-    #         operator: "<="
-    #         value: 8
-    #         unit: min
+    #       conditions:
+    #         - variable: bus.minutes_until_departure
+    #           operator: "<="
+    #           value: 8
+    #           unit: min
 
   # ── Assistant: proactive notifications ──────────────────────────────────────
   # Standalone sidecar that polls backend data and pushes smart notifications.
@@ -110,169 +110,186 @@ shared:
   #     # openai_api_key: sk-...  # better: set OPENAI_API_KEY in .env
   #
   #   rules:
+  #     # Each rule has 1–3 conditions. With a single condition, omit condition_logic.
+  #     # With 2–3 conditions, add condition_logic: and   # or: or
+  #
   #     - id: garbage-reminder
   #       title: Garbage pickup reminder
   #       enabled: true
-  #       condition:
-  #         variable: garbage.hours_until_pickup
-  #         operator: "<="
-  #         value: 18
-  #         unit: h
+  #       conditions:
+  #         - variable: garbage.hours_until_pickup
+  #           operator: "<="
+  #           value: 18
+  #           unit: h
   #     - id: bus-delay
   #       title: Bus delay alert
   #       enabled: true
-  #       condition:
-  #         variable: bus.delay_minutes
-  #         operator: ">="
-  #         value: 5
-  #         unit: min
+  #       conditions:
+  #         - variable: bus.delay_minutes
+  #           operator: ">="
+  #           value: 5
+  #           unit: min
   #     - id: traffic-delay
   #       title: Traffic delay
   #       enabled: true
-  #       condition:
-  #         variable: traffic.delay_pct
-  #         operator: ">="
-  #         value: 25
-  #         unit: "%"
+  #       conditions:
+  #         - variable: traffic.delay_pct
+  #           operator: ">="
+  #           value: 25
+  #           unit: "%"
   #     - id: calendar-reminder
   #       title: Calendar reminder
   #       enabled: true
-  #       condition:
-  #         variable: calendar.minutes_until_event
-  #         operator: "<="
-  #         value: 30
-  #         unit: min
+  #       conditions:
+  #         - variable: calendar.minutes_until_event
+  #           operator: "<="
+  #           value: 30
+  #           unit: min
   #     - id: weather-warning
   #       title: Weather warning
   #       enabled: true
-  #       condition:
-  #         variable: weather.warning_level
-  #         operator: in
-  #         value: [oranje, rood]
+  #       conditions:
+  #         - variable: weather.warning_level
+  #           operator: in
+  #           value: [oranje, rood]
   #     - id: temperature-alert
   #       title: Freezing temperatures
   #       enabled: true
-  #       condition:
-  #         variable: weather.temperature
-  #         operator: "<="
-  #         value: 0
-  #         unit: °C
+  #       conditions:
+  #         - variable: weather.temperature
+  #           operator: "<="
+  #           value: 0
+  #           unit: °C
   #     - id: wind-alert
   #       title: Strong wind
   #       enabled: true
-  #       condition:
-  #         variable: weather.wind_speed
-  #         operator: ">="
-  #         value: 60
-  #         unit: km/h
+  #       conditions:
+  #         - variable: weather.wind_speed
+  #           operator: ">="
+  #           value: 60
+  #           unit: km/h
   #     - id: rain-imminent
   #       title: Rain in 15 minutes
   #       enabled: true
-  #       condition:
-  #         variable: rain.minutes_until_rain
-  #         operator: "<="
-  #         value: 15
-  #         unit: min
+  #       conditions:
+  #         - variable: rain.minutes_until_rain
+  #           operator: "<="
+  #           value: 15
+  #           unit: min
   #     - id: polestar-low-range
   #       title: Polestar low range
   #       enabled: true
-  #       condition:
-  #         variable: polestar.range_km
-  #         operator: "<="
-  #         value: 50
-  #         unit: km
+  #       conditions:
+  #         - variable: polestar.range_km
+  #           operator: "<="
+  #           value: 50
+  #           unit: km
   #     - id: polestar-not-plugged
   #       title: Polestar not plugged in at night
   #       enabled: true
-  #       condition:
-  #         variable: polestar.is_plugged_in
-  #         operator: "=="
-  #         value: false
+  #       conditions:
+  #         - variable: polestar.is_plugged_in
+  #           operator: "=="
+  #           value: false
   #     - id: air-quality-poor
   #       title: Poor air quality
   #       enabled: true
-  #       condition:
-  #         variable: airquality.aqi
-  #         operator: ">="
-  #         value: 60
+  #       conditions:
+  #         - variable: airquality.aqi
+  #           operator: ">="
+  #           value: 60
   #     - id: birch-pollen-high
   #       title: High birch pollen
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pollen_birch
-  #         operator: in
-  #         value: [high, very_high]
+  #       conditions:
+  #         - variable: airquality.pollen_birch
+  #           operator: in
+  #           value: [high, very_high]
   #     - id: grass-pollen-high
   #       title: High grass pollen
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pollen_grass
-  #         operator: in
-  #         value: [high, very_high]
+  #       conditions:
+  #         - variable: airquality.pollen_grass
+  #           operator: in
+  #           value: [high, very_high]
   #     - id: alder-pollen-high
   #       title: High alder pollen
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pollen_alder
-  #         operator: in
-  #         value: [high, very_high]
+  #       conditions:
+  #         - variable: airquality.pollen_alder
+  #           operator: in
+  #           value: [high, very_high]
   #     - id: mugwort-pollen-high
   #       title: High mugwort pollen
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pollen_mugwort
-  #         operator: in
-  #         value: [high, very_high]
+  #       conditions:
+  #         - variable: airquality.pollen_mugwort
+  #           operator: in
+  #           value: [high, very_high]
   #     - id: pm25-high
   #       title: High PM2.5 particles
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pm2_5
-  #         operator: ">="
-  #         value: 25             # WHO daily guideline: 15 µg/m³; EU limit: 25 µg/m³
+  #       conditions:
+  #         - variable: airquality.pm2_5
+  #           operator: ">="
+  #           value: 25             # WHO daily guideline: 15 µg/m³; EU limit: 25 µg/m³
   #     - id: pm10-high
   #       title: High PM10 particles
   #       enabled: true
-  #       condition:
-  #         variable: airquality.pm10
-  #         operator: ">="
-  #         value: 50             # WHO daily guideline: 45 µg/m³; EU limit: 50 µg/m³
+  #       conditions:
+  #         - variable: airquality.pm10
+  #           operator: ">="
+  #           value: 50             # WHO daily guideline: 45 µg/m³; EU limit: 50 µg/m³
   #     - id: polestar-service-soon
   #       title: Polestar service due soon
   #       enabled: true
-  #       condition:
-  #         variable: polestar.days_to_service
-  #         operator: "<="
-  #         value: 30
-  #         unit: days
+  #       conditions:
+  #         - variable: polestar.days_to_service
+  #           operator: "<="
+  #           value: 30
+  #           unit: days
   #     - id: polestar-service-warning
   #       title: Polestar service warning
   #       enabled: true
-  #       condition:
-  #         variable: polestar.service_warning
-  #         operator: "=="
-  #         value: true
+  #       conditions:
+  #         - variable: polestar.service_warning
+  #           operator: "=="
+  #           value: true
   #     - id: p2000-fire
   #       title: Local fire brigade dispatch
   #       enabled: true
-  #       condition:
-  #         variable: p2000.new_incident
-  #         operator: in
-  #         value: [Brandweerdiensten]   # also: Ambulancediensten, Politiediensten
+  #       conditions:
+  #         - variable: p2000.new_incident
+  #           operator: in
+  #           value: [Brandweerdiensten]   # also: Ambulancediensten, Politiediensten
   #     - id: market-extreme-fear
   #       title: Crypto market extreme fear
   #       enabled: true
-  #       condition:
-  #         variable: market.fear_greed
-  #         operator: "<="
-  #         value: 20             # 0–100; <=20 = extreme fear, >=80 = extreme greed
+  #       conditions:
+  #         - variable: market.fear_greed
+  #           operator: "<="
+  #           value: 20             # 0–100; <=20 = extreme fear, >=80 = extreme greed
   #     - id: wan-down
   #       title: Internet connection down
   #       enabled: true
-  #       condition:
-  #         variable: network.wan_down
-  #         operator: "=="
-  #         value: true
+  #       conditions:
+  #         - variable: network.wan_down
+  #           operator: "=="
+  #           value: true
+  #     # Multi-condition example: alert when bus is late AND you have a meeting soon
+  #     - id: bus-late-and-meeting
+  #       title: Late bus before a meeting
+  #       enabled: false
+  #       condition_logic: and    # 'and' (default) or 'or'
+  #       conditions:
+  #         - variable: bus.delay_minutes
+  #           operator: ">="
+  #           value: 5
+  #           unit: min
+  #         - variable: calendar.minutes_until_event
+  #           operator: "<="
+  #           value: 60
+  #           unit: min
 
   widgets:
     - id: news

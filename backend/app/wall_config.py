@@ -211,6 +211,66 @@ def _migrate_rules(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     return new_data, True
 
 
+def _upgrade_rule_list(rules: list[Any]) -> tuple[list[Any], bool]:
+    """Convert any rule with only a 'condition' key to the new 'conditions' list format.
+
+    Returns (updated_rules, changed).
+    """
+    changed = False
+    upgraded: list[Any] = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            upgraded.append(rule)
+            continue
+        if "conditions" not in rule and "condition" in rule:
+            rule = {
+                **{k: v for k, v in rule.items() if k != "condition"},
+                "conditions": [rule["condition"]],
+            }
+            changed = True
+        upgraded.append(rule)
+    return upgraded, changed
+
+
+def _migrate_rule_conditions(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Migrate rules using legacy 'condition' key to new 'conditions' list format.
+
+    Applies to both shared.assistant.rules and each person's rules.
+    Returns (updated_data, changed).
+    """
+    any_changed = False
+    data = dict(data)
+    shared = dict(data.get("shared", {}))
+
+    # Shared assistant rules
+    assistant = shared.get("assistant")
+    if isinstance(assistant, dict) and isinstance(assistant.get("rules"), list):
+        new_rules, ch = _upgrade_rule_list(assistant["rules"])
+        if ch:
+            any_changed = True
+            shared["assistant"] = {**assistant, "rules": new_rules}
+
+    # Per-person rules
+    people = shared.get("people", [])
+    if isinstance(people, list):
+        new_people = []
+        for person in people:
+            if isinstance(person, dict) and isinstance(person.get("rules"), list):
+                new_pr, ch = _upgrade_rule_list(person["rules"])
+                if ch:
+                    any_changed = True
+                    person = {**person, "rules": new_pr}
+            new_people.append(person)
+        if any_changed:
+            shared["people"] = new_people
+
+    if any_changed:
+        logger.info("Migrated rule 'condition' keys to 'conditions' list format")
+        data["shared"] = shared
+
+    return data, any_changed
+
+
 def _migrate_flat(raw: dict[str, Any]) -> dict[str, Any]:
     """Convert old flat single-screen config to multi-screen format."""
     logger.info("Migrating flat config to multi-screen format")
@@ -320,6 +380,11 @@ def load_config() -> dict[str, Any]:
     if changed:
         _write_config(path, data)
         logger.info("Notify config migrated to nested structure and written back to %s", path)
+
+    data, changed = _migrate_rule_conditions(data)
+    if changed:
+        _write_config(path, data)
+        logger.info("Rule conditions migrated to list format and written back to %s", path)
 
     return data
 

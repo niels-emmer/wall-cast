@@ -1,13 +1,22 @@
 """
 Rule engine — evaluates configured rules against live data.
 
-Each rule has a condition (variable, operator, value, unit).
-This module dispatches each rule to the correct handler based on its variable,
-fetches the required API data (with caching), and returns notifications.
+Each rule has one or more conditions (variable, operator, value, unit).
+Multi-condition rules use condition_logic ('and' | 'or', default 'and').
+Single-condition rules (or legacy rules with only a 'condition' key) use the
+original per-domain handlers which generate rich notification messages.
+Multi-condition rules evaluate each condition as a boolean, combine with AND/OR,
+and fire a generic notification from the rule title if the result is True.
+
+Legacy rules with only a 'condition' key are transparently normalised to a
+one-element 'conditions' list.
 """
+
+import time
 
 import httpx
 
+import state
 from rules import Notification
 from rules import airquality as rule_airquality
 from rules import bus as rule_bus
@@ -53,6 +62,170 @@ REQUIRES_PERSON: dict[str, bool] = {
 }
 
 
+# ── Multi-condition helpers ───────────────────────────────────────────────────
+
+def get_conditions(rule: dict) -> list[dict]:
+    """Return the conditions list, normalising legacy single-condition rules."""
+    if "conditions" in rule and isinstance(rule["conditions"], list):
+        return rule["conditions"]
+    if "condition" in rule and isinstance(rule["condition"], dict):
+        return [rule["condition"]]
+    return []
+
+
+def get_condition_logic(rule: dict) -> str:
+    """Return 'and' or 'or' (default 'and')."""
+    return rule.get("condition_logic", "and")
+
+
+def _eval_op(actual, operator: str, threshold) -> bool:
+    """Generic boolean operator evaluation."""
+    try:
+        if operator == "in":
+            return actual in (threshold if isinstance(threshold, list) else [threshold])
+        if operator == "==":  return actual == threshold
+        if operator == ">=":  return float(actual) >= float(threshold)
+        if operator == "<=":  return float(actual) <= float(threshold)
+        if operator == ">":   return float(actual) >  float(threshold)
+        if operator == "<":   return float(actual) <  float(threshold)
+    except (TypeError, ValueError):
+        return False
+    return False
+
+
+def _eval_condition_bool(
+    condition: dict,
+    person: dict | None,
+    client,
+    data_cache: dict,
+    cal_data_by_person: dict,
+    backend_url: str,
+    garbage_cfg: dict,
+) -> bool:
+    """Evaluate a single condition and return True/False (no notification side-effects)."""
+    variable = condition.get("variable", "")
+    operator = condition.get("operator", "==")
+    value    = condition.get("value")
+
+    def fetch(url, params=None):
+        return _cached_fetch(client, data_cache, url, params)
+
+    # ── Weather
+    if variable == "weather.temperature":
+        cw = fetch(f"{backend_url}/api/weather").get("current_weather", {})
+        return _eval_op(cw.get("temperature"), operator, value)
+    if variable == "weather.wind_speed":
+        cw = fetch(f"{backend_url}/api/weather").get("current_weather", {})
+        return _eval_op(cw.get("windspeed"), operator, value)
+    if variable == "weather.warning_level":
+        warnings = fetch(f"{backend_url}/api/warnings").get("warnings", [])
+        levels = {(w.get("level") or "").lower() for w in warnings}
+        return any(_eval_op(lv, operator, value) for lv in levels)
+    # ── Rain
+    if variable == "rain.mm_now":
+        return _eval_op(fetch(f"{backend_url}/api/rain").get("precipitation_now"), operator, value)
+    if variable == "rain.minutes_until_rain":
+        return _eval_op(fetch(f"{backend_url}/api/rain").get("minutes_until_rain"), operator, value)
+    # ── Air quality / pollen
+    if variable == "airquality.aqi":
+        return _eval_op(fetch(f"{backend_url}/api/airquality").get("aqi"), operator, value)
+    if variable == "airquality.pm2_5":
+        return _eval_op(fetch(f"{backend_url}/api/airquality").get("pm2_5"), operator, value)
+    if variable == "airquality.pm10":
+        return _eval_op(fetch(f"{backend_url}/api/airquality").get("pm10"), operator, value)
+    if variable in ("airquality.pollen_birch", "airquality.pollen_grass",
+                    "airquality.pollen_alder", "airquality.pollen_mugwort"):
+        key = variable.split(".")[1]  # e.g. "pollen_birch"
+        return _eval_op(fetch(f"{backend_url}/api/airquality").get(key), operator, value)
+    # ── Garbage
+    if variable == "garbage.hours_until_pickup":
+        if not (garbage_cfg.get("postcode") and garbage_cfg.get("huisnummer")):
+            return False
+        data = fetch(f"{backend_url}/api/garbage", {
+            "postcode": garbage_cfg["postcode"],
+            "huisnummer": str(garbage_cfg["huisnummer"]),
+            "days_ahead": 3,
+        })
+        pickups = data.get("pickups", [])
+        return any(_eval_op(p.get("hours_until"), operator, value) for p in pickups)
+    # ── P2000
+    if variable == "p2000.new_incident":
+        incidents = fetch(f"{backend_url}/api/p2000").get("incidents", [])
+        services  = {i.get("service", "") for i in incidents}
+        return any(_eval_op(s, operator, value) for s in services)
+    # ── Market
+    if variable == "market.fear_greed":
+        return _eval_op(fetch(f"{backend_url}/api/market").get("fear_greed"), operator, value)
+    # ── Network
+    if variable == "network.wan_down":
+        return _eval_op(fetch(f"{backend_url}/api/network").get("wan_down"), operator, value)
+    # ── Polestar
+    polestar_map = {
+        "polestar.battery_pct":    "battery_pct",
+        "polestar.range_km":       "range_km",
+        "polestar.is_plugged_in":  "is_plugged_in",
+        "polestar.days_to_service":"days_to_service",
+        "polestar.service_warning":"service_warning",
+    }
+    if variable in polestar_map:
+        return _eval_op(fetch(f"{backend_url}/api/polestar").get(polestar_map[variable]), operator, value)
+    # ── Calendar
+    if variable == "calendar.minutes_until_event":
+        if not person:
+            return False
+        cal_data = cal_data_by_person.get(person["id"], {})
+        events = cal_data.get("events", [])
+        return any(_eval_op(e.get("minutes_until"), operator, value) for e in events)
+    # ── Bus
+    if variable in ("bus.delay_minutes", "bus.cancelled", "bus.minutes_until_departure"):
+        if not person:
+            return False
+        bus_cfg_p = person.get("bus") or {}
+        if not (bus_cfg_p.get("stop_city") and bus_cfg_p.get("stop_name")):
+            return False
+        bus_data = fetch(f"{backend_url}/api/bus", {
+            "stop_city": bus_cfg_p["stop_city"],
+            "stop_name": bus_cfg_p["stop_name"],
+        })
+        departures = bus_data.get("departures", [])
+        if variable == "bus.cancelled":
+            return any(_eval_op(d.get("cancelled", False), operator, value) for d in departures)
+        if variable == "bus.delay_minutes":
+            return any(_eval_op(d.get("delay_minutes", 0), operator, value) for d in departures)
+        if variable == "bus.minutes_until_departure":
+            return any(_eval_op(d.get("minutes_until_departure"), operator, value) for d in departures)
+    # ── Traffic
+    if variable in ("traffic.delay_pct", "traffic.delay_minutes"):
+        if not person:
+            return False
+        traf_cfg_p = person.get("traffic") or {}
+        if not (traf_cfg_p.get("home_address") and traf_cfg_p.get("work_address")):
+            return False
+        params: dict = {"home": traf_cfg_p["home_address"], "work": traf_cfg_p["work_address"]}
+        if traf_cfg_p.get("route_roads"):
+            params["route_roads"] = traf_cfg_p["route_roads"]
+        traf_data = fetch(f"{backend_url}/api/traffic", params)
+        key = "delay_pct" if variable == "traffic.delay_pct" else "delay_minutes"
+        return _eval_op(traf_data.get(key), operator, value)
+
+    print(f"[assistant] Unknown variable '{variable}' in multi-condition eval — treating as False", flush=True)
+    return False
+
+
+def _make_multi_notification(rule: dict, conditions: list[dict]) -> "Notification":
+    """Generate a simple notification for a matched multi-condition rule."""
+    logic = get_condition_logic(rule)
+    parts = [f"{c.get('variable', '?')} {c.get('operator', '?')} {c.get('value', '?')}" for c in conditions]
+    message = f" {logic.upper()} ".join(parts)
+    return Notification(
+        title=rule.get("title", "Rule triggered"),
+        message=message,
+        state_key=None,  # dedup handled by caller
+        priority="default",
+        tags=["bell"],
+    )
+
+
 def _cached_fetch(
     client: httpx.Client,
     data_cache: dict,
@@ -85,7 +258,37 @@ def run_rule(
     garbage_cfg: dict,
 ) -> list[Notification]:
     """Evaluate a single rule and return any notifications to send."""
-    variable = rule.get("condition", {}).get("variable", "")
+    conditions = get_conditions(rule)
+    if not conditions:
+        return []
+
+    # ── Multi-condition path (2+ conditions) ──────────────────────────────────
+    if len(conditions) > 1:
+        logic = get_condition_logic(rule)
+        results = [
+            _eval_condition_bool(c, person, client, data_cache, cal_data_by_person, backend_url, garbage_cfg)
+            for c in conditions
+        ]
+        matched = all(results) if logic == "and" else any(results)
+        if not matched:
+            return []
+        rule_id = rule.get("id", "rule")
+        hour = time.strftime("%Y-%m-%dT%H")
+        dedup_key = f"{rule_id}:{hour}"
+        if state.has_fired(dedup_key):
+            return []
+        notif = _make_multi_notification(rule, conditions)
+        notif = Notification(
+            title=notif.title, message=notif.message,
+            state_key=dedup_key, priority=notif.priority, tags=notif.tags,
+        )
+        return [notif]
+
+    # ── Single-condition path — use per-domain handlers (rich messages) ───────
+    variable = conditions[0].get("variable", "")
+    # Ensure legacy 'condition' key is present for domain handlers that read it directly
+    if "condition" not in rule:
+        rule = {**rule, "condition": conditions[0]}
 
     # ── Garbage ───────────────────────────────────────────────────────────────
     if variable == "garbage.hours_until_pickup":

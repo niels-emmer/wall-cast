@@ -93,7 +93,7 @@ from ai import formatter as ai_fmt
 from notify import matrix as notify_matrix
 from notify import ntfy as notify_ntfy
 from rules import Notification
-from rules.engine import REQUIRES_PERSON, _cached_fetch, run_rule
+from rules.engine import REQUIRES_PERSON, _cached_fetch, get_conditions, run_rule
 
 MATRIX_TOKEN = os.environ.get("MATRIX_TOKEN", "")
 
@@ -211,11 +211,13 @@ def run_cycle(cfg: dict) -> None:
     rules_raw  = assistant_cfg.get("rules", [])
     rules_list: list[dict] = rules_raw if isinstance(rules_raw, list) else []
 
-    # Partition generic rules into global (person-agnostic) and person-aware
-    global_rules       = [r for r in rules_list
-                          if not REQUIRES_PERSON.get(r.get("condition", {}).get("variable", ""), False)]
-    person_aware_rules = [r for r in rules_list
-                          if REQUIRES_PERSON.get(r.get("condition", {}).get("variable", ""), False)]
+    # Partition generic rules into global (person-agnostic) and person-aware.
+    # A rule is person-aware if ANY of its conditions requires a person context.
+    def _rule_requires_person(rule: dict) -> bool:
+        return any(REQUIRES_PERSON.get(c.get("variable", ""), False) for c in get_conditions(rule))
+
+    global_rules       = [r for r in rules_list if not _rule_requires_person(r)]
+    person_aware_rules = [r for r in rules_list if _rule_requires_person(r)]
 
     import httpx
     with httpx.Client() as client:
