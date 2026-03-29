@@ -13,6 +13,9 @@ from rules import airquality as rule_airquality
 from rules import bus as rule_bus
 from rules import calendar as rule_calendar
 from rules import garbage as rule_garbage
+from rules import market as rule_market
+from rules import network as rule_network
+from rules import p2000 as rule_p2000
 from rules import polestar as rule_polestar
 from rules import rain as rule_rain
 from rules import traffic as rule_traffic
@@ -32,6 +35,15 @@ REQUIRES_PERSON: dict[str, bool] = {
     "airquality.aqi":                  False,
     "airquality.pollen_birch":         False,
     "airquality.pollen_grass":         False,
+    "airquality.pollen_alder":         False,
+    "airquality.pollen_mugwort":       False,
+    "airquality.pm2_5":                False,
+    "airquality.pm10":                 False,
+    "polestar.days_to_service":        False,
+    "polestar.service_warning":        False,
+    "p2000.new_incident":              False,
+    "market.fear_greed":               False,
+    "network.wan_down":                False,
     "bus.delay_minutes":               True,
     "bus.cancelled":                   True,
     "bus.minutes_until_departure":     True,
@@ -102,12 +114,15 @@ def run_rule(
         return rule_rain.check(rule, data)
 
     # ── Polestar ──────────────────────────────────────────────────────────────
-    if variable in ("polestar.range_km", "polestar.is_plugged_in", "polestar.battery_pct"):
+    if variable in ("polestar.range_km", "polestar.is_plugged_in", "polestar.battery_pct",
+                    "polestar.days_to_service", "polestar.service_warning"):
         data = _cached_fetch(client, data_cache, f"{backend_url}/api/polestar")
         return rule_polestar.check(rule, data)
 
     # ── Air quality / pollen ──────────────────────────────────────────────────
-    if variable in ("airquality.aqi", "airquality.pollen_birch", "airquality.pollen_grass"):
+    if variable in ("airquality.aqi", "airquality.pollen_birch", "airquality.pollen_grass",
+                    "airquality.pollen_alder", "airquality.pollen_mugwort",
+                    "airquality.pm2_5", "airquality.pm10"):
         data = _cached_fetch(client, data_cache, f"{backend_url}/api/airquality")
         return rule_airquality.check(rule, data)
 
@@ -149,6 +164,21 @@ def run_rule(
             params["route_roads"] = traf_cfg_p["route_roads"]
         traf_data = _cached_fetch(client, data_cache, f"{backend_url}/api/traffic", params)
         return rule_traffic.check(rule, person, traf_data)
+
+    # ── P2000 emergency incidents ─────────────────────────────────────────────
+    if variable == "p2000.new_incident":
+        data = _cached_fetch(client, data_cache, f"{backend_url}/api/p2000")
+        return rule_p2000.check(rule, data)
+
+    # ── Financial market ──────────────────────────────────────────────────────
+    if variable == "market.fear_greed":
+        data = _cached_fetch(client, data_cache, f"{backend_url}/api/market")
+        return rule_market.check(rule, data)
+
+    # ── Network / WAN ─────────────────────────────────────────────────────────
+    if variable == "network.wan_down":
+        data = _cached_fetch(client, data_cache, f"{backend_url}/api/network")
+        return rule_network.check(rule, data)
 
     print(f"[assistant] Unknown variable '{variable}' in rule '{rule.get('id', '?')}' — skipping", flush=True)
     return []

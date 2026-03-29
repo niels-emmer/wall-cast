@@ -1248,19 +1248,69 @@ function RuleEditorModal({
             )}
           </div>
 
-          {/* Variables */}
-          <Text size="xs" fw={500} c="dimmed" mb={6}>Variable</Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-            {variables.map(v => (
-              <span
-                key={v.id}
-                style={condVar === v.id ? tagActive : tagIdle}
-                onClick={() => selectVariable(v.id)}
-              >
-                {v.label}
-              </span>
-            ))}
-          </div>
+          {/* Variables — grouped by API source */}
+          {(() => {
+            const SOURCE_COLOR: Record<string, string> = {
+              '/api/weather':    '#74c0fc',
+              '/api/warnings':   '#ffe066',
+              '/api/rain':       '#4dabf7',
+              '/api/airquality': '#69db7c',
+              '/api/garbage':    '#a9e34b',
+              '/api/p2000':      '#ff8787',
+              '/api/market':     '#ffa94d',
+              '/api/network':    '#63e6be',
+              '/api/polestar':   '#748ffc',
+              '/api/calendar':   '#da77f2',
+              '/api/traffic':    '#ff922b',
+              '/api/bus':        '#ffd43b',
+            }
+            // strip "Source — " prefix from label for compact tag text
+            const shortLabel = (label: string) => {
+              const idx = label.indexOf(' — ')
+              return idx >= 0 ? label.slice(idx + 3) : label
+            }
+            // preserve insertion order (backend returns variables sorted by group)
+            const groups = new Map<string, typeof variables>()
+            for (const v of variables) {
+              const ep = v.api_endpoint ?? 'other'
+              if (!groups.has(ep)) groups.set(ep, [])
+              groups.get(ep)!.push(v)
+            }
+            return (
+              <div style={{ marginBottom: 14 }}>
+                <Text size="xs" fw={500} c="dimmed" mb={8}>Variable</Text>
+                {Array.from(groups.entries()).map(([ep, vars]) => {
+                  const color    = SOURCE_COLOR[ep] ?? '#aaa'
+                  const epLabel  = ep.replace('/api/', '')
+                  const tagGroup: React.CSSProperties = {
+                    ...tagBase,
+                    background:   color + '14',
+                    borderColor:  color + '35',
+                    color:        '#bbb',
+                  }
+                  return (
+                    <div key={ep} style={{ marginBottom: 10 }}>
+                      <Text size="xs" fw={600} mb={5}
+                        style={{ color, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 10 }}>
+                        {epLabel}
+                      </Text>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {vars.map(v => (
+                          <span
+                            key={v.id}
+                            style={condVar === v.id ? tagActive : tagGroup}
+                            onClick={() => selectVariable(v.id)}
+                          >
+                            {shortLabel(v.label)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
 
           {/* Operators — only show once a variable is selected */}
           {condVar && (

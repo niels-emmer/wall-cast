@@ -2,9 +2,13 @@
 Air quality and pollen alerts.
 
 Variables:
-  airquality.aqi          — current European AQI index (numeric, 0–500+)
-  airquality.pollen_birch — today's birch pollen level (enum: none/low/moderate/high/very_high)
-  airquality.pollen_grass — today's grass pollen level (enum: none/low/moderate/high/very_high)
+  airquality.aqi            — current European AQI index (numeric, 0–500+)
+  airquality.pollen_birch   — today's birch pollen level (enum: none/low/moderate/high/very_high)
+  airquality.pollen_grass   — today's grass pollen level (enum)
+  airquality.pollen_alder   — today's alder pollen level (enum)
+  airquality.pollen_mugwort — today's mugwort pollen level (enum)
+  airquality.pm2_5          — current fine particulate matter PM2.5 (µg/m³, numeric)
+  airquality.pm10           — current coarse particulate matter PM10 (µg/m³, numeric)
 
 Source: /api/airquality (open-meteo air-quality API).
 Deduplication: fires at most once per day per rule.
@@ -75,12 +79,16 @@ def check(rule: dict, aq_data: dict) -> list[Notification]:
             tags=["cloud"],
         )]
 
-    # ── airquality.pollen_birch / airquality.pollen_grass ─────────────────────
+    # ── airquality.pollen_* ────────────────────────────────────────────────────
     pollen_species = None
     if variable == "airquality.pollen_birch":
         pollen_species = "birch"
     elif variable == "airquality.pollen_grass":
         pollen_species = "grass"
+    elif variable == "airquality.pollen_alder":
+        pollen_species = "alder"
+    elif variable == "airquality.pollen_mugwort":
+        pollen_species = "mugwort"
 
     if pollen_species:
         pollen_list = aq_data.get("pollen", [])
@@ -101,6 +109,37 @@ def check(rule: dict, aq_data: dict) -> list[Notification]:
             state_key=key,
             priority="default",
             tags=["seedling"],
+        )]
+
+    # ── airquality.pm2_5 / airquality.pm10 ────────────────────────────────────
+    pm_field = None
+    pm_label = None
+    if variable == "airquality.pm2_5":
+        pm_field = "pm2_5"
+        pm_label = "PM2.5"
+    elif variable == "airquality.pm10":
+        pm_field = "pm10"
+        pm_label = "PM10"
+
+    if pm_field:
+        pm_val = aq_data.get(pm_field)
+        if pm_val is None:
+            return []
+        try:
+            threshold = float(condition.get("value", 25))
+        except (TypeError, ValueError):
+            return []
+        if not _cmp(float(pm_val), operator, threshold):
+            return []
+        key = f"airquality.{pm_field}:{operator}:{threshold}:{today}"
+        if state.has_fired(key):
+            return []
+        return [Notification(
+            title=f"Air quality — {pm_label}",
+            message=f"{pm_label} is {pm_val} µg/m³.",
+            state_key=key,
+            priority="default",
+            tags=["cloud"],
         )]
 
     return []

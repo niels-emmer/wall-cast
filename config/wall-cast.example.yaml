@@ -209,6 +209,70 @@ shared:
   #         variable: airquality.pollen_grass
   #         operator: in
   #         value: [high, very_high]
+  #     - id: alder-pollen-high
+  #       title: High alder pollen
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pollen_alder
+  #         operator: in
+  #         value: [high, very_high]
+  #     - id: mugwort-pollen-high
+  #       title: High mugwort pollen
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pollen_mugwort
+  #         operator: in
+  #         value: [high, very_high]
+  #     - id: pm25-high
+  #       title: High PM2.5 particles
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pm2_5
+  #         operator: ">="
+  #         value: 25             # WHO daily guideline: 15 µg/m³; EU limit: 25 µg/m³
+  #     - id: pm10-high
+  #       title: High PM10 particles
+  #       enabled: true
+  #       condition:
+  #         variable: airquality.pm10
+  #         operator: ">="
+  #         value: 50             # WHO daily guideline: 45 µg/m³; EU limit: 50 µg/m³
+  #     - id: polestar-service-soon
+  #       title: Polestar service due soon
+  #       enabled: true
+  #       condition:
+  #         variable: polestar.days_to_service
+  #         operator: "<="
+  #         value: 30
+  #         unit: days
+  #     - id: polestar-service-warning
+  #       title: Polestar service warning
+  #       enabled: true
+  #       condition:
+  #         variable: polestar.service_warning
+  #         operator: "=="
+  #         value: true
+  #     - id: p2000-fire
+  #       title: Local fire brigade dispatch
+  #       enabled: true
+  #       condition:
+  #         variable: p2000.new_incident
+  #         operator: in
+  #         value: [Brandweerdiensten]   # also: Ambulancediensten, Politiediensten
+  #     - id: market-extreme-fear
+  #       title: Crypto market extreme fear
+  #       enabled: true
+  #       condition:
+  #         variable: market.fear_greed
+  #         operator: "<="
+  #         value: 20             # 0–100; <=20 = extreme fear, >=80 = extreme greed
+  #     - id: wan-down
+  #       title: Internet connection down
+  #       enabled: true
+  #       condition:
+  #         variable: network.wan_down
+  #         operator: "=="
+  #         value: true
 
   widgets:
     - id: news
