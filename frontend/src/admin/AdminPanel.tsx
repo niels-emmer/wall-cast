@@ -598,6 +598,7 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
   { value: 'network',    label: 'Network' },
   { value: 'airquality', label: 'Air Quality' },
   { value: 'market',     label: 'Market' },
+  { value: 'p2000',      label: 'P2000' },
   { value: 'info',       label: 'Info' },
 ]
 
