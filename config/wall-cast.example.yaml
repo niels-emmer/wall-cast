@@ -322,7 +322,7 @@ screens:
         col: 1
         row: 1
         col_span: 4
-        row_span: 3
+        row_span: 2
         config:
           show_seconds: true
           show_date: true
@@ -352,9 +352,9 @@ screens:
       - id: bottom-left-rotator
         type: rotate
         col: 1
-        row: 4
+        row: 3
         col_span: 4
-        row_span: 4
+        row_span: 5
         config:
           interval_sec: 15
           widgets:
