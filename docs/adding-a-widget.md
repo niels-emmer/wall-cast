@@ -7,10 +7,11 @@ Wall-cast uses a simple registry pattern. A new widget type typically takes 15�
 A widget is:
 1. A **React component** in `frontend/src/widgets/<name>/`
 2. **Translation keys** in `frontend/src/i18n/translations.ts` (both `nl` and `en`)
-3. An entry in the **widget registry** (`frontend/src/widgets/index.ts`)
-4. Optionally a **backend router** if the widget needs external data
-5. A **TanStack Query hook** to fetch that data
-6. An entry in `docs/config-reference.md`
+3. An entry in **`frontend/src/widgets/base-registry.ts`** (not `index.ts`)
+4. An entry in **`ROTATOR_SLOT_TYPES`** in `frontend/src/admin/AdminPanel.tsx` so it's selectable in the admin panel
+5. Optionally a **backend router** if the widget needs external data
+6. A **TanStack Query hook** to fetch that data
+7. An entry in `docs/config-reference.md`
 
 ---
 
@@ -99,18 +100,20 @@ Widgets that have no user-visible labels (e.g. a pure chart) can skip this step.
 
 ### 4. Register the widget
 
-In `frontend/src/widgets/index.ts`:
+In **`frontend/src/widgets/base-registry.ts`** (not `index.ts`):
 
 ```ts
 import { MyWidget } from './my-widget/MyWidget'
 
-export const WIDGET_REGISTRY = {
+export const BASE_REGISTRY: Record<string, ComponentType<WidgetProps>> = {
   // ... existing entries
   my_widget: MyWidget,
 }
 ```
 
 The key is the `type:` value used in the YAML config.
+
+> **Why `base-registry.ts` and not `index.ts`?**  `RotatorWidget` imports `BASE_REGISTRY` to render its child slots. If `RotatorWidget` were also registered in the same file it imports, you'd have a circular dependency. `index.ts` adds only `rotate` on top of `BASE_REGISTRY` to break that cycle. All other widgets belong in `base-registry.ts`.
 
 ---
 
@@ -212,7 +215,32 @@ export function MyWidget({ config }: WidgetProps) {
 
 ---
 
-### 7. Add it to the YAML config
+### 7. Make it available in the admin panel rotator picker
+
+For the widget to appear in the **Admin → Screens → Rotator → Add slot** dropdown, add it to `ROTATOR_SLOT_TYPES` in `frontend/src/admin/AdminPanel.tsx`:
+
+```ts
+const ROTATOR_SLOT_TYPES = [
+  // ... existing entries
+  { value: 'my_widget', label: 'My Widget' },
+]
+```
+
+**Optional — admin-panel config UI**: If your widget has settings that should be editable from the admin panel (like `garbage` → "Days ahead", or `warnings` → province filter), add a branch to the `SlotConfig` function in the same file. If there's no per-instance config to expose, no `SlotConfig` branch is needed.
+
+**Optional — default slot config**: If your widget needs non-empty defaults when first added via the admin panel, add a branch to `defaultSlotConfig`:
+
+```ts
+function defaultSlotConfig(type: string): Record<string, unknown> {
+  // ...
+  if (type === 'my_widget') return { my_option: 'default' }
+  return {}
+}
+```
+
+---
+
+### 8. Add it to the YAML config
 
 ```yaml
 widgets:
@@ -228,7 +256,7 @@ widgets:
 
 ---
 
-### 8. Document it
+### 9. Document it
 
 Add the new widget to `docs/config-reference.md` under **Widget types**, following the same format as existing entries.
 

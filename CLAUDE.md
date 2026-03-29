@@ -57,14 +57,13 @@ API keys: `POLESTAR_USERNAME`/`PASSWORD`, `TOMTOM_API_KEY`, `VERTREKTIJD_API_KEY
 
 ## Widget system
 
-Registry: `frontend/src/widgets/index.ts`. To add a widget:
+Registry: `frontend/src/widgets/base-registry.ts`. To add a widget:
 1. `frontend/src/widgets/<name>/<Name>Widget.tsx`
 2. Add translation keys to `frontend/src/i18n/translations.ts` — both `nl` and `en` objects, identical keys
 3. `backend/app/routers/<name>.py` (if external data needed)
-4. Register in `frontend/src/widgets/index.ts`
-5. Add type to `docs/config-reference.md`
-
-Note: `BASE_REGISTRY` lives in `base-registry.ts`; `WIDGET_REGISTRY` in `index.ts` adds `rotate` on top — avoids circular import since RotatorWidget imports BASE_REGISTRY.
+4. Register in **`frontend/src/widgets/base-registry.ts`** (not `index.ts` — that file only adds `rotate` on top to avoid a circular import with RotatorWidget)
+5. Add to **`ROTATOR_SLOT_TYPES`** in `frontend/src/admin/AdminPanel.tsx` so the widget appears in the admin panel rotator picker. If the widget has configurable settings, also add a branch to `SlotConfig` (and optionally `defaultSlotConfig`) in the same file.
+6. Add type to `docs/config-reference.md`
 
 Hooks in `.claude/settings.json` + `.claude/hooks/` enforce the rules above automatically (Tailwind classes, translation parity, TypeScript, compose validation, widget registry). See `docs/claude-hooks.md`.
 
