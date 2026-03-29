@@ -34,7 +34,7 @@ export function ClockWidget({ config }: Props) {
       justifyContent: 'center',
       height:         '100%',
       gap:            '0.6em',
-      padding:        '0.75rem',
+      padding:        '0.375rem 0.75rem',
       boxSizing:      'border-box',
     }}>
       {/* Time */}
