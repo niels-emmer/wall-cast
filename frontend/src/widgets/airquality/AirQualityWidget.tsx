@@ -1,7 +1,8 @@
 import { useAirQuality } from '../../hooks/use-air-quality'
 import type { PollenDay } from '../../hooks/use-air-quality'
 import { useLang } from '../../i18n/use-lang'
-import { fs, sp, shellStyle, titleStyle, dividerStyle, sectionLabelStyle } from '../styles'
+import { fs, sp, dividerStyle, sectionLabelStyle } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 // ── AQI colour bands ──────────────────────────────────────────────────────────
 
@@ -61,15 +62,13 @@ function PollutantChip({ label, value }: { label: string; value: number | null }
 
 export function AirQualityWidget() {
   const t    = useLang()
-  const { data, isLoading } = useAirQuality()
+  const { data, isLoading, dataUpdatedAt } = useAirQuality()
 
   if (isLoading || !data) {
     return (
-      <div style={shellStyle}>
-        <div style={titleStyle}>{t.airQualityTitle}</div>
-        <div style={dividerStyle} />
+      <WidgetShell title={t.airQualityTitle} source="Open-Meteo" dataUpdatedAt={dataUpdatedAt}>
         <span style={{ fontSize: fs.sm, color: 'var(--color-muted)' }}>{t.loading}</span>
-      </div>
+      </WidgetShell>
     )
   }
 
@@ -86,9 +85,7 @@ export function AirQualityWidget() {
   const activePollen = data.pollen
 
   return (
-    <div style={shellStyle}>
-      <div style={titleStyle}>{t.airQualityTitle}</div>
-      <div style={dividerStyle} />
+    <WidgetShell title={t.airQualityTitle} source="Open-Meteo" dataUpdatedAt={dataUpdatedAt}>
 
       {/* ── AQI section ── */}
       <div style={{
@@ -215,6 +212,6 @@ export function AirQualityWidget() {
           {t.pollenLevel('none')}
         </span>
       )}
-    </div>
+    </WidgetShell>
   )
 }

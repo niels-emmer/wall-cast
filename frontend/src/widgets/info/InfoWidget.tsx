@@ -1,4 +1,5 @@
 import type { WidgetProps } from '../base-registry'
+import { WidgetShell } from '../WidgetShell'
 
 interface InfoItem {
   label: string
@@ -10,28 +11,7 @@ export function InfoWidget({ config }: WidgetProps) {
   const items = (config.items as InfoItem[]) ?? []
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      padding: '0.75rem 0.85rem 0.55rem',
-      boxSizing: 'border-box',
-      gap: '0.5rem',
-    }}>
-      {title && (
-        <div style={{
-          fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)',
-          fontWeight: 600,
-          color: 'var(--color-muted)',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
-          paddingBottom: '0.4rem',
-        }}>
-          {title}
-        </div>
-      )}
-
+    <WidgetShell title={title} showDivider={!!title}>
       {items.length === 0 ? (
         <div style={{
           flex: 1,
@@ -78,6 +58,6 @@ export function InfoWidget({ config }: WidgetProps) {
           ))}
         </div>
       )}
-    </div>
+    </WidgetShell>
   )
 }

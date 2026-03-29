@@ -3,7 +3,8 @@ import { useSun } from '../../hooks/use-sun'
 import { useLang } from '../../i18n/use-lang'
 import type { SunData } from '../../types/api'
 import type { Translations } from '../../i18n/translations'
-import { fs, sp, col, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp, col, dividerStyle } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 import { WeatherIcon, SunriseIcon, SunsetIcon, DaylightIcon } from './WeatherIcons'
 
 interface Props {
@@ -154,7 +155,7 @@ function SunBlock({ d, t }: { d: SunData; t: Translations }) {
 
 export function WeatherWidget({ config }: Props) {
   const t = useLang()
-  const { data, isError } = useWeather()
+  const { data, isError, dataUpdatedAt } = useWeather()
   const { data: sunData } = useSun()
 
   const center: React.CSSProperties = {
@@ -176,12 +177,7 @@ export function WeatherWidget({ config }: Props) {
   const curPrecip = data.hourly.precipitation_probability[startIdx] ?? 0
 
   return (
-    <div style={shellStyle}>
-
-      {/* ── Title ── */}
-      <div style={titleStyle}>{t.weatherTitle}</div>
-
-      {divider}
+    <WidgetShell title={t.weatherTitle} source="Open-Meteo" dataUpdatedAt={dataUpdatedAt}>
 
       {/* ── Current conditions ── */}
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.75em', flexShrink: 0 }}>
@@ -248,6 +244,6 @@ export function WeatherWidget({ config }: Props) {
         </div>
       )}
 
-    </div>
+    </WidgetShell>
   )
 }

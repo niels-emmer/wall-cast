@@ -1,6 +1,7 @@
 import { useNetwork } from '../../hooks/use-network'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, col, shellStyle, titleStyle } from '../styles'
+import { fs, sp, col } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const GREEN  = '#4ade80'
@@ -81,28 +82,22 @@ function fmtAge(ts: number): string {
 export function NetworkWidget(_props: WidgetProps) {
   const { data, isLoading, isError } = useNetwork()
 
-  const shell = shellStyle
-  const title = <div style={titleStyle}>Network</div>
-
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title="Network">{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
+    <WidgetShell title="Network" showDivider={false}>
       <Row>
         <Dot ok={false} />
         <span style={{ fontSize: fs.sm, color: RED }}>Unavailable</span>
       </Row>
-    </div>
+    </WidgetShell>
   )
 
   const { wan, connectivity, hosts, speedtest } = data
   const wanUp = wan?.status === 'up'
 
   return (
-    <div style={shell}>
-      {title}
-
+    <WidgetShell title="Network" showDivider={false}>
       {/* Content list */}
       <div style={{
         display:       'flex',
@@ -221,6 +216,6 @@ export function NetworkWidget(_props: WidgetProps) {
         </Row>
 
       </div>
-    </div>
+    </WidgetShell>
   )
 }

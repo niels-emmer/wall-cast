@@ -2,7 +2,8 @@ import { usePolestar } from '../../hooks/use-polestar'
 import { useLang } from '../../i18n/use-lang'
 import type { WidgetProps } from '../base-registry'
 import type { Translations } from '../../i18n/translations'
-import { fs, sp, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 function socColor(soc: number): string {
   if (soc >= 60) return '#4caf50'
@@ -55,20 +56,14 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
   const t = useLang()
   const { data, isError, isLoading } = usePolestar()
 
-  const shell  = shellStyle
-  const divider = <div style={dividerStyle} />
-  const title  = <div style={titleStyle}>Polestar</div>
-
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title="Polestar">{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title="Polestar">
       <span style={{ color: 'var(--color-muted)', fontSize: fs.md, marginTop: '0.3rem' }}>
         {t.polestarUnavailable}
       </span>
-    </div>
+    </WidgetShell>
   )
 
   const soc        = data.soc ?? 0
@@ -84,9 +79,7 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
   const capA  = data.charging_current_amps
 
   return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title="Polestar">
 
       {/* SOC + range */}
       <div style={{
@@ -273,6 +266,6 @@ export function PolestarWidget({ config: _config }: WidgetProps) {
           {data.odometer_km.toLocaleString('nl-NL')} km
         </div>
       )}
-    </div>
+    </WidgetShell>
   )
 }

@@ -4,7 +4,8 @@ import { useGarbage } from '../../hooks/use-garbage'
 import { useLang } from '../../i18n/use-lang'
 import type { GarbageCollection } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, col, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp, col } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 const CONTAINER_COLORS: Record<string, string> = {
   gft:       '#4caf50',
@@ -20,8 +21,6 @@ function ContainerIcon({ type }: { type: string }) {
   if (type === 'pmd')       return <Recycle     size="1em" weight="fill"   color={color} style={style} />
   return                           <TrashSimple size="1em" weight="regular" color={color} style={style} />
 }
-
-const divider = <div style={dividerStyle} />
 
 function dateLabel(iso: string, locale: string): string {
   const d = new Date(iso + 'T12:00:00')
@@ -128,25 +127,18 @@ export function GarbageWidget({ config }: WidgetProps) {
     return () => ro.disconnect()
   }, [data?.collections.length])
 
-  const shell = shellStyle
-  const title = <div style={titleStyle}>{t.garbageTitle}</div>
-
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title={t.garbageTitle}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.garbageTitle}>
       <span style={{ color: 'var(--color-muted)', fontSize: fs.md, marginTop: '0.3rem' }}>
         {t.unavailable}
       </span>
-    </div>
+    </WidgetShell>
   )
 
   if (data.collections.length === 0) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.garbageTitle}>
       <div style={{
         flex:            1,
         display:         'flex',
@@ -158,15 +150,13 @@ export function GarbageWidget({ config }: WidgetProps) {
       }}>
         {t.noCollection}
       </div>
-    </div>
+    </WidgetShell>
   )
 
   const visible = data.collections.slice(0, maxItems)
 
   return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.garbageTitle}>
       <div ref={listRef} style={{
         flex:          1,
         display:       'flex',
@@ -185,6 +175,6 @@ export function GarbageWidget({ config }: WidgetProps) {
           />
         ))}
       </div>
-    </div>
+    </WidgetShell>
   )
 }

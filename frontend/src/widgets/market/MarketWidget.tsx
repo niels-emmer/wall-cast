@@ -2,7 +2,8 @@ import { useMarket } from '../../hooks/use-market'
 import { useLang } from '../../i18n/use-lang'
 import type { CryptoData, QuoteData } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { col, dividerStyle, fs, sectionLabelStyle, shellStyle, sp, titleStyle } from '../styles'
+import { col, fs, sectionLabelStyle, sp } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -192,19 +193,14 @@ function QuoteChip({ q }: { q: QuoteData }) {
 
 export function MarketWidget(_props: WidgetProps) {
   const t = useLang()
-  const { data, isLoading, isError } = useMarket()
+  const { data, isLoading, isError, dataUpdatedAt } = useMarket()
 
-  const title   = <div style={titleStyle}>{t.marketTitle}</div>
-  const divider = <div style={dividerStyle} />
-
-  if (isLoading) return <div style={shellStyle}>{title}</div>
+  if (isLoading) return <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shellStyle}>
-      {title}
-      {divider}
+    <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
       <span style={{ fontSize: fs.sm, color: 'var(--color-muted)' }}>{t.marketUnavailable}</span>
-    </div>
+    </WidgetShell>
   )
 
   const indices = data.quotes.filter(q => q.type === 'index')
@@ -212,9 +208,7 @@ export function MarketWidget(_props: WidgetProps) {
   const quotes  = [...indices, ...stocks]
 
   return (
-    <div style={shellStyle}>
-      {title}
-      {divider}
+    <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
 
       {/* ── Fear & Greed ───────────────────────────────────────────── */}
       {data.fear_greed && (
@@ -261,6 +255,6 @@ export function MarketWidget(_props: WidgetProps) {
           )}
         </div>
       )}
-    </div>
+    </WidgetShell>
   )
 }

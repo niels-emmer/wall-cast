@@ -3,7 +3,8 @@ import { useWarnings } from '../../hooks/use-warnings'
 import { useLang } from '../../i18n/use-lang'
 import type { KnmiWarning } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 const LEVEL_COLOR: Record<string, string> = {
   geel:   '#eab308',
@@ -153,7 +154,7 @@ function WarningCard({
 
 export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
   const t = useLang()
-  const { data, isLoading } = useWarnings()
+  const { data, isLoading, dataUpdatedAt } = useWarnings()
 
   const hasWarnings = (data?.warnings?.length ?? 0) > 0
 
@@ -167,20 +168,23 @@ export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
     }
   }, [isLoading, hasWarnings, onSkip, onUnskip])
 
-  const shell  = shellStyle
-  const title  = <div style={titleStyle}>{t.warningsTitle}</div>
-  const divider = <div style={dividerStyle} />
-
   // Loading or no warnings: render nothing visible (RotatorWidget shows this
   // with opacity 0 while onSkip advances past it)
   if (isLoading || !hasWarnings) {
-    return <div style={{ ...shell, opacity: 0 }}>{title}</div>
+    return (
+      <WidgetShell
+        title={t.warningsTitle}
+        source="MeteoAlarm"
+        dataUpdatedAt={dataUpdatedAt}
+        containerStyle={{ opacity: 0 }}
+      >
+        {null}
+      </WidgetShell>
+    )
   }
 
   return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.warningsTitle} source="MeteoAlarm" dataUpdatedAt={dataUpdatedAt}>
       <div style={{
         display:       'flex',
         flexDirection: 'column',
@@ -193,6 +197,6 @@ export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
           <WarningCard key={i} warning={w} t={t} />
         ))}
       </div>
-    </div>
+    </WidgetShell>
   )
 }

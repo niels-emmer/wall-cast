@@ -3,7 +3,8 @@ import { useP2000 } from '../../hooks/use-p2000'
 import { useLang } from '../../i18n/use-lang'
 import type { P2000Incident } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, col, shellStyle, titleStyle, dividerStyle, sectionLabelStyle } from '../styles'
+import { fs, sp, col, sectionLabelStyle } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 // ── Discipline colours ────────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ function IncidentCard({
 export function P2000Widget({ config, onSkip, onUnskip }: WidgetProps) {
   const t = useLang()
   const enabled = config.enabled !== false
-  const { data, isLoading } = useP2000(enabled)
+  const { data, isLoading, dataUpdatedAt } = useP2000(enabled)
 
   const incidents     = data?.incidents ?? []
   const activeList    = incidents.filter(i => i.age_min <= 60)
@@ -142,33 +143,32 @@ export function P2000Widget({ config, onSkip, onUnskip }: WidgetProps) {
     }
   }, [isLoading, enabled, hasIncidents, onSkip, onUnskip])
 
+  const regionSuffix = data?.region ? (
+    <span style={{
+      fontSize:      fs.sm,
+      color:         'var(--color-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.12em',
+    }}>
+      {data.region}
+    </span>
+  ) : undefined
+
   if (isLoading || !enabled || !hasIncidents) {
     return (
-      <div style={{ ...shellStyle, opacity: 0 }}>
-        <div style={titleStyle}>{t.p2000Title}</div>
-      </div>
+      <WidgetShell
+        title={t.p2000Title}
+        source="P2000"
+        dataUpdatedAt={dataUpdatedAt}
+        containerStyle={{ opacity: 0 }}
+      >
+        {null}
+      </WidgetShell>
     )
   }
 
   return (
-    <div style={shellStyle}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexShrink: 0 }}>
-        <div style={titleStyle}>{t.p2000Title}</div>
-        {data?.region && (
-          <span style={{
-            fontSize:      fs.sm,
-            color:         'var(--color-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-          }}>
-            {data.region}
-          </span>
-        )}
-      </div>
-
-      <div style={dividerStyle} />
-
+    <WidgetShell title={t.p2000Title} titleSuffix={regionSuffix} source="P2000" dataUpdatedAt={dataUpdatedAt}>
       {/* Scrollable list */}
       <div style={{
         display:       'flex',
@@ -200,6 +200,6 @@ export function P2000Widget({ config, onSkip, onUnskip }: WidgetProps) {
           </>
         )}
       </div>
-    </div>
+    </WidgetShell>
   )
 }

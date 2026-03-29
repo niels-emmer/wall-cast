@@ -2,7 +2,8 @@ import { useTraffic } from '../../hooks/use-traffic'
 import { useLang } from '../../i18n/use-lang'
 import type { TrafficJam, TrafficTravel } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, col, shellStyle, titleStyle, dividerStyle, sectionLabelStyle, cardBase } from '../styles'
+import { fs, sp, col, sectionLabelStyle, cardBase } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 function fmtDuration(min: number): string {
   const h = Math.floor(min / 60)
@@ -188,30 +189,22 @@ export function TrafficWidget({ config }: WidgetProps) {
   const home       = config.home_address as string | undefined
   const work       = config.work_address as string | undefined
   const routeRoads = config.route_roads  as string | undefined
-  const { data, isError, isLoading } = useTraffic({ home, work, routeRoads })
+  const { data, isError, isLoading, dataUpdatedAt } = useTraffic({ home, work, routeRoads })
 
-  const shell   = shellStyle
-  const divider = <div style={dividerStyle} />
-  const title   = <div style={titleStyle}>{t.trafficTitle}</div>
-
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title={t.trafficTitle} source="ANWB / TomTom" dataUpdatedAt={dataUpdatedAt}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.trafficTitle} source="ANWB / TomTom" dataUpdatedAt={dataUpdatedAt}>
       <span style={{ color: 'var(--color-muted)', fontSize: fs.md }}>
         {t.trafficUnavailable}
       </span>
-    </div>
+    </WidgetShell>
   )
 
   const totalJamKm = Math.round(data.jams.reduce((sum, j) => sum + (j.distance_km || 0), 0))
 
   return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.trafficTitle} source="ANWB / TomTom" dataUpdatedAt={dataUpdatedAt}>
 
       {/* Travel time block */}
       {data.travel && (
@@ -259,6 +252,6 @@ export function TrafficWidget({ config }: WidgetProps) {
           ))}
         </div>
       )}
-    </div>
+    </WidgetShell>
   )
 }

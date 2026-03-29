@@ -3,7 +3,8 @@ import { useCalendar } from '../../hooks/use-calendar'
 import { useLang } from '../../i18n/use-lang'
 import type { CalendarEvent, CalendarDay } from '../../types/api'
 import type { WidgetProps } from '../base-registry'
-import { fs, sp, shellStyle, titleStyle, dividerStyle, sectionLabelStyle, cardBase } from '../styles'
+import { fs, sp, dividerStyle, sectionLabelStyle, cardBase } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 const EMPTY_ACCENT    = 'rgba(255,255,255,0.1)'
 const DEFAULT_ACCENT  = 'rgba(255,255,255,0.3)'
@@ -126,11 +127,9 @@ export function CalendarWidget({ config }: WidgetProps) {
   const t = useLang()
   const fallbackColor = (config.calendar_color as string) ?? DEFAULT_ACCENT
   const calendarIds = config.calendar_ids as string[] | undefined
-  const { data, isError, isLoading } = useCalendar({ calendarIds, language: t.locale.split('-')[0] })
+  const { data, isError, isLoading, dataUpdatedAt } = useCalendar({ calendarIds, language: t.locale.split('-')[0] })
 
-  const shell = shellStyle
   const divider = <div style={dividerStyle} />
-  const title = <div style={titleStyle}>Calendar</div>
 
   const sectionLabel = (text: string, sub?: string): React.ReactNode => (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexShrink: 0 }}>
@@ -143,23 +142,18 @@ export function CalendarWidget({ config }: WidgetProps) {
     </div>
   )
 
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title="Calendar" source="Google Calendar" dataUpdatedAt={dataUpdatedAt}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title="Calendar" source="Google Calendar" dataUpdatedAt={dataUpdatedAt}>
       <span style={{ color: 'var(--color-muted)', fontSize: fs.md }}>
         {t.calendarUnavailable}
       </span>
-    </div>
+    </WidgetShell>
   )
 
   return (
-    <div style={{ ...shell, overflow: 'hidden' }}>
-      {title}
-      {divider}
-
+    <WidgetShell title="Calendar" source="Google Calendar" dataUpdatedAt={dataUpdatedAt}>
       {/* Today */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: sp.listGap, flexShrink: 0 }}>
         {sectionLabel(t.todaySection, data.today_label)}
@@ -195,6 +189,6 @@ export function CalendarWidget({ config }: WidgetProps) {
           </div>
         </>
       )}
-    </div>
+    </WidgetShell>
   )
 }

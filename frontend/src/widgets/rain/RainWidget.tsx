@@ -2,6 +2,8 @@ import { useRain } from '../../hooks/use-rain'
 import { useLang } from '../../i18n/use-lang'
 import type { RainEntry, RainLevels } from '../../types/api'
 import type { Translations } from '../../i18n/translations'
+import { fs } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 interface Props {
   config: Record<string, unknown>
@@ -150,44 +152,19 @@ function timeLabels(forecast: RainEntry[]): { label: string; i: number }[] {
     .map(({ label, i }) => ({ label: i === 0 ? '_NOW_' : label, i }))
 }
 
-const divider = <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
 
 export function RainWidget({ config: _config }: Props) {
   const t = useLang()
   const { data, isError } = useRain()
 
-  const shell: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    padding: '0.85rem',
-    gap: '0.55rem',
-    boxSizing: 'border-box',
-  }
-
-  const title = (
-    <div style={{
-      fontSize: 'clamp(1.35rem, 2.85vw, 2.25rem)',
-      fontWeight: 300,
-      textTransform: 'uppercase',
-      letterSpacing: '0.25em',
-      color: 'var(--color-text)',
-      flexShrink: 0,
-    }}>
-      {t.rainTitle}
-    </div>
-  )
-
   if (isError) return (
-    <div style={shell}>
-      {title}
-      {divider}
-      <span style={{ color: 'var(--color-muted)', fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', marginTop: '0.3rem' }}>
+    <WidgetShell title={t.rainTitle}>
+      <span style={{ color: 'var(--color-muted)', fontSize: fs.md, marginTop: '0.3rem' }}>
         {t.unavailable}
       </span>
-    </div>
+    </WidgetShell>
   )
-  if (!data) return <div style={shell}>{title}</div>
+  if (!data) return <WidgetShell title={t.rainTitle}>{null}</WidgetShell>
 
   const { forecast, levels } = data
   const hasRain   = forecast.some(f => f.mm_per_hour > 0)
@@ -195,24 +172,21 @@ export function RainWidget({ config: _config }: Props) {
   const currentMm = forecast[0]?.mm_per_hour ?? 0
   const peakMm    = Math.max(...forecast.map(f => f.mm_per_hour))
 
+  const statusSuffix = (
+    <span style={{
+      marginLeft: 'auto',
+      fontSize: fs.sm,
+      color: hasRain ? 'var(--color-accent)' : 'var(--color-muted)',
+      fontWeight: hasRain ? 600 : 400,
+    }}>
+      {hasRain
+        ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}${t.peak} ${peakMm.toFixed(1)} mm/h`
+        : t.dry}
+    </span>
+  )
+
   return (
-    <div style={shell}>
-
-      {/* Title + status */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexShrink: 0 }}>
-        {title}
-        <span style={{
-          fontSize: 'clamp(1.1rem, 2.1vw, 1.65rem)',
-          color: hasRain ? 'var(--color-accent)' : 'var(--color-muted)',
-          fontWeight: hasRain ? 600 : 400,
-        }}>
-          {hasRain
-            ? `${currentMm > 0 ? currentMm.toFixed(1) + ' mm/h · ' : ''}${t.peak} ${peakMm.toFixed(1)} mm/h`
-            : t.dry}
-        </span>
-      </div>
-
-      {divider}
+    <WidgetShell title={t.rainTitle} titleSuffix={statusSuffix}>
 
       {/* Chart */}
       <RainChart forecast={forecast} levels={levels} t={t} />
@@ -246,6 +220,6 @@ export function RainWidget({ config: _config }: Props) {
         <span><span style={{ color: 'rgba(255,80,80,0.7)' }}>—</span> {levels.heavy} mm/u</span>
       </div>
 
-    </div>
+    </WidgetShell>
   )
 }

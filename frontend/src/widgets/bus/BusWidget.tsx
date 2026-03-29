@@ -2,7 +2,8 @@ import { useBus } from '../../hooks/use-bus'
 import { useLang } from '../../i18n/use-lang'
 import type { WidgetProps } from '../base-registry'
 import type { BusDeparture } from '../../types/api'
-import { fs, sp, shellStyle, titleStyle, dividerStyle } from '../styles'
+import { fs, sp } from '../styles'
+import { WidgetShell } from '../WidgetShell'
 
 function delayColor(delay_min: number): string {
   if (delay_min <= 0) return 'var(--color-muted)'
@@ -110,45 +111,30 @@ export function BusWidget({ config }: WidgetProps) {
   const stopName = config.stop_name as string | undefined
   const { data, isError, isLoading } = useBus({ stopCity, stopName })
 
-  const shell = shellStyle
-  const divider = <div style={dividerStyle} />
-
-  const title = (
-    <div style={titleStyle}>
-      {t.busTitle}
-    </div>
-  )
-
-  if (isLoading) return <div style={shell}>{title}</div>
+  if (isLoading) return <WidgetShell title={t.busTitle}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <div style={shell}>
-      {title}
-      {divider}
+    <WidgetShell title={t.busTitle}>
       <span style={{ color: 'var(--color-muted)', fontSize: fs.sm, marginTop: '0.3rem' }}>
         {t.busUnavailable}
       </span>
-    </div>
+    </WidgetShell>
+  )
+
+  const stopSuffix = (
+    <span style={{
+      fontSize: fs.xs,
+      color: 'var(--color-muted)',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    }}>
+      {data.stop}
+    </span>
   )
 
   return (
-    <div style={shell}>
-      {/* Title + stop name */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: '0.6rem', flexShrink: 0 }}>
-        {title}
-        <span style={{
-          fontSize: fs.xs,
-          color: 'var(--color-muted)',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-        }}>
-          {data.stop}
-        </span>
-      </div>
-
-      {divider}
-
+    <WidgetShell title={t.busTitle} titleSuffix={stopSuffix}>
       {data.departures.length === 0 ? (
         <span style={{ color: 'var(--color-muted)', fontSize: fs.sm, marginTop: '0.3rem' }}>
           {t.busNoDepartures}
@@ -167,6 +153,6 @@ export function BusWidget({ config }: WidgetProps) {
           ))}
         </div>
       )}
-    </div>
+    </WidgetShell>
   )
 }
