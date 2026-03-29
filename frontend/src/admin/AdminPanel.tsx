@@ -243,7 +243,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
       {
         id: 'clock',
         type: 'clock',
-        col: 1, row: 1, col_span: 4, row_span: 2,
+        col: 1, row: 1, col_span: 4, row_span: 3,
         config: { show_seconds: true, show_date: true },
       },
       {
@@ -264,7 +264,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
       {
         id: 'bottom-rotator',
         type: 'rotate',
-        col: 1, row: 3, col_span: 4, row_span: 5,
+        col: 1, row: 4, col_span: 4, row_span: 4,
         config: {
           interval_sec: 20,
           widgets: [
