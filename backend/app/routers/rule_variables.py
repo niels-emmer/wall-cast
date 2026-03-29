@@ -45,6 +45,20 @@ RULE_VARIABLES: list[dict] = [
         "operators": ["in"],
         "enum_values": ["geel", "oranje", "rood"],
     },
+    {
+        "id": "weather.warning_provinces",
+        "label": "Warnings — KNMI affected provinces",
+        "api_endpoint": "/api/warnings",
+        "requires_person": False,
+        "type": "enum",
+        "default_unit": None,
+        "operators": ["in"],
+        "enum_values": [
+            "Drenthe", "Flevoland", "Friesland", "Gelderland",
+            "Groningen", "Limburg", "Noord-Brabant", "Noord-Holland",
+            "Overijssel", "Utrecht", "Zeeland", "Zuid-Holland",
+        ],
+    },
     # ── Rain (/api/rain) ──────────────────────────────────────────────────────
     {
         "id": "rain.mm_now",

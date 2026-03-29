@@ -152,6 +152,17 @@ shared:
   #         - variable: weather.warning_level
   #           operator: in
   #           value: [oranje, rood]
+  #     - id: weather-warning-province
+  #       title: Orange/red warning in Drenthe
+  #       enabled: true
+  #       condition_logic: and
+  #       conditions:
+  #         - variable: weather.warning_level
+  #           operator: in
+  #           value: [oranje, rood]
+  #         - variable: weather.warning_provinces
+  #           operator: in
+  #           value: [Drenthe]   # any province(s) you want to filter on
   #     - id: temperature-alert
   #       title: Freezing temperatures
   #       enabled: true

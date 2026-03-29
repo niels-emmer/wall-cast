@@ -34,6 +34,7 @@ from rules import weather as rule_weather
 REQUIRES_PERSON: dict[str, bool] = {
     "garbage.hours_until_pickup":      False,
     "weather.warning_level":           False,
+    "weather.warning_provinces":       False,
     "weather.temperature":             False,
     "weather.wind_speed":              False,
     "rain.mm_now":                     False,
@@ -121,6 +122,10 @@ def _eval_condition_bool(
         warnings = fetch(f"{backend_url}/api/warnings").get("warnings", [])
         levels = {(w.get("level") or "").lower() for w in warnings}
         return any(_eval_op(lv, operator, value) for lv in levels)
+    if variable == "weather.warning_provinces":
+        warnings = fetch(f"{backend_url}/api/warnings").get("warnings", [])
+        all_regions = {r for w in warnings for r in (w.get("regions") or [])}
+        return any(_eval_op(region, operator, value) for region in all_regions)
     # ── Rain
     if variable == "rain.mm_now":
         return _eval_op(fetch(f"{backend_url}/api/rain").get("precipitation_now"), operator, value)
@@ -302,7 +307,7 @@ def run_rule(
         return rule_garbage.check(rule, data)
 
     # ── Weather warnings ──────────────────────────────────────────────────────
-    if variable == "weather.warning_level":
+    if variable in ("weather.warning_level", "weather.warning_provinces"):
         data = _cached_fetch(client, data_cache, f"{backend_url}/api/warnings")
         return rule_weather.check(rule, data)
 

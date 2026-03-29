@@ -41,6 +41,7 @@ Rules are defined in the admin panel (or directly in YAML). Each rule has **1–
 |----------|------|-------|-------------|
 | `garbage.hours_until_pickup` | number | family | Hours until the next collection |
 | `weather.warning_level` | enum | family | Active KNMI warning level: `geel` / `oranje` / `rood` |
+| `weather.warning_provinces` | enum | family | Provinces affected by an active warning (Drenthe, Flevoland, Friesland, Gelderland, Groningen, Limburg, Noord-Brabant, Noord-Holland, Overijssel, Utrecht, Zeeland, Zuid-Holland). Combine with `weather.warning_level` in a multi-condition rule to alert only when a specific-level warning covers your province. |
 | `weather.temperature` | number | family | Current temperature (°C) |
 | `weather.wind_speed` | number | family | Current wind speed (km/h) |
 | `rain.mm_now` | number | family | Current rain intensity (mm/hour) |
