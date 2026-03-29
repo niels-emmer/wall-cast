@@ -61,6 +61,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **Air quality** | L | [open-meteo.com](https://open-meteo.com) — European AQI, PM2.5/PM10/NO₂/O₃, 4-day pollen forecast | 1 h |
 | **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
 | **Market** | L | [Stooq](https://stooq.com) (indices + stocks) + [alternative.me](https://alternative.me/fng/) F&G + [CoinGecko](https://coingecko.com) (crypto top 10) | 5 min |
+| **P2000 alerts** | S | Dutch paging network — fire, ambulance (A1), police (P1); region-filtered; hidden when no recent incidents | 30 s |
 | **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
 
@@ -270,8 +271,12 @@ wall-cast/
 │   ├── App.tsx                 CSS grid layout + admin routing
 │   ├── admin/                  admin panel UI (/#admin)
 │   ├── widgets/
-│   │   ├── index.ts            ← widget registry
+│   │   ├── base-registry.ts    ← widget registry (all types except rotate)
+│   │   ├── index.ts            ← adds rotate on top (avoids circular import)
 │   │   └── styles.ts           ← design token system
+│   ├── admin/
+│   │   ├── AdminPanel.tsx      admin UI + rotator slot picker
+│   │   └── RuleEditor.tsx      rule builder (shared: Assistant + People tabs)
 │   └── hooks/                  one hook per data source
 ├── caster/
 │   ├── cast.py                 multi-screen caster + keepalive loop
@@ -303,6 +308,7 @@ wall-cast/
 | [ANWB](https://anwb.nl) | Traffic incidents |
 | [TomTom Routing API](https://developer.tomtom.com) | Travel time |
 | [MeteoAlarm](https://meteoalarm.org) | KNMI weather warnings |
+| [p2000.brandweer-berkel-enschot.nl](http://p2000.brandweer-berkel-enschot.nl) | Dutch P2000 emergency alerts |
 | [pypolestar](https://github.com/pypolestar/pypolestar) | Polestar vehicle data |
 | [ntfy.sh](https://ntfy.sh) | Push notifications (assistant + breaking news) |
 | [Matrix](https://matrix.org) | Push notifications (assistant, self-hosted) |
