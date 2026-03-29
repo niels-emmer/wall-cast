@@ -152,11 +152,15 @@ function WarningCard({
   )
 }
 
-export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
+export function WarningsWidget({ config, onSkip, onUnskip }: WidgetProps) {
   const t = useLang()
   const { data, isLoading, dataUpdatedAt } = useWarnings()
+  const region = (config.region as string | undefined) ?? 'all'
 
-  const hasWarnings = (data?.warnings?.length ?? 0) > 0
+  const warnings = (data?.warnings ?? []).filter(w =>
+    region === 'all' || w.regions.length === 0 || w.regions.includes(region)
+  )
+  const hasWarnings = warnings.length > 0
 
   // Skip slot when no warnings; re-enable it when warnings return
   useEffect(() => {
@@ -193,7 +197,7 @@ export function WarningsWidget({ onSkip, onUnskip }: WidgetProps) {
         flex:          1,
         minHeight:     0,
       }}>
-        {data!.warnings.map((w, i) => (
+        {warnings.map((w, i) => (
           <WarningCard key={i} warning={w} t={t} />
         ))}
       </div>

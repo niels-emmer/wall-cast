@@ -322,6 +322,36 @@ function SlotConfig({
     )
   }
 
+  if (slot.type === 'warnings') {
+    const NL_PROVINCES = [
+      { value: 'all',           label: 'All (nationwide)' },
+      { value: 'Drenthe',       label: 'Drenthe' },
+      { value: 'Flevoland',     label: 'Flevoland' },
+      { value: 'Friesland',     label: 'Friesland' },
+      { value: 'Gelderland',    label: 'Gelderland' },
+      { value: 'Groningen',     label: 'Groningen' },
+      { value: 'Limburg',       label: 'Limburg' },
+      { value: 'Noord-Brabant', label: 'Noord-Brabant' },
+      { value: 'Noord-Holland', label: 'Noord-Holland' },
+      { value: 'Overijssel',    label: 'Overijssel' },
+      { value: 'Utrecht',       label: 'Utrecht' },
+      { value: 'Zeeland',       label: 'Zeeland' },
+      { value: 'Zuid-Holland',  label: 'Zuid-Holland' },
+    ]
+    return (
+      <Group gap="md" pl="xl" pt={4}>
+        <Select
+          label="Show warnings for"
+          data={NL_PROVINCES}
+          value={(cfg.region as string | undefined) ?? 'all'}
+          onChange={v => onChange({ ...slot, config: { ...cfg, region: v ?? 'all' } })}
+          size="xs"
+          w={200}
+        />
+      </Group>
+    )
+  }
+
   if (slot.type === 'garbage') {
     return (
       <Group gap="sm" pl="xl" pt={4} wrap="wrap" align="flex-start">
@@ -570,12 +600,13 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
 ]
 
 function defaultSlotConfig(type: string): Record<string, unknown> {
-  if (type === 'garbage') return { days_ahead: 31, postcode: '', huisnummer: '' }
-  if (type === 'traffic') return { home_address: '', work_address: '', route_roads: '' }
-  if (type === 'bus')     return { stop_city: '', stop_name: '' }
-  if (type === 'weather') return { show_hourly: true, show_daily: true }
+  if (type === 'garbage')  return { days_ahead: 31, postcode: '', huisnummer: '' }
+  if (type === 'traffic')  return { home_address: '', work_address: '', route_roads: '' }
+  if (type === 'bus')      return { stop_city: '', stop_name: '' }
+  if (type === 'weather')  return { show_hourly: true, show_daily: true }
   if (type === 'calendar') return { calendar_ids: [] }
   if (type === 'info')     return { title: '', items: [] }
+  if (type === 'warnings') return { region: 'all' }
   return {}
 }
 

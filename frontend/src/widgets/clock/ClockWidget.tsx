@@ -66,18 +66,6 @@ export function ClockWidget({ config }: Props) {
         )}
       </div>
 
-      {/* Accent separator */}
-      {showDate && (
-        <div style={{
-          width:        '2.5rem',
-          height:       2,
-          background:   'var(--color-accent)',
-          borderRadius: 2,
-          opacity:      0.6,
-          flexShrink:   0,
-        }} />
-      )}
-
       {/* Date */}
       {showDate && (
         <div style={{
