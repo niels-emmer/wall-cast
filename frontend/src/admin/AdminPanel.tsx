@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
   MantineProvider, createTheme,
   Box, Container, Stack, Group, Paper,
   Text, Code, Title,
@@ -494,6 +503,65 @@ function SlotConfig({
   return null
 }
 
+function SortableSlotRow({
+  slot, slots, rotateConfig, onChange,
+}: {
+  slot: RotateSlot
+  slots: RotateSlot[]
+  rotateConfig: Record<string, unknown>
+  onChange: (cfg: Record<string, unknown>) => void
+}) {
+  const idx = slots.indexOf(slot)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slot.type })
+
+  return (
+    <Stack
+      ref={setNodeRef}
+      gap={6}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+    >
+      <Group gap="xs" align="center">
+        <div
+          {...attributes}
+          {...listeners}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', color: 'var(--mantine-color-dimmed)', display: 'flex', alignItems: 'center', padding: '0 2px', touchAction: 'none' }}
+          title="Drag to reorder"
+        >
+          ⠿
+        </div>
+        <Checkbox
+          checked={slot.enabled !== false}
+          onChange={() => {
+            const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
+            onChange({ ...rotateConfig, widgets: next })
+          }}
+          label={<Code fz="xs">{slot.type}</Code>}
+          size="sm"
+        />
+        <ActionIcon
+          variant="subtle"
+          color="red"
+          size="xs"
+          title="Remove slot"
+          onClick={() => {
+            const next = slots.filter((_, i) => i !== idx)
+            onChange({ ...rotateConfig, widgets: next })
+          }}
+        >
+          ✕
+        </ActionIcon>
+      </Group>
+      <SlotConfig
+        slot={slot}
+        onChange={updated => {
+          const next = slots.map((s, i) => i === idx ? updated : s)
+          onChange({ ...rotateConfig, widgets: next })
+        }}
+      />
+    </Stack>
+  )
+}
+
 function RotatorSection({
   widgetId, rotateConfig, onChange,
 }: {
@@ -504,6 +572,20 @@ function RotatorSection({
   const slots = (rotateConfig.widgets as RotateSlot[]) ?? []
   const intervalSec = (rotateConfig.interval_sec as number) ?? 30
   const [addType, setAddType] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = slots.findIndex(s => s.type === active.id)
+      const newIndex = slots.findIndex(s => s.type === over.id)
+      onChange({ ...rotateConfig, widgets: arrayMove(slots, oldIndex, newIndex) })
+    }
+  }
 
   return (
     <Paper p="md" radius="sm" withBorder mb="md">
@@ -520,40 +602,19 @@ function RotatorSection({
         />
         <Stack gap="md">
           <Text size="xs" c="dimmed" fw={500}>Slots</Text>
-          {slots.map((slot, idx) => (
-            <Stack key={idx} gap={6}>
-              <Group gap="xs" align="center">
-                <Checkbox
-                  checked={slot.enabled !== false}
-                  onChange={() => {
-                    const next = slots.map((s, i) => i === idx ? { ...s, enabled: s.enabled !== false ? false : true } : s)
-                    onChange({ ...rotateConfig, widgets: next })
-                  }}
-                  label={<Code fz="xs">{slot.type}</Code>}
-                  size="sm"
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={slots.map(s => s.type)} strategy={verticalListSortingStrategy}>
+              {slots.map(slot => (
+                <SortableSlotRow
+                  key={slot.type}
+                  slot={slot}
+                  slots={slots}
+                  rotateConfig={rotateConfig}
+                  onChange={onChange}
                 />
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  title="Remove slot"
-                  onClick={() => {
-                    const next = slots.filter((_, i) => i !== idx)
-                    onChange({ ...rotateConfig, widgets: next })
-                  }}
-                >
-                  ✕
-                </ActionIcon>
-              </Group>
-              <SlotConfig
-                slot={slot}
-                onChange={updated => {
-                  const next = slots.map((s, i) => i === idx ? updated : s)
-                  onChange({ ...rotateConfig, widgets: next })
-                }}
-              />
-            </Stack>
-          ))}
+              ))}
+            </SortableContext>
+          </DndContext>
           <Divider />
           <Group gap="xs" align="flex-end">
             <Select
