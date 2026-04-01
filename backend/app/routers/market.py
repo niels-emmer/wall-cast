@@ -1,9 +1,7 @@
 import asyncio
-import csv
-import io
 import logging
 import time
-from datetime import date, timedelta
+import urllib.parse
 
 import httpx
 from fastapi import APIRouter
@@ -16,19 +14,22 @@ router = APIRouter(tags=["market"])
 _CACHE_TTL   = 5 * 60  # 5 minutes
 _CRYPTO_COUNT = 10
 
-# Stooq symbol → (canonical symbol, display name, type)
-# Stooq: indices use ^ prefix; US stocks use .US suffix
+# Yahoo Finance symbol → (canonical symbol, display name, type)
 _QUOTES = [
-    ("^SPX",   "^GSPC", "S&P 500",   "index"),
-    ("^DJI",   "^DJI",  "Dow Jones", "index"),
-    ("^AEX",   "^AEX",  "AEX",       "index"),
-    ("^UKX",   "^FTSE", "FTSE 100",  "index"),
-    ("AAPL.US","AAPL",  "Apple",     "stock"),
-    ("MSFT.US","MSFT",  "Microsoft", "stock"),
-    ("NVDA.US","NVDA",  "NVIDIA",    "stock"),
-    ("TSLA.US","TSLA",  "Tesla",     "stock"),
-    ("AMZN.US","AMZN",  "Amazon",    "stock"),
+    ("^GSPC", "^GSPC", "S&P 500",   "index"),
+    ("^DJI",  "^DJI",  "Dow Jones", "index"),
+    ("^AEX",  "^AEX",  "AEX",       "index"),
+    ("^FTSE", "^FTSE", "FTSE 100",  "index"),
+    ("AAPL",  "AAPL",  "Apple",     "stock"),
+    ("MSFT",  "MSFT",  "Microsoft", "stock"),
+    ("NVDA",  "NVDA",  "NVIDIA",    "stock"),
+    ("TSLA",  "TSLA",  "Tesla",     "stock"),
+    ("AMZN",  "AMZN",  "Amazon",    "stock"),
 ]
+
+_YF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+}
 
 _cache: dict | None = None
 _cache_ts: float = 0.0
@@ -54,28 +55,32 @@ async def _fetch_fear_greed() -> dict | None:
 
 async def _fetch_one_quote(
     client: httpx.AsyncClient,
-    stooq_sym: str, orig_sym: str, name: str, sym_type: str,
+    yf_sym: str, orig_sym: str, name: str, sym_type: str,
 ) -> dict | None:
-    """Fetch 2-day daily history from Stooq and derive close + % change."""
-    d2 = date.today().strftime("%Y%m%d")
-    d1 = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
-    url = f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d&d1={d1}&d2={d2}"
+    """Fetch 5-day daily history from Yahoo Finance and derive close + % change."""
+    encoded = urllib.parse.quote(yf_sym)
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}?range=5d&interval=1d"
     try:
-        r = await client.get(url, timeout=12)
+        r = await client.get(url, timeout=12, headers=_YF_HEADERS)
         r.raise_for_status()
-        rows = list(csv.DictReader(io.StringIO(r.text)))
+        data = r.json()
     except Exception as exc:
-        logger.warning("Stooq history failed for %s: %s", stooq_sym, exc)
+        logger.warning("Yahoo Finance fetch failed for %s: %s", yf_sym, exc)
         return None
 
-    if len(rows) < 2:
-        logger.warning("Stooq: only %d row(s) for %s", len(rows), stooq_sym)
-        return None
     try:
-        close = float(rows[-1].get("Close") or 0)
-        prev  = float(rows[-2].get("Close") or 0)
-    except (ValueError, TypeError):
+        result = data["chart"]["result"][0]
+        closes = [c for c in result["indicators"]["quote"][0]["close"] if c is not None]
+    except (KeyError, IndexError, TypeError):
+        logger.warning("Yahoo Finance: unexpected response structure for %s", yf_sym)
         return None
+
+    if len(closes) < 2:
+        logger.warning("Yahoo Finance: only %d close(s) for %s", len(closes), yf_sym)
+        return None
+
+    close = closes[-1]
+    prev  = closes[-2]
     if not close or not prev:
         return None
     return {
@@ -88,16 +93,16 @@ async def _fetch_one_quote(
 
 
 async def _fetch_quotes() -> list[dict]:
-    """Fetch quotes from Stooq (free, no auth, server-accessible)."""
+    """Fetch quotes from Yahoo Finance (free, no auth)."""
     async with httpx.AsyncClient(follow_redirects=True) as client:
         tasks = [
-            _fetch_one_quote(client, stooq_sym, orig_sym, name, sym_type)
-            for stooq_sym, orig_sym, name, sym_type in _QUOTES
+            _fetch_one_quote(client, yf_sym, orig_sym, name, sym_type)
+            for yf_sym, orig_sym, name, sym_type in _QUOTES
         ]
         results = await asyncio.gather(*tasks)
     good = [r for r in results if r is not None]
     if not good:
-        logger.warning("Stooq: all quote fetches failed")
+        logger.warning("Yahoo Finance: all quote fetches failed")
     return good
 
 

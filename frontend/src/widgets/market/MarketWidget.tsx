@@ -195,10 +195,10 @@ export function MarketWidget(_props: WidgetProps) {
   const t = useLang()
   const { data, isLoading, isError, dataUpdatedAt } = useMarket()
 
-  if (isLoading) return <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>{null}</WidgetShell>
+  if (isLoading) return <WidgetShell title={t.marketTitle} source="Yahoo Finance / CoinGecko" dataUpdatedAt={dataUpdatedAt}>{null}</WidgetShell>
 
   if (isError || !data) return (
-    <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
+    <WidgetShell title={t.marketTitle} source="Yahoo Finance / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
       <span style={{ fontSize: fs.sm, color: 'var(--color-muted)' }}>{t.marketUnavailable}</span>
     </WidgetShell>
   )
@@ -208,7 +208,7 @@ export function MarketWidget(_props: WidgetProps) {
   const quotes  = [...indices, ...stocks]
 
   return (
-    <WidgetShell title={t.marketTitle} source="Stooq / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
+    <WidgetShell title={t.marketTitle} source="Yahoo Finance / CoinGecko" dataUpdatedAt={dataUpdatedAt}>
 
       {/* ── Fear & Greed ───────────────────────────────────────────── */}
       {data.fear_greed && (
