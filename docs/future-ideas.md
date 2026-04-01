@@ -180,4 +180,4 @@ Data source: [p2000.brandweer-berkel-enschot.nl](http://p2000.brandweer-berkel-e
 Implemented as the `market` widget. Shows the crypto Fear & Greed gauge (alternative.me),
 four stock indices (S&P 500, Dow Jones, AEX, FTSE 100), five stock tickers (AAPL, MSFT,
 NVDA, TSLA, AMZN), and the top 10 crypto coins by market cap — all from free, unauthenticated
-APIs (Stooq for equities, CoinGecko for crypto). Refreshes every 5 minutes. No API key required.
+APIs (Yahoo Finance for equities, CoinGecko for crypto). Refreshes every 5 minutes. No API key required.

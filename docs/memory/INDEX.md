@@ -248,7 +248,7 @@ See `records/decision-log.md` for all architectural decisions with rationale.
 - Travel time: TomTom Routing API — free key (`TOMTOM_API_KEY`), 5 min TTL, traffic-aware
 - TomTom Geocoding: `api.tomtom.com/search/2/geocode/{query}.json` — resolves home/work addresses to coords on first request, cached for process lifetime
 - Market Fear & Greed: `api.alternative.me/fng/` — no key, 5 min TTL
-- Market quotes (indices + stocks): `stooq.com/q/d/l/` CSV — no key, 7-day date range to get latest close + prev close, 5 min TTL
+- Market quotes (indices + stocks): `query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=1d` — no key, last 2 closes for % change, 5 min TTL. Replaced Stooq (broken, returns empty responses).
 - Crypto top 10: `api.coingecko.com/api/v3/coins/markets` — no key, 5 min TTL
 - P2000: `p2000.brandweer-berkel-enschot.nl/homeassistant/rss.asp` — public RSS, no key, 30 s TTL; filter by RegName (bbox lookup from shared.location), discipline + priority rules, dedup within 5 min window
 - Bus (vertrektijd.info): 20 s timeout (raised from 10 s — API occasionally slow). `asyncio.CancelledError` is `BaseException` not `Exception` in Python 3.8+; bus.py has a broad `except Exception` fallback after the two httpx handlers to catch it and serve stale data instead of 500.

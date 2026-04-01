@@ -572,7 +572,7 @@ Live market overview — crypto Fear & Greed index, main stock indices (S&P 500,
 
 Data sources:
 - Fear & Greed: [alternative.me/fng](https://alternative.me/fng/) — no key
-- Stock/index quotes: [Stooq](https://stooq.com) — no key
+- Stock/index quotes: [Yahoo Finance](https://finance.yahoo.com) — no key
 - Crypto top 10: [CoinGecko](https://coingecko.com) — no key
 
 ```yaml

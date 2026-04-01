@@ -60,7 +60,7 @@ It is fully AI-coded and designed to be extended. Fork it, [tell Claude what you
 | **KNMI warnings** | L | [MeteoAlarm](https://meteoalarm.org) — active NL weather warnings; hidden when none | 15 min |
 | **Air quality** | L | [open-meteo.com](https://open-meteo.com) — European AQI, PM2.5/PM10/NO₂/O₃, 4-day pollen forecast | 1 h |
 | **Bus / tram departures** | S | [vertrektijd.info](https://vertrektijd.info) — live departures, cancelled services shown | 30 s |
-| **Market** | L | [Stooq](https://stooq.com) (indices + stocks) + [alternative.me](https://alternative.me/fng/) F&G + [CoinGecko](https://coingecko.com) (crypto top 10) | 5 min |
+| **Market** | L | [Yahoo Finance](https://finance.yahoo.com) (indices + stocks) + [alternative.me](https://alternative.me/fng/) F&G + [CoinGecko](https://coingecko.com) (crypto top 10) | 5 min |
 | **P2000 alerts** | S | Dutch paging network — fire, ambulance (A1), police (P1); region-filtered; hidden when no recent incidents | 30 s |
 | **Network** | S | Router DAL API + Cloudflare speedtest — WAN status, connectivity, LAN hosts, speed | 30 s |
 | **Rotate** | Any | Container — cycles child widgets in one grid cell | — |
