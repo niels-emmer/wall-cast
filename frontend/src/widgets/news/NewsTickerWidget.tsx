@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNews } from '../../hooks/use-news'
 import { useNtfy, type NtfyMessage } from '../../hooks/use-ntfy'
 import { useP2000 } from '../../hooks/use-p2000'
@@ -163,6 +163,17 @@ function P2000TickerItem({ incident }: { incident: P2000Incident }) {
   )
 }
 
+// ── Segment types ──────────────────────────────────────────────────────────────
+
+type SegmentItem =
+  | { kind: 'news';     source: string; title: string;  key: string }
+  | { kind: 'breaking'; msg: NtfyMessage;               key: string }
+  | { kind: 'p2000';    incident: P2000Incident;        key: string }
+
+const P2000_FREQ  = 2
+const P2000_MAX   = 3
+const BREAK_TIMES = 5  // how many times breaking item appears per ntfy message
+
 // ── Main widget ────────────────────────────────────────────────────────────────
 export function NewsTickerWidget({ config }: Props) {
   // Pass the screen ID so the backend can include personal feeds for assigned people
@@ -179,33 +190,106 @@ export function NewsTickerWidget({ config }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const animRef  = useRef<Animation | null>(null)
 
+  // Current rendered segment — changing this triggers a new animation pass
+  const [segment, setSegment] = useState<SegmentItem[]>([])
+
+  // Refs to avoid stale closures in animation callbacks
+  const dataRef         = useRef(data)
+  const p2000Ref        = useRef(p2000Alert)
+  const pendingBreakRef = useRef<NtfyMessage | null>(null)
+  const seenBreakIdRef  = useRef<string | null>(null)
+  const newsOffsetRef   = useRef(0)          // rotation position in news array
+  const hasSegmentRef   = useRef(false)      // prevents double-build on first data load
+
   const speedPx = (config.scroll_speed_px_per_sec as number) ?? 90
 
-  // Restart animation whenever displayed content changes
+  // Keep live values accessible from callbacks without stale closures
+  useEffect(() => { p2000Ref.current = p2000Alert }, [p2000Alert])
+
+  // When a new ntfy message arrives, queue it — do NOT restart the animation
+  useEffect(() => {
+    if (!breaking) return
+    if (breaking.id === seenBreakIdRef.current) return  // already seen this message
+    seenBreakIdRef.current = breaking.id
+    pendingBreakRef.current = breaking
+  }, [breaking])
+
+  // Build the next segment. Called on animation end (onfinish) and on first data load.
+  // All data is read from refs so this callback stays stable for the animation lifecycle.
+  const buildNextSegment = useCallback(() => {
+    const news = dataRef.current?.items ?? []
+    if (news.length === 0) return
+
+    const p2000   = p2000Ref.current
+    const pending = pendingBreakRef.current
+    let items: SegmentItem[]
+
+    if (pending) {
+      // Breaking segment: [breaking, news] × BREAK_TIMES
+      pendingBreakRef.current = null
+      items = []
+      for (let i = 0; i < BREAK_TIMES; i++) {
+        items.push({ kind: 'breaking', msg: pending, key: `br-${i}` })
+        const ni = newsOffsetRef.current % news.length
+        newsOffsetRef.current = (newsOffsetRef.current + 1) % news.length
+        items.push({ kind: 'news', source: news[ni].source, title: news[ni].title, key: `nb-${ni}-${i}` })
+      }
+    } else {
+      // Normal segment: all news items, starting from current offset, with P2000 interleaved
+      items = []
+      let p2000Count = 0
+      const start = newsOffsetRef.current
+      for (let i = 0; i < news.length; i++) {
+        const idx = (start + i) % news.length
+        if (p2000 && i % P2000_FREQ === 0 && p2000Count < P2000_MAX) {
+          items.push({ kind: 'p2000', incident: p2000, key: `p2k-${idx}-${i}` })
+          p2000Count++
+        }
+        items.push({ kind: 'news', source: news[idx].source, title: news[idx].title, key: `n-${idx}-${i}` })
+      }
+      // Advance offset by 1 so consecutive normal segments rotate through the news list
+      newsOffsetRef.current = (start + 1) % news.length
+    }
+
+    hasSegmentRef.current = true
+    setSegment(items)
+  }, [])
+
+  // Seed the first segment when news data arrives
+  useEffect(() => {
+    dataRef.current = data
+    if (!data?.items.length) return
+    if (!hasSegmentRef.current) buildNextSegment()
+  }, [data, buildNextSegment])
+
+  // Run a single-pass animation for the current segment; wire onfinish → buildNextSegment
   useEffect(() => {
     const track = trackRef.current
-    if (!track || !data?.items.length) return
+    if (!track || segment.length === 0) return
 
     animRef.current?.cancel()
 
-    // offsetWidth alone is unreliable right after DOM change — measure after paint
+    // Measure after paint so scrollWidth reflects the new DOM
     requestAnimationFrame(() => {
       if (!track) return
       const halfWidth = track.scrollWidth / 2
       if (halfWidth <= 0) return
       const duration = (halfWidth / speedPx) * 1000
 
-      animRef.current = track.animate(
+      const anim = track.animate(
         [
           { transform: 'translateX(0)' },
           { transform: `translateX(-${halfWidth}px)` },
         ],
-        { duration, iterations: Infinity, easing: 'linear' },
+        { duration, iterations: 1, easing: 'linear' },
       )
+      // When this pass ends, build the next segment (checks pendingBreakRef)
+      anim.onfinish = buildNextSegment
+      animRef.current = anim
     })
 
     return () => { animRef.current?.cancel() }
-  }, [data, breaking, p2000Alert, speedPx])
+  }, [segment, speedPx, buildNextSegment])
 
   if (isError || !data) {
     return (
@@ -219,31 +303,13 @@ export function NewsTickerWidget({ config }: Props) {
     )
   }
 
-  const newsItems = data.items
-
-  // When breaking news is active, interleave it every ~3 news items so it
-  // stays visible throughout the ticker rather than only at the very start.
-  // freq = how many news items between each breaking insertion (min 1).
-  const freq = breaking ? Math.max(1, Math.floor(newsItems.length / 3)) : Infinity
-
-  // P2000 alerts inject every 2 items, max 3 times per half-cycle.
-  const P2000_FREQ = 2
-  const P2000_MAX  = 3
-
-  const buildHalf = (prefix: string) => {
-    let p2000Count = 0
-    return newsItems.flatMap((item, i) => {
-      const els = []
-      if (breaking && i % freq === 0) {
-        els.push(<BreakingItem key={`${prefix}-br-${i}`} msg={breaking} />)
-      }
-      if (p2000Alert && i % P2000_FREQ === 0 && p2000Count < P2000_MAX) {
-        els.push(<P2000TickerItem key={`${prefix}-p2k-${i}`} incident={p2000Alert} />)
-        p2000Count++
-      }
-      els.push(<NewsItem key={`${prefix}-n-${i}`} source={item.source} title={item.title} />)
-      return els
-    })
+  const renderItem = (item: SegmentItem, prefix: string) => {
+    const key = `${prefix}-${item.key}`
+    switch (item.kind) {
+      case 'news':     return <NewsItem          key={key} source={item.source} title={item.title} />
+      case 'breaking': return <BreakingItem      key={key} msg={item.msg} />
+      case 'p2000':    return <P2000TickerItem   key={key} incident={item.incident} />
+    }
   }
 
   return (
@@ -269,9 +335,9 @@ export function NewsTickerWidget({ config }: Props) {
             flexShrink: 0,
           }}
         >
-          {/* Two identical passes for seamless infinite scroll */}
-          {buildHalf('a')}
-          {buildHalf('b')}
+          {/* Two identical passes — seamless scroll within a segment */}
+          {segment.map(item => renderItem(item, 'a'))}
+          {segment.map(item => renderItem(item, 'b'))}
         </div>
       </div>
     </>
