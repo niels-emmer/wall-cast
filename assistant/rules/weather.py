@@ -52,6 +52,67 @@ def check(rule: dict, warnings_data: dict) -> list[Notification]:
     return notifications
 
 
+def check_province(rule: dict, warnings_data: dict) -> list[Notification]:
+    """Handle weather.warning_provinces single-condition rules.
+
+    Fires for oranje/rood warnings that cover the specified province(s).
+    Province matching is case-insensitive.
+    """
+    condition = rule.get("condition", {})
+    raw_value = condition.get("value")
+    operator  = condition.get("operator", "==")
+
+    if isinstance(raw_value, list):
+        provinces = {p.lower() for p in raw_value}
+    elif isinstance(raw_value, str):
+        provinces = {raw_value.lower()}
+    else:
+        return []
+
+    notifications: list[Notification] = []
+    for w in warnings_data.get("warnings", []):
+        level = (w.get("level") or "").lower()
+        if level not in _PRIORITY:          # only oranje / rood
+            continue
+
+        regions_lower = {r.lower() for r in (w.get("regions") or [])}
+        if operator == "in":
+            matched = bool(provinces & regions_lower)
+        elif operator == "==":
+            matched = bool(provinces & regions_lower)
+        else:
+            matched = False
+        if not matched:
+            continue
+
+        phenomenon = w.get("phenomenon", "Weather event")
+        valid_from = w.get("valid_from", "")
+        province_tag = ",".join(sorted(provinces))
+        key = f"warning:{phenomenon}:{valid_from}:{province_tag}"
+        if state.has_fired(key):
+            continue
+
+        regions_str = ", ".join(w.get("regions", []))
+        valid_until = w.get("valid_until", "")
+        description = w.get("description", "")
+
+        msg = f"{phenomenon} warning ({level}) for {regions_str}."
+        if description:
+            msg += f" {description}"
+        if valid_until:
+            msg += f" Until {valid_until[:16].replace('T', ' ')}."
+
+        notifications.append(Notification(
+            title=f"Weather: {level.capitalize()} — {phenomenon}",
+            message=msg,
+            state_key=key,
+            priority=_PRIORITY.get(level, "default"),
+            tags=_TAGS.get(level, ["cloud"]),
+        ))
+
+    return notifications
+
+
 def check_current(rule: dict, weather_data: dict) -> list[Notification]:
     """Handle weather.temperature and weather.wind_speed rules."""
     condition = rule.get("condition", {})

@@ -124,7 +124,11 @@ def _eval_condition_bool(
         return any(_eval_op(lv, operator, value) for lv in levels)
     if variable == "weather.warning_provinces":
         warnings = fetch(f"{backend_url}/api/warnings").get("warnings", [])
-        all_regions = {r for w in warnings for r in (w.get("regions") or [])}
+        # Only consider oranje/rood warnings so this condition can't be
+        # satisfied by a geel warning cross-matching with a separate level
+        # condition that happens to be met by a different province.
+        significant = [w for w in warnings if (w.get("level") or "").lower() in ("oranje", "rood")]
+        all_regions = {r for w in significant for r in (w.get("regions") or [])}
         return any(_eval_op(region, operator, value) for region in all_regions)
     # ── Rain
     if variable == "rain.mm_now":
@@ -307,9 +311,12 @@ def run_rule(
         return rule_garbage.check(rule, data)
 
     # ── Weather warnings ──────────────────────────────────────────────────────
-    if variable in ("weather.warning_level", "weather.warning_provinces"):
+    if variable == "weather.warning_level":
         data = _cached_fetch(client, data_cache, f"{backend_url}/api/warnings")
         return rule_weather.check(rule, data)
+    if variable == "weather.warning_provinces":
+        data = _cached_fetch(client, data_cache, f"{backend_url}/api/warnings")
+        return rule_weather.check_province(rule, data)
 
     # ── Weather: temperature / wind ───────────────────────────────────────────
     if variable in ("weather.temperature", "weather.wind_speed"):
