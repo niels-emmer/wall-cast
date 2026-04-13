@@ -7,8 +7,13 @@ Variables:
   polestar.battery_pct     — state of charge (%)
   polestar.days_to_service — days until next scheduled service (numeric)
   polestar.service_warning — any active service/fluid warning flag (boolean)
+  polestar.is_locked       — whether the car is locked (boolean)
+  polestar.any_door_open   — whether any door is open (boolean)
+  polestar.any_tyre_warning — whether any tyre pressure warning is active (boolean)
+  polestar.any_light_failure — whether any exterior bulb has failed (boolean)
+  polestar.low_12v_battery — whether the 12V battery warning is active (boolean)
 
-Source: /api/polestar (pypolestar).
+Source: /api/polestar (unofficial-polestar-api / gRPC).
 Deduplication: fires at most once per day per rule.
 """
 
@@ -135,10 +140,11 @@ def check(rule: dict, data: dict) -> list[Notification]:
         _no_warn = ("NO_WARNING", "UNSPECIFIED")
         active: list[str] = []
         for field, label in (
-            ("service_warning",     "service"),
-            ("brake_fluid_warning", "brake fluid"),
-            ("coolant_warning",     "coolant"),
-            ("oil_warning",         "oil"),
+            ("service_warning",      "service"),
+            ("brake_fluid_warning",  "brake fluid"),
+            ("coolant_warning",      "coolant"),
+            ("oil_warning",          "oil"),
+            ("washer_fluid_warning", "washer fluid"),
         ):
             val = data.get(field)
             if val and val not in _no_warn:
@@ -161,6 +167,117 @@ def check(rule: dict, data: dict) -> list[Notification]:
             state_key=key,
             priority="default",
             tags=["warning", "wrench"],
+        )]
+
+    # ── polestar.is_locked ────────────────────────────────────────────────────
+    if variable == "polestar.is_locked":
+        is_locked = data.get("is_locked")
+        if is_locked is None:
+            return []
+        raw_val = condition.get("value", False)
+        if isinstance(raw_val, str):
+            want_locked = raw_val.lower() in ("true", "1", "yes")
+        else:
+            want_locked = bool(raw_val)
+        if bool(is_locked) != want_locked:
+            return []
+        key = f"polestar.is_locked:{want_locked}:{today}"
+        if state.has_fired(key):
+            return []
+        status = "locked" if is_locked else "unlocked"
+        return [Notification(
+            title="Polestar — lock",
+            message=f"Car is {status}.",
+            state_key=key,
+            priority="default",
+            tags=["lock"],
+        )]
+
+    # ── polestar.any_door_open ────────────────────────────────────────────────
+    if variable == "polestar.any_door_open":
+        any_open = bool(data.get("any_door_open", False))
+        raw_val  = condition.get("value", True)
+        if isinstance(raw_val, str):
+            want_open = raw_val.lower() in ("true", "1", "yes")
+        else:
+            want_open = bool(raw_val)
+        if any_open != want_open:
+            return []
+        key = f"polestar.any_door_open:{today}"
+        if state.has_fired(key):
+            return []
+        return [Notification(
+            title="Polestar — door open",
+            message="A car door is open.",
+            state_key=key,
+            priority="urgent",
+            tags=["door", "warning"],
+        )]
+
+    # ── polestar.any_tyre_warning ─────────────────────────────────────────────
+    if variable == "polestar.any_tyre_warning":
+        tyres = data.get("tyre_warnings", {})
+        has_warn = any(v is not None for v in tyres.values()) if isinstance(tyres, dict) else False
+        raw_val  = condition.get("value", True)
+        if isinstance(raw_val, str):
+            want = raw_val.lower() in ("true", "1", "yes")
+        else:
+            want = bool(raw_val)
+        if has_warn != want:
+            return []
+        key = f"polestar.any_tyre_warning:{today}"
+        if state.has_fired(key):
+            return []
+        affected = [pos for pos, v in tyres.items() if v is not None] if isinstance(tyres, dict) else []
+        detail = ", ".join(affected).upper() if affected else "unknown"
+        return [Notification(
+            title="Polestar — tyre pressure",
+            message=f"Tyre pressure warning: {detail}.",
+            state_key=key,
+            priority="default",
+            tags=["warning"],
+        )]
+
+    # ── polestar.any_light_failure ────────────────────────────────────────────
+    if variable == "polestar.any_light_failure":
+        has_failure = bool(data.get("any_light_failure", False))
+        raw_val     = condition.get("value", True)
+        if isinstance(raw_val, str):
+            want = raw_val.lower() in ("true", "1", "yes")
+        else:
+            want = bool(raw_val)
+        if has_failure != want:
+            return []
+        key = f"polestar.any_light_failure:{today}"
+        if state.has_fired(key):
+            return []
+        return [Notification(
+            title="Polestar — light failure",
+            message="An exterior bulb has failed.",
+            state_key=key,
+            priority="default",
+            tags=["bulb", "warning"],
+        )]
+
+    # ── polestar.low_12v_battery ──────────────────────────────────────────────
+    if variable == "polestar.low_12v_battery":
+        low = bool(data.get("low_12v_battery", False))
+        raw_val = condition.get("value", True)
+        if isinstance(raw_val, str):
+            want = raw_val.lower() in ("true", "1", "yes")
+        else:
+            want = bool(raw_val)
+        if low != want:
+            return []
+        key = f"polestar.low_12v_battery:{today}"
+        if state.has_fired(key):
+            return []
+        return [Notification(
+            title="Polestar — 12V battery",
+            message="12V battery warning active.",
+            state_key=key,
+            priority="default",
+            tags=["battery", "warning"],
         )]
 
     return []

@@ -61,6 +61,20 @@ export interface GarbageData {
   collections: GarbageCollection[]
 }
 
+export interface TyrePressures {
+  fl: number | null
+  fr: number | null
+  rl: number | null
+  rr: number | null
+}
+
+export interface TyreWarnings {
+  fl: string | null
+  fr: string | null
+  rl: string | null
+  rr: string | null
+}
+
 export interface PolestarData {
   soc: number | null
   range_km: number | null
@@ -80,6 +94,17 @@ export interface PolestarData {
   brake_fluid_warning: string | null
   coolant_warning: string | null
   oil_warning: string | null
+  // new fields
+  charging_type: string | null
+  voltage_volts: number | null
+  washer_fluid_warning: string | null
+  low_12v_battery: boolean
+  any_light_failure: boolean
+  tyre_warnings: TyreWarnings
+  tyre_pressure_kpa: TyrePressures
+  is_locked: boolean | null
+  any_door_open: boolean
+  is_online: boolean | null
 }
 
 export interface CalendarEvent {

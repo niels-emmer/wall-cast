@@ -64,6 +64,22 @@ export interface Translations {
   tripA: string
   tripB: string
   polestarUnavailable: string
+  washerFluid: string
+  battery12v: string
+  lightFailure: string
+  locked: string
+  unlocked: string
+  doorOpen: string
+  online: string
+  offline: string
+  tyrePressure: string
+  tyreFL: string
+  tyreFR: string
+  tyreRL: string
+  tyreRR: string
+  chargingTypeAC: string
+  chargingTypeDC: string
+  chargingTypeWireless: string
 
   // Traffic
   trafficTitle: string
@@ -212,6 +228,22 @@ export const nl: Translations = {
   tripA: 'rit A',
   tripB: 'rit B',
   polestarUnavailable: 'Niet beschikbaar',
+  washerFluid: 'Ruitensproeiervloeistof',
+  battery12v: '12V accu',
+  lightFailure: 'Lamp defect',
+  locked: 'Op slot',
+  unlocked: 'Open',
+  doorOpen: 'Deur open',
+  online: 'Online',
+  offline: 'Offline',
+  tyrePressure: 'Bandenspanning',
+  tyreFL: 'VL',
+  tyreFR: 'VR',
+  tyreRL: 'AL',
+  tyreRR: 'AR',
+  chargingTypeAC: 'AC',
+  chargingTypeDC: 'DC',
+  chargingTypeWireless: 'Draadloos',
 
   trafficTitle: 'Verkeer',
   trafficUnavailable: 'Verkeer niet beschikbaar',
@@ -372,6 +404,22 @@ export const en: Translations = {
   tripA: 'trip A',
   tripB: 'trip B',
   polestarUnavailable: 'Unavailable',
+  washerFluid: 'Washer fluid',
+  battery12v: '12V battery',
+  lightFailure: 'Light failure',
+  locked: 'Locked',
+  unlocked: 'Unlocked',
+  doorOpen: 'Door open',
+  online: 'Online',
+  offline: 'Offline',
+  tyrePressure: 'Tyre pressure',
+  tyreFL: 'FL',
+  tyreFR: 'FR',
+  tyreRL: 'RL',
+  tyreRR: 'RR',
+  chargingTypeAC: 'AC',
+  chargingTypeDC: 'DC',
+  chargingTypeWireless: 'Wireless',
 
   trafficTitle: 'Traffic',
   trafficUnavailable: 'Traffic unavailable',

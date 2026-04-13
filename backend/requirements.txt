@@ -6,8 +6,8 @@ watchfiles==1.0.3
 httpx==0.28.1
 feedparser==6.0.11
 cachetools==5.5.0
-pypolestar>=1.0.0
-gql[httpx]>=3.5.2
+unofficial-polestar-api @ git+https://github.com/kildahldev/unofficial-polestar-api@v0.1.1
+grpclib>=0.4.7
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 cryptography>=41.0.0
