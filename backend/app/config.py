@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # P2000 emergency services feed (p2000.brandweer-berkel-enschot.nl)
     p2000_cache_ttl: int = 30         # 30 seconds (real-time dispatch data)
 
+    # Trump's Truth-o-Meter (truthsocial.com)
+    truthometer_cache_ttl: int = 300  # 5 minutes
+
+    # OpenAI (used for TLDR generation in truthometer)
+    openai_api_key: str = ""
+
     # Matrix notification channel (access token — never stored in YAML)
     matrix_token: str = ""
 

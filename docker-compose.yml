@@ -20,6 +20,7 @@ services:
         required: false
     environment:
       WALL_CONFIG_PATH: /config/wall-cast.yaml
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
     expose:
       - "8000"
     healthcheck:

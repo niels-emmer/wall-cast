@@ -16,7 +16,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5174"],
       "cwd": "frontend",
-      "port": 5174
+      "port": 5174,
+      "env": {
+        "VITE_BACKEND_URL": "http://localhost:8000"
+      }
     }
   ]
 }

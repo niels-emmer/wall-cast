@@ -240,3 +240,27 @@ export interface P2000Data {
   region: string
   incidents: P2000Incident[]
 }
+
+export interface TruthometerPost {
+  id: string
+  created_at: string   // ISO 8601
+  content: string      // plain text (HTML stripped)
+  tldr: string         // AI-generated 1-2 sentence summary
+  is_repost: boolean
+  original_account: string | null
+  age_min: number
+}
+
+export interface TruthometerStats {
+  posts_last_hour: number
+  posts_last_24h:  number
+  posts_prev_hour: number
+  trend:           'up' | 'down' | 'steady'
+  reposts:         number
+  originals:       number
+}
+
+export interface TruthometerData {
+  posts: TruthometerPost[]
+  stats: TruthometerStats
+}
