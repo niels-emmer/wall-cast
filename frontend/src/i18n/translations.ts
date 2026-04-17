@@ -118,6 +118,20 @@ export interface Translations {
   p2000Unavailable: string
   p2000TickerBadge: string
 
+  // Trump's Truth-o-Meter
+  truthometerTitle: string
+  truthometerUnavailable: string
+  truthometerPerHour: string
+  truthometerPer24h: string
+  truthometerOriginals: string
+  truthometerReposts: string
+  truthometerTrendUp: string
+  truthometerTrendDown: string
+  truthometerTrendSteady: string
+  truthometerRecent: string
+  truthometerRetruth: string
+  truthometerAgoMin: (n: number) => string
+
   // Shared
   unavailable: string
   loading: string
@@ -279,6 +293,19 @@ export const nl: Translations = {
   p2000Unavailable: 'Niet beschikbaar',
   p2000TickerBadge: 'P2000',
 
+  truthometerTitle:    "Trump's Truth-o-Meter",
+  truthometerUnavailable: 'Truth Social niet beschikbaar',
+  truthometerPerHour:  '/uur',
+  truthometerPer24h:   '/24u',
+  truthometerOriginals: 'origineel',
+  truthometerReposts:  'repost',
+  truthometerTrendUp:  'trending',
+  truthometerTrendDown: 'rustiger',
+  truthometerTrendSteady: 'stabiel',
+  truthometerRecent:   'Recente Truths',
+  truthometerRetruth:  'RETRUTH',
+  truthometerAgoMin:   (n) => n === 0 ? 'Nu' : `${n} min geleden`,
+
   unavailable: 'Niet beschikbaar',
   loading: 'Laden...',
 }
@@ -429,6 +456,19 @@ export const en: Translations = {
   p2000AgoMin: (n) => n === 0 ? 'Now' : `${n} min ago`,
   p2000Unavailable: 'Unavailable',
   p2000TickerBadge: 'P2000',
+
+  truthometerTitle:       "Trump's Truth-o-Meter",
+  truthometerUnavailable: 'Truth Social unavailable',
+  truthometerPerHour:     '/hr',
+  truthometerPer24h:      '/24h',
+  truthometerOriginals:   'original',
+  truthometerReposts:     'reposts',
+  truthometerTrendUp:     'trending',
+  truthometerTrendDown:   'quieter',
+  truthometerTrendSteady: 'steady',
+  truthometerRecent:      'Recent Truths',
+  truthometerRetruth:     'RETRUTH',
+  truthometerAgoMin:      (n) => n === 0 ? 'Now' : `${n} min ago`,
 
   unavailable: 'Unavailable',
   loading: 'Loading...',
