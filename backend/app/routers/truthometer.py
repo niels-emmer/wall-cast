@@ -58,6 +58,10 @@ def _generate_tldr(post_id: str, content: str) -> str:
     if post_id in _tldr_cache:
         return _tldr_cache[post_id]
 
+    if content == "[media]":
+        _tldr_cache[post_id] = content
+        return content
+
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         tldr = content[:280] + ("…" if len(content) > 280 else "")
@@ -137,7 +141,10 @@ def _parse_statuses(raw: list[dict]) -> list[dict[str, Any]]:
         content = _strip_html(raw_content)
 
         if not content:
-            continue
+            attachments = source.get("media_attachments", [])
+            if not attachments:
+                continue
+            content = "[media]"
 
         original_account: str | None = None
         if is_repost and reblog:
@@ -185,7 +192,7 @@ async def get_truthometer() -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=15.0, headers=_HEADERS, follow_redirects=True) as client:
-            resp = await client.get(STATUSES_URL, params={"limit": 40})
+            resp = await client.get(STATUSES_URL, params={"limit": 40, "exclude_reblogs": "false"})
             resp.raise_for_status()
             raw: list[dict] = resp.json()
     except httpx.HTTPStatusError as exc:
