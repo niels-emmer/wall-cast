@@ -22,6 +22,7 @@ export interface WallConfig {
     columns: number
     rows: number
   }
+  orientation?: 'landscape' | 'portrait'
   language?: string
   widgets: WidgetConfig[]
   fade_speed?: number
@@ -157,6 +158,7 @@ export interface ScreenSection {
   name?: string
   enabled?: boolean   // undefined / true = active; false = disabled (no casting)
   chromecast_ip?: string
+  orientation?: 'landscape' | 'portrait'
   layout?: { columns: number; rows: number }
   location?: Location
   language?: string

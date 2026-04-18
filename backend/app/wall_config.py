@@ -618,7 +618,14 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
         target = screens[0]
 
     # Merge: screen overrides shared for location/language/layout
-    merged_widgets = list(target.get("widgets", [])) + list(shared.get("widgets", []))
+    screen_widgets = list(target.get("widgets", []))
+    screen_widget_ids = {w["id"] for w in screen_widgets}
+    # Screen-level widget with the same id shadows the shared one (e.g. portrait
+    # screens can reposition the news ticker without duplicating it).
+    shared_widgets_filtered = [
+        w for w in shared.get("widgets", []) if w["id"] not in screen_widget_ids
+    ]
+    merged_widgets = screen_widgets + shared_widgets_filtered
 
     # Inject person-specific config into widgets
     all_people = shared.get("people") or []
@@ -630,9 +637,10 @@ def get_config(screen: str | None = None) -> dict[str, Any]:
     merged_widgets = _inject_p2000(merged_widgets, shared.get("p2000"))
 
     merged: dict[str, Any] = {
-        "location": target.get("location") or shared.get("location", {}),
-        "language": target.get("language") or shared.get("language", "nl"),
-        "layout":   target.get("layout")   or shared.get("layout", {"columns": 12, "rows": 8}),
+        "location":    target.get("location")    or shared.get("location", {}),
+        "language":    target.get("language")    or shared.get("language", "nl"),
+        "layout":      target.get("layout")      or shared.get("layout", {"columns": 12, "rows": 8}),
+        "orientation": target.get("orientation") or shared.get("orientation", "landscape"),
         # Screen-specific widgets first, shared widgets appended (e.g. news ticker stays at bottom)
         "widgets": merged_widgets,
         # Pass through shared-only keys used by backend routers

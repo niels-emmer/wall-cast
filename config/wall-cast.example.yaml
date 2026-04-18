@@ -340,6 +340,7 @@ screens:
     #
     # A PIN appears on the TV screen; enter it in the terminal to complete pairing.
     # Certificates are stored in config/atv-certs/office/ and reused automatically.
+    # orientation: landscape   # "landscape" (default, 12×8 grid) or "portrait" (4×14 grid for phones/tablets)
     people: []             # person IDs from shared.people to show on this screen
     layout:
       columns: 12
@@ -397,3 +398,58 @@ screens:
               config: {}        # stop city/name come from the person assigned to this screen
             - type: network
               config: {}
+
+  # Portrait screen example — 4-column layout for phones/tablets
+  # - id: mobile
+  #   name: Mobile
+  #   orientation: portrait
+  #   layout:
+  #     columns: 4
+  #     rows: 14
+  #   widgets:
+  #     - id: clock
+  #       type: clock
+  #       col: 1
+  #       row: 1
+  #       col_span: 4
+  #       row_span: 3
+  #       config: { show_seconds: true, show_date: true }
+  #     - id: main-rotator
+  #       type: rotate
+  #       col: 1
+  #       row: 4
+  #       col_span: 4
+  #       row_span: 7
+  #       config:
+  #         interval_sec: 20
+  #         widgets:
+  #           - type: weather
+  #             config: { show_hourly: true, show_daily: true }
+  #           - type: calendar
+  #             config: {}
+  #           - type: traffic
+  #             config: {}
+  #           - type: warnings
+  #             config: {}
+  #     - id: news
+  #       type: news
+  #       col: 1
+  #       row: 11
+  #       col_span: 4
+  #       row_span: 1
+  #       config: { feeds: [], scroll_speed_px_per_sec: 80 }
+  #     - id: bottom-rotator
+  #       type: rotate
+  #       col: 1
+  #       row: 12
+  #       col_span: 4
+  #       row_span: 3
+  #       config:
+  #         interval_sec: 20
+  #         widgets:
+  #           - type: rain
+  #             config: {}
+  #           - type: garbage
+  #             config: { days_ahead: 31 }
+  #           - type: bus
+  #             config: {}

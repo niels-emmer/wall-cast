@@ -113,6 +113,7 @@ Each screen entry in `screens` supports the following casting fields:
 | `chromecast_ip` | string | — | IP address of the Chromecast / Google Nest Hub. Set manually or auto-updated by the scanner after a scan → use pick flow. |
 | `chromecast_name` | string | — | Device name as it appears in the Google Home app. Used by the scanner to match a discovered device back to this screen and auto-update `chromecast_ip` when it changes. |
 | `chromecast_mac` | string | — | MAC address of the device. Only used for Wake-on-LAN. Optional — most Cast OS devices (Nest Hub, Chromecast) do not support WoL, so this field has no effect for them. |
+| `orientation` | string | `landscape` | Layout mode: `landscape` (12×8 grid, for TVs/monitors) or `portrait` (4×14 grid, for phones/tablets). Affects the default widget layout and how the CSS grid is rendered. Existing screens without this field default to `landscape`. |
 
 ```yaml
 screens:
@@ -123,6 +124,7 @@ screens:
     chromecast_ip: 192.168.1.50
     chromecast_name: Living Room TV
     chromecast_mac: "aa:bb:cc:dd:ee:ff"   # optional, WoL only
+    orientation: landscape                 # or "portrait" for phone/tablet displays
     layout: { columns: 12, rows: 8 }
     widgets: [ ... ]
 ```

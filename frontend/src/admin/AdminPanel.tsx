@@ -244,7 +244,59 @@ function uniqueId(base: string, existing: string[]): string {
   return `${base}-${n}`
 }
 
-function makeDefaultScreen(id: string, name: string): ScreenSection {
+function makeDefaultScreen(id: string, name: string, orientation: 'landscape' | 'portrait' = 'landscape'): ScreenSection {
+  if (orientation === 'portrait') {
+    return {
+      id,
+      name,
+      orientation: 'portrait',
+      people: [],
+      layout: { columns: 4, rows: 14 },
+      widgets: [
+        {
+          id: 'clock',
+          type: 'clock',
+          col: 1, row: 1, col_span: 4, row_span: 3,
+          config: { show_seconds: true, show_date: true },
+        },
+        {
+          id: 'main-rotator',
+          type: 'rotate',
+          col: 1, row: 4, col_span: 4, row_span: 7,
+          config: {
+            interval_sec: 20,
+            widgets: [
+              { type: 'weather',    config: { show_hourly: true, show_daily: true }, enabled: true },
+              { type: 'calendar',   config: { calendar_ids: [] }, enabled: true },
+              { type: 'traffic',    config: { home_address: '', work_address: '', route_roads: '' }, enabled: true },
+              { type: 'warnings',   config: {}, enabled: true },
+              { type: 'airquality', config: {}, enabled: true },
+            ],
+          },
+        },
+        {
+          id: 'news',
+          type: 'news',
+          col: 1, row: 11, col_span: 4, row_span: 1,
+          config: { feeds: [], scroll_speed_px_per_sec: 80 },
+        },
+        {
+          id: 'bottom-rotator',
+          type: 'rotate',
+          col: 1, row: 12, col_span: 4, row_span: 3,
+          config: {
+            interval_sec: 20,
+            widgets: [
+              { type: 'rain',    config: {}, enabled: true },
+              { type: 'garbage', config: { days_ahead: 31, postcode: '', huisnummer: '' }, enabled: true },
+              { type: 'bus',     config: { stop_city: '', stop_name: '' }, enabled: true },
+            ],
+          },
+        },
+      ],
+    }
+  }
+
   return {
     id,
     name,
@@ -2040,7 +2092,7 @@ function ScreensTab({
                 onClick={() => selectScreen(s.id)}
                 style={{ opacity: isDisabled ? 0.45 : 1 }}
               >
-                {s.name || s.id}
+                {s.orientation === 'portrait' ? '▯ ' : ''}{s.name || s.id}
               </Button>
             )
           })}
@@ -2086,17 +2138,61 @@ function ScreensTab({
                   ff="monospace"
                 />
               </Group>
-              <Group gap={6} align="center">
-                <Text size="xs" c="dimmed">Cast URL:</Text>
-                <Anchor
-                  href={`${window.location.origin}/?screen=${currentScreen.id}`}
-                  target="_blank"
-                  size="xs"
-                  ff="monospace"
-                >
-                  {window.location.origin}/?screen={currentScreen.id}
-                </Anchor>
+
+              <Group gap="md" align="flex-end">
+                <Stack gap={4}>
+                  <Text size="sm" fw={500}>Orientation</Text>
+                  <Text size="xs" c="dimmed">Layout mode for this display</Text>
+                  <SegmentedControl
+                    value={currentScreen.orientation ?? 'landscape'}
+                    onChange={val => {
+                      const o = val as 'landscape' | 'portrait'
+                      const defaults = makeDefaultScreen(currentScreen.id, currentScreen.name ?? currentScreen.id, o)
+                      onChange({
+                        ...multiDraft,
+                        screens: multiDraft.screens.map(s =>
+                          s.id === currentScreen.id
+                            ? { ...s, orientation: o, layout: defaults.layout, widgets: defaults.widgets }
+                            : s
+                        ),
+                      })
+                    }}
+                    data={[
+                      { value: 'landscape', label: '⬛ Landscape' },
+                      { value: 'portrait',  label: '▯ Portrait' },
+                    ]}
+                    size="sm"
+                  />
+                </Stack>
               </Group>
+
+              <Stack gap={4}>
+                <Group gap={6} align="center">
+                  <Text size="xs" c="dimmed">Cast URL:</Text>
+                  <Anchor
+                    href={`${window.location.origin}/?screen=${currentScreen.id}`}
+                    target="_blank"
+                    size="xs"
+                    ff="monospace"
+                  >
+                    {window.location.origin}/?screen={currentScreen.id}
+                  </Anchor>
+                </Group>
+                {currentScreen.orientation === 'portrait' && (
+                  <Group gap={6} align="center">
+                    <Text size="xs" c="dimmed">Preview URL:</Text>
+                    <Anchor
+                      href={`${window.location.origin}/?screen=${currentScreen.id}&mode=portrait`}
+                      target="_blank"
+                      size="xs"
+                      ff="monospace"
+                      c="cyan"
+                    >
+                      {window.location.origin}/?screen={currentScreen.id}&mode=portrait
+                    </Anchor>
+                  </Group>
+                )}
+              </Stack>
 
               <Stack gap="xs">
                 <Group gap="md" align="flex-end">

@@ -31,8 +31,9 @@ function useWakeLock() {
   }, [])
 }
 
-// ?screen= never changes during a page session — safe to compute once.
+// ?screen= and ?mode= never change during a page session — safe to compute once.
 const _hasScreen = new URLSearchParams(window.location.search).has('screen')
+const _modeOverride = new URLSearchParams(window.location.search).get('mode')
 
 function ScreenApp() {
   useWakeLock()
@@ -69,36 +70,47 @@ function ScreenApp() {
   const rows = config.layout?.rows ?? 8
   const widgets: WidgetConfig[] = config.widgets ?? []
   const fadeSpeed = config.fade_speed ?? 0.8
+  const isPortrait = _modeOverride === 'portrait' || config.orientation === 'portrait'
 
   return (
     <div
       style={{
-        display: 'grid',
-        ['--rotator-fade-duration' as string]: `${fadeSpeed}s`,
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
         width: '100vw',
-        height: '100vh',
-        overflow: 'hidden', // kiosk — no scrollbars on cast screens
-        gap: '0.5rem',
-        padding: '0.5rem',
+        ...(isPortrait
+          ? { minHeight: '100vh', overflowY: 'auto' }
+          : { height: '100vh', overflow: 'hidden' }),
         background: 'var(--color-bg)',
       }}
     >
-      {widgets.map((widget) => (
-        <div
-          key={widget.id}
-          style={{
-            gridColumn: `${widget.col} / span ${widget.col_span}`,
-            gridRow: `${widget.row} / span ${widget.row_span}`,
-            height: '100%',        // stretch to fill the grid cell
-            minHeight: 0,          // allow shrinking below content size
-            overflow: 'hidden',
-          }}
-        >
-          <WidgetRenderer widget={widget} />
-        </div>
-      ))}
+      <div
+        style={{
+          display: 'grid',
+          ['--rotator-fade-duration' as string]: `${fadeSpeed}s`,
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: isPortrait
+            ? `repeat(${rows}, minmax(60px, 1fr))`
+            : `repeat(${rows}, 1fr)`,
+          width: '100%',
+          ...(isPortrait ? { minHeight: '100vh' } : { height: '100vh' }),
+          gap: '0.5rem',
+          padding: '0.5rem',
+        }}
+      >
+        {widgets.map((widget) => (
+          <div
+            key={widget.id}
+            style={{
+              gridColumn: `${widget.col} / span ${widget.col_span}`,
+              gridRow: `${widget.row} / span ${widget.row_span}`,
+              height: '100%',
+              minHeight: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <WidgetRenderer widget={widget} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
