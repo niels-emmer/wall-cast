@@ -59,8 +59,7 @@ shared:
     #     - url: https://feeds.example.com/bob
     #       label: Bob's Blog   # optional; defaults to the person's name
     #   bus:                # bus stop — used on any screen Bob is assigned to
-    #     stop_city: Amsterdam
-    #     stop_name: Leidseplein
+    #     stop_code: '15230400'   # OVapi timing point code (find at v0.ovapi.nl/tpc/<code>/)
     #   notify:             # personal notification channels (set via People tab in admin panel)
     #     ntfy_topic: wall-cast-bob       # ntfy: personal topic; global alerts also fan out here
     #     matrix_room_id: "!room:matrix.example.com"  # Matrix: personal room (optional)

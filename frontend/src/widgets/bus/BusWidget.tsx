@@ -107,9 +107,8 @@ function DepartureRow({ dep, t }: { dep: BusDeparture; t: ReturnType<typeof useL
 
 export function BusWidget({ config }: WidgetProps) {
   const t = useLang()
-  const stopCity = config.stop_city as string | undefined
-  const stopName = config.stop_name as string | undefined
-  const { data, isError, isLoading } = useBus({ stopCity, stopName })
+  const stopCode = config.stop_code as string | undefined
+  const { data, isError, isLoading } = useBus({ stopCode })
 
   if (isLoading) return <WidgetShell title={t.busTitle}>{null}</WidgetShell>
 

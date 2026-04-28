@@ -2,13 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import type { BusData } from '../types/api'
 import { apiFetch } from '../lib/api'
 
-export function useBus({ stopCity, stopName }: { stopCity?: string; stopName?: string } = {}) {
+export function useBus({ stopCode }: { stopCode?: string } = {}) {
   return useQuery<BusData>({
-    queryKey: ['bus', stopCity ?? null, stopName ?? null],
+    queryKey: ['bus', stopCode ?? null],
     queryFn: () => {
       const params = new URLSearchParams()
-      if (stopCity) params.set('stop_city', stopCity)
-      if (stopName) params.set('stop_name', stopName)
+      if (stopCode) params.set('stop_code', stopCode)
       const qs = params.toString()
       return apiFetch<BusData>(`/api/bus${qs ? `?${qs}` : ''}`)
     },
