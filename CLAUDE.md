@@ -48,12 +48,12 @@ Applies to: `display`, `flexDirection`, `height`, `overflow`, `whiteSpace`, `gap
 | `GET /api/calendar` | Google Calendar v3 (service account) | 10 min |
 | `GET /api/traffic` | ANWB jams + TomTom routing | 5 min |
 | `GET /api/warnings` | MeteoAlarm Atom/CAP | 15 min |
-| `GET /api/bus` | vertrektijd.info | 30 s |
+| `GET /api/bus` | OVapi v0.ovapi.nl/tpc/ (no auth) | 30 s |
 | `GET /api/airquality` | open-meteo CAMS AQI + pollen | 1 h |
 | `GET /api/market` | Yahoo Finance (indices + stocks) + alternative.me F&G + CoinGecko (crypto) | 5 min |
 | `GET /api/p2000` | p2000.brandweer-berkel-enschot.nl RSS → filter by region + discipline | 30 s |
 
-API keys: `POLESTAR_USERNAME`/`PASSWORD`, `TOMTOM_API_KEY`, `VERTREKTIJD_API_KEY`, `ROUTER_PASSWORD`, `OPENAI_API_KEY` — all in `.env`. Google Calendar: service account JSON at `config/google-sa.json`.
+API keys: `POLESTAR_USERNAME`/`PASSWORD`, `TOMTOM_API_KEY`, `ROUTER_PASSWORD`, `OPENAI_API_KEY` — all in `.env`. Google Calendar: service account JSON at `config/google-sa.json`.
 
 ## Widget system
 

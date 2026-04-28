@@ -36,8 +36,7 @@ export interface PersonTraffic {
 }
 
 export interface PersonBus {
-  stop_city?: string
-  stop_name?: string
+  stop_code?: string
 }
 
 export interface PersonRssFeed {

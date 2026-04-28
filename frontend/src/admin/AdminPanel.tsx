@@ -282,7 +282,7 @@ function makeDefaultScreen(id: string, name: string): ScreenSection {
             { type: 'rain', config: {} },
             { type: 'garbage', config: { days_ahead: 31, postcode: '', huisnummer: '' } },
             { type: 'polestar', config: {} },
-            { type: 'bus', config: { stop_city: '', stop_name: '' } },
+            { type: 'bus', config: { stop_code: '' } },
             { type: 'network', config: {} },
           ],
         },
@@ -667,7 +667,7 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
 function defaultSlotConfig(type: string): Record<string, unknown> {
   if (type === 'garbage')  return { days_ahead: 31, postcode: '', huisnummer: '' }
   if (type === 'traffic')  return { home_address: '', work_address: '', route_roads: '' }
-  if (type === 'bus')      return { stop_city: '', stop_name: '' }
+  if (type === 'bus')      return { stop_code: '' }
   if (type === 'weather')  return { show_hourly: true, show_daily: true }
   if (type === 'calendar') return { calendar_ids: [] }
   if (type === 'info')     return { title: '', items: [] }
@@ -2536,22 +2536,14 @@ function PeopleTab({
 
           <Paper p="md" radius="sm" withBorder>
             <SectionTitle>Bus stop</SectionTitle>
-            <Group gap="sm" wrap="wrap" align="flex-start">
-              <TextInput
-                label="City"
-                value={currentPerson.bus?.stop_city ?? ''}
-                onChange={e => updateBus({ stop_city: e.target.value })}
-                size="sm"
-                w={160}
-              />
-              <TextInput
-                label="Stop name"
-                value={currentPerson.bus?.stop_name ?? ''}
-                onChange={e => updateBus({ stop_name: e.target.value })}
-                size="sm"
-                w={200}
-              />
-            </Group>
+            <TextInput
+              label="Stop code"
+              description="OVapi timing point code — find yours at v0.ovapi.nl/tpc/<code>/"
+              value={currentPerson.bus?.stop_code ?? ''}
+              onChange={e => updateBus({ stop_code: e.target.value })}
+              size="sm"
+              w={200}
+            />
           </Paper>
 
           <Paper p="md" radius="sm" withBorder>

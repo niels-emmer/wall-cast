@@ -25,8 +25,7 @@ class Settings(BaseSettings):
     tomtom_api_key: str = ""
     traffic_cache_ttl: int = 300    # 5 minutes
 
-    # Bus departures (vertrektijd.info)
-    vertrektijd_api_key: str = ""
+    # Bus departures (OVapi — no auth required)
     bus_cache_ttl: int = 30         # 30 seconds (real-time data)
     bus_lookahead_min: int = 90     # show departures within this many minutes
 

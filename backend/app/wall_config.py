@@ -432,9 +432,8 @@ def _inject_people_commute(
                 w = {**w, "config": cfg}
             elif wtype == "bus" and bus_cfg:
                 cfg = dict(w.get("config") or {})
-                for key in ("stop_city", "stop_name"):
-                    if not cfg.get(key):
-                        cfg[key] = bus_cfg.get(key, "")
+                if not cfg.get("stop_code"):
+                    cfg["stop_code"] = bus_cfg.get("stop_code", "")
                 w = {**w, "config": cfg}
             elif wtype == "rotate":
                 inner = _inject(w.get("config", {}).get("widgets") or [])
