@@ -271,6 +271,150 @@ def _migrate_rule_conditions(data: dict[str, Any]) -> tuple[dict[str, Any], bool
     return data, any_changed
 
 
+def _gtfs_stop_code_lookup(city: str, stop_name: str) -> str | None:
+    """Look up the OVapi timing point code for a Dutch bus stop by city + name.
+
+    Downloads only stops.txt (~1.5 MB) from the national GTFS zip via two
+    HTTP range requests: one for the zip central directory, one for the
+    compressed stops.txt data.  The full zip (~240 MB) is never downloaded.
+    Returns the first matching stop_code, or None if not found or on error.
+    """
+    import csv
+    import io
+    import struct
+    import zlib
+
+    import httpx
+
+    GTFS_URL = "http://gtfs.ovapi.nl/nl/gtfs-nl.zip"
+    target_name = f"{city}, {stop_name}"
+
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            # Step 1: get file size via HEAD
+            head = client.head(GTFS_URL)
+            file_size = int(head.headers["content-length"])
+
+            # Step 2: download last 65 KB to find end-of-central-directory
+            tail_start = max(0, file_size - 65536)
+            resp = client.get(GTFS_URL, headers={"Range": f"bytes={tail_start}-{file_size-1}"})
+            tail = resp.content
+
+            eocd_pos = tail.rfind(b"PK\x05\x06")
+            if eocd_pos == -1:
+                logger.warning("Bus migration: EOCD not found in GTFS zip")
+                return None
+            eocd = tail[eocd_pos:]
+            cd_size = struct.unpack("<I", eocd[12:16])[0]
+            cd_offset = struct.unpack("<I", eocd[16:20])[0]
+
+            # Step 3: download central directory to find stops.txt offset
+            resp = client.get(GTFS_URL, headers={"Range": f"bytes={cd_offset}-{cd_offset+cd_size-1}"})
+            cd = resp.content
+
+            stops_local_offset: int | None = None
+            stops_comp_size: int | None = None
+            pos = 0
+            while pos < len(cd) - 4:
+                if cd[pos:pos+4] != b"PK\x01\x02":
+                    break
+                comp = struct.unpack("<I", cd[pos+20:pos+24])[0]
+                fname_len = struct.unpack("<H", cd[pos+28:pos+30])[0]
+                extra_len = struct.unpack("<H", cd[pos+30:pos+32])[0]
+                comment_len = struct.unpack("<H", cd[pos+32:pos+34])[0]
+                local_off = struct.unpack("<I", cd[pos+42:pos+46])[0]
+                fname = cd[pos+46:pos+46+fname_len].decode("utf-8", errors="replace")
+                if fname == "stops.txt":
+                    stops_local_offset = local_off
+                    stops_comp_size = comp
+                    break
+                pos += 46 + fname_len + extra_len + comment_len
+
+            if stops_local_offset is None or stops_comp_size is None:
+                logger.warning("Bus migration: stops.txt not found in GTFS central directory")
+                return None
+
+            # Step 4: download local file header + compressed stops.txt data
+            # Local header: 30 bytes + filename + extra (allow 256 bytes margin)
+            download_end = stops_local_offset + 30 + 256 + stops_comp_size
+            resp = client.get(GTFS_URL, headers={"Range": f"bytes={stops_local_offset}-{download_end}"})
+            local_data = resp.content
+
+            if local_data[:4] != b"PK\x03\x04":
+                logger.warning("Bus migration: invalid local file header for stops.txt")
+                return None
+
+            fname_len_local = struct.unpack("<H", local_data[26:28])[0]
+            extra_len_local = struct.unpack("<H", local_data[28:30])[0]
+            data_start = 30 + fname_len_local + extra_len_local
+            compressed = local_data[data_start:data_start+stops_comp_size]
+            text = zlib.decompress(compressed, -15).decode("utf-8")
+
+        reader = csv.DictReader(io.StringIO(text))
+        for row in reader:
+            if row.get("stop_name", "").strip('"') == target_name and row.get("stop_code"):
+                return row["stop_code"]
+
+        return None
+
+    except Exception as exc:
+        logger.warning("Bus migration: GTFS lookup failed — %s", exc)
+        return None
+
+
+def _migrate_bus_stop_codes(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Migrate person bus configs from stop_city/stop_name to OVapi stop_code.
+
+    Looks up the timing point code in the Dutch national GTFS via range
+    requests (downloads ~1.5 MB, not the full 240 MB zip).
+    Only acts when stop_city + stop_name are present and stop_code is absent.
+    """
+    people = data.get("shared", {}).get("people", [])
+    if not isinstance(people, list):
+        return data, False
+
+    needs = [
+        p for p in people
+        if isinstance(p, dict)
+        and isinstance(p.get("bus"), dict)
+        and p["bus"].get("stop_city")
+        and p["bus"].get("stop_name")
+        and not p["bus"].get("stop_code")
+    ]
+    if not needs:
+        return data, False
+
+    logger.info("Bus migration: looking up stop_code for %d person(s) via GTFS", len(needs))
+
+    changed = False
+    new_people = []
+    for person in people:
+        bus = person.get("bus") if isinstance(person, dict) else None
+        if (isinstance(bus, dict)
+                and bus.get("stop_city")
+                and bus.get("stop_name")
+                and not bus.get("stop_code")):
+            city = bus["stop_city"]
+            stop = bus["stop_name"]
+            code = _gtfs_stop_code_lookup(city, stop)
+            if code:
+                person = {**person, "bus": {"stop_code": code}}
+                logger.info("Bus migration: '%s, %s' → stop_code=%s", city, stop, code)
+                changed = True
+            else:
+                logger.warning(
+                    "Bus migration: stop '%s, %s' not found in GTFS — "
+                    "set bus.stop_code manually in the admin panel",
+                    city, stop,
+                )
+        new_people.append(person)
+
+    if not changed:
+        return data, False
+
+    return {**data, "shared": {**data["shared"], "people": new_people}}, True
+
+
 def _migrate_flat(raw: dict[str, Any]) -> dict[str, Any]:
     """Convert old flat single-screen config to multi-screen format."""
     logger.info("Migrating flat config to multi-screen format")
@@ -385,6 +529,11 @@ def load_config() -> dict[str, Any]:
     if changed:
         _write_config(path, data)
         logger.info("Rule conditions migrated to list format and written back to %s", path)
+
+    data, changed = _migrate_bus_stop_codes(data)
+    if changed:
+        _write_config(path, data)
+        logger.info("Bus stop codes migrated to OVapi stop_code format and written back to %s", path)
 
     return data
 
