@@ -641,42 +641,6 @@ shared:
 
 ---
 
-### `truthometer`
-
-Live feed of Donald Trump's Truth Social posts with posting statistics and AI-generated TLDRs. No API key required for fetching (public Mastodon-compatible API). Add `OPENAI_API_KEY` to `.env` for AI summaries; without it, TLDRs fall back to the first 280 characters.
-
-Data source: [truthsocial.com](https://truthsocial.com) via Mastodon-compatible API (`/api/v1/accounts/107780257626128497/statuses`).
-
-```yaml
-- id: truthometer
-  type: truthometer   # or embed inside a rotate widget
-  col: 5
-  row: 1
-  col_span: 8
-  row_span: 7
-  config: {}   # no widget-level configuration
-```
-
-**Display (top to bottom):**
-1. Title — `Trump's Truth-o-Meter`
-2. Stats row: posts/hr, posts/24h, % original, trend arrow (↑ trending / ↓ quieter / → steady)
-3. "Recent Truths" section label
-4. Scrollable card list — newest post first; original posts have a Trump-red left border, reposts are dimmed with a `RETRUTH` badge; each card shows TLDR + age
-
-**Stats computed from the most recent 40 posts:**
-- `posts_last_hour` — posts in the last 60 minutes
-- `posts_last_24h` — posts in the last 24 hours
-- `trend` — compares last-hour count vs the prior hour (60–120 min ago)
-- `reposts` / `originals` — split of retruth vs original posts
-
-**TLDR generation** — uses OpenAI `gpt-4o-mini` via the `OPENAI_API_KEY` env var (shared with the assistant service). Set in `.env`, never in YAML. Without the key, TLDRs are the first 280 chars of the post text.
-
-**Backend cache:** 5 minutes.
-
-**Backend cache:** 30 seconds.
-
----
-
 ### `warnings`
 
 Active KNMI weather warnings for the Netherlands, sourced from [MeteoAlarm](https://meteoalarm.org) (Atom/CAP feed) — no API key required. **Automatically hidden when there are no active warnings**, making it a good fit inside a `rotate` widget.

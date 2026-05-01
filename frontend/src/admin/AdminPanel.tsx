@@ -713,7 +713,6 @@ const ROTATOR_SLOT_TYPES: { value: string; label: string }[] = [
   { value: 'market',     label: 'Market' },
   { value: 'p2000',        label: 'P2000' },
   { value: 'info',         label: 'Info' },
-  { value: 'truthometer',  label: "Trump's Truth-o-Meter" },
 ]
 
 function defaultSlotConfig(type: string): Record<string, unknown> {
